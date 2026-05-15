@@ -1,18 +1,18 @@
-﻿#pragma once
-#include <list>
-#include "gameobject.h"
+#pragma once
+#include "scene.h"
 
 class Manager
 {
 private:
-	static std::list<GameObject*> m_GameObjectList;
+    static Scene* m_Scene;
 
 public:
-	static void Init();
-	static void Uninit();
-	static void Update();
-	static void Draw();
+    static void Init();
+    static void Uninit();
+    static void Update();
+    static void Draw();
 
-	static GameObject* GetPlayer();
-	static std::list<GameObject*>& GetGameObjectList() { return m_GameObjectList; }
+    static Scene* GetScene() { return m_Scene; }
+    static void SetScene(Scene* scene);
+    static GameObject* GetPlayer();
 };

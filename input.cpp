@@ -1,35 +1,38 @@
-ï»¿#include "input.h"
+#include "input.h"
 
 BYTE Input::m_OldKeyState[256];
 BYTE Input::m_KeyState[256];
+long Input::m_MouseMoveX = 0;
+long Input::m_MouseMoveY = 0;
 
-void Input::Init()
-{
-    ZeroMemory(m_OldKeyState, sizeof(m_OldKeyState));
-    ZeroMemory(m_KeyState, sizeof(m_KeyState));
+void Input::Init() {
+    ZeroMemory(m_OldKeyState, 256);
+    ZeroMemory(m_KeyState, 256);
 }
 
-void Input::Uninit()
-{
-}
+void Input::Uninit() {}
 
-void Input::Update()
-{
-    // å‰å›ã®ãƒ•ãƒ¬ãƒ¼ãƒ ã®ã‚­ãƒ¼çŠ¶æ…‹ã‚’ä¿å­˜
-    memcpy(m_OldKeyState, m_KeyState, sizeof(m_OldKeyState));
-    
-    // ç¾åœ¨ã®ãƒ•ãƒ¬ãƒ¼ãƒ ã®ã‚­ãƒ¼çŠ¶æ…‹ã‚’å–å¾—
+void Input::Update() {
+    // --- ƒL[ƒ{[ƒhXV ---
+    memcpy(m_OldKeyState, m_KeyState, 256);
     GetKeyboardState(m_KeyState);
+
+    // --- ƒ}ƒEƒXXV ---
+    POINT point;
+    GetCursorPos(&point); // ƒXƒNƒŠ[ƒ“À•W‚Å‚Ìƒ}ƒEƒXˆÊ’uæ“¾
+
+    // ‰æ–Ê’†‰›‚ÌÀ•W‚ğŒvZiSCREEN_WIDTH‚È‚Ç‚Ímain.h‚Å’è‹`‚³‚ê‚Ä‚¢‚é‘O’ñj
+    // –{—ˆ‚ÍƒEƒBƒ“ƒhƒE‚Ì’†S‚ğæ“¾‚·‚×‚«‚Å‚·‚ªA‚Ü‚¸‚ÍŠÈˆÕ“I‚ÉƒfƒXƒNƒgƒbƒv’†‰›•t‹ß
+    int centerX = GetSystemMetrics(SM_CXSCREEN) / 2;
+    int centerY = GetSystemMetrics(SM_CYSCREEN) / 2;
+
+    // ’†‰›‚©‚ç‚Ì·•ª‚ğˆÚ“®—Ê‚Æ‚·‚é
+    m_MouseMoveX = point.x - centerX;
+    m_MouseMoveY = point.y - centerY;
+
+    // ƒ}ƒEƒX‚ğ’†‰›‚É–ß‚·i‚±‚ê‚É‚æ‚Á‚Ä–³ŒÀ‚É‰ñ“]‚µ‘±‚¯‚ç‚ê‚éj
+    SetCursorPos(centerX, centerY);
 }
 
-bool Input::GetKeyPress(int vKey)
-{
-    // æœ€ä¸Šä½ãƒ“ãƒƒãƒˆãŒ1ãªã‚‰æŠ¼ã•ã‚Œã¦ã„ã‚‹
-    return (m_KeyState[vKey] & 0x80) != 0;
-}
-
-bool Input::GetKeyTrigger(int vKey)
-{
-    // ä»Šå›æŠ¼ã•ã‚Œã¦ã„ã¦ã€å‰å›æŠ¼ã•ã‚Œã¦ã„ãªã‘ã‚Œã°ãƒˆãƒªã‚¬ãƒ¼
-    return ((m_KeyState[vKey] & 0x80) != 0) && ((m_OldKeyState[vKey] & 0x80) == 0);
-}
+bool Input::GetKeyPress(int k) { return (m_KeyState[k] & 0x80) != 0; }
+bool Input::GetKeyTrigger(int k) { return ((m_KeyState[k] & 0x80) != 0) && ((m_OldKeyState[k] & 0x80) == 0); }

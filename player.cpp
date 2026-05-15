@@ -129,9 +129,14 @@ void Player::Uninit()
 
 void Player::Update()
 {
+    float oldRotY = m_Rotation.y;
+
     // プレイヤーの回転（A/Dキーで左右に旋回）
     if (Input::GetKeyPress('A')) m_Rotation.y -= 0.05f;
     if (Input::GetKeyPress('D')) m_Rotation.y += 0.05f;
+
+    // 旋回速度（角速度）の計算
+    m_AngularVelocity = m_Rotation.y - oldRotY;
 
     // 前方ベクトルを計算（Y軸の回転をもとに進行方向を決定）
     XMMATRIX rotY = XMMatrixRotationY(m_Rotation.y);
@@ -144,13 +149,21 @@ void Player::Update()
     if (Input::GetKeyPress('W')) pos += forward * speed;
     if (Input::GetKeyPress('S')) pos -= forward * speed;
 
+    XMFLOAT3 fwdF;
+    XMStoreFloat3(&fwdF, forward);
+
+    // 掴んでいる敵の位置をプレイヤーの前方に固定
+    if (m_State == PlayerState::ATTACK && m_GrabbedEnemy) {
+        m_GrabbedEnemy->SetPosition(XMFLOAT3(m_Position.x + fwdF.x * 2.0f, 0.0f, m_Position.z + fwdF.z * 2.0f));
+    }
+
     // 当たり判定チェック (AABB)
     XMFLOAT3 nextPos;
     XMStoreFloat3(&nextPos, pos);
 
     // 他のオブジェクトとの衝突をチェック
-    for (GameObject* obj : Manager::GetGameObjectList()) {
-        if (obj == this) continue; // 自分自身は無視
+    for (GameObject* obj : Manager::GetScene()->GetGameObjectList()) {
+        if (obj == this || obj == m_GrabbedEnemy) continue; // 自分自身と掴んでいる敵は無視
         if (dynamic_cast<Field*>(obj)) continue; // 地面は無視
 
         XMFLOAT3 objPos = obj->GetPosition();
@@ -169,6 +182,23 @@ void Player::Update()
     }
     
     XMStoreFloat3(&m_Position, pos);
+}
+
+void Player::Throw()
+{
+    if (m_GrabbedEnemy) {
+        XMMATRIX rotY = XMMatrixRotationY(m_Rotation.y);
+        XMVECTOR forward = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotY);
+        XMFLOAT3 fwdF;
+        XMStoreFloat3(&fwdF, forward);
+
+        // 敵を投げる（遠心力を考慮）
+        float throwSpeed = 0.5f + abs(m_AngularVelocity) * 2.0f;
+        m_GrabbedEnemy->SetVelocity(XMFLOAT3(fwdF.x * throwSpeed, 0.4f, fwdF.z * throwSpeed));
+        m_GrabbedEnemy->SetEnemyState(EnemyState::FLYING);
+        m_GrabbedEnemy = nullptr;
+        m_State = PlayerState::IDLE;
+    }
 }
 
 void Player::Draw()
@@ -201,10 +231,12 @@ void Player::Draw()
     // マテリアルの設定
     MATERIAL material;
     ZeroMemory(&material, sizeof(material));
-    material.Diffuse  = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    material.Ambient  = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    material.Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    material.Shininess = 50.0f; // プレイヤーは少し光沢強め
+    material.Diffuse        = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.Ambient        = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.Specular       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.Shininess      = 50.0f;  // プレイヤーは少し光沢強め
+    material.TextureEnable  = TRUE;   // テクスチャを有効にする
+    material.RimPower       = 3.0f;   // リムライトの強さ
     Renderer::SetMaterial(material);
 
     // 描画 (36頂点)

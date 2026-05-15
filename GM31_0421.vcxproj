@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -131,6 +131,9 @@
     <ClCompile Include="enemy.cpp" />
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="player.cpp" />
+    <ClCompile Include="scene.cpp" />
+    <ClCompile Include="game_scene.cpp" />
+    <ClCompile Include="wall.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
@@ -142,17 +145,46 @@
     <ClInclude Include="enemy.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="player.h" />
+    <ClInclude Include="scene.h" />
+    <ClInclude Include="game_scene.h" />
+    <ClInclude Include="wall.h" />
   </ItemGroup>
   <ItemGroup>
+    <FXCompile Include="outline_ps.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FXCompile>
+    <FXCompile Include="outline_vs.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FXCompile>
     <FXCompile Include="pixelShader.hlsl">
       <ShaderType>Pixel</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FXCompile>
+    <FXCompile Include="postEffect_ps.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FXCompile>
+    <FXCompile Include="postEffect_vs.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+      <ExcludedFromBuild>true</ExcludedFromBuild>
     </FXCompile>
     <FXCompile Include="vertexShader.hlsl">
       <ShaderType>Vertex</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+      <ExcludedFromBuild>true</ExcludedFromBuild>
     </FXCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

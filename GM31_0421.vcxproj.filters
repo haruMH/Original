@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="ソース ファイル">
@@ -15,28 +15,96 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp"><Filter>ソース ファイル</Filter></ClCompile>
-    <ClCompile Include="manager.cpp"><Filter>ソース ファイル</Filter></ClCompile>
-    <ClCompile Include="renderer.cpp"><Filter>ソース ファイル</Filter></ClCompile>
-    <ClCompile Include="camera.cpp"><Filter>ソース ファイル</Filter></ClCompile>
-    <ClCompile Include="field.cpp"><Filter>ソース ファイル</Filter></ClCompile>
-    <ClCompile Include="player.cpp"><Filter>ソース ファイル</Filter></ClCompile>
-    <ClCompile Include="enemy.cpp"><Filter>ソース ファイル</Filter></ClCompile>
-    <ClCompile Include="input.cpp"><Filter>ソース ファイル</Filter></ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="manager.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="camera.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="field.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="player.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="enemy.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="input.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="scene.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game_scene.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="wall.cpp">
+      <Filter>ソース ファイル\GameObject</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="main.h"><Filter>ヘッダー ファイル</Filter></ClInclude>
-    <ClInclude Include="manager.h"><Filter>ヘッダー ファイル</Filter></ClInclude>
-    <ClInclude Include="renderer.h"><Filter>ヘッダー ファイル</Filter></ClInclude>
-    <ClInclude Include="camera.h"><Filter>ヘッダー ファイル</Filter></ClInclude>
-    <ClInclude Include="field.h"><Filter>ヘッダー ファイル</Filter></ClInclude>
-    <ClInclude Include="gameobject.h"><Filter>ヘッダー ファイル</Filter></ClInclude>
-    <ClInclude Include="player.h"><Filter>ヘッダー ファイル</Filter></ClInclude>
-    <ClInclude Include="enemy.h"><Filter>ヘッダー ファイル</Filter></ClInclude>
-    <ClInclude Include="input.h"><Filter>ヘッダー ファイル</Filter></ClInclude>
+    <ClInclude Include="main.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="manager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="camera.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="field.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="player.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="enemy.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="input.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="scene.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game_scene.h">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="wall.h">
+      <Filter>ヘッダー ファイル\GameObject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FXCompile Include="vertexShader.hlsl"><Filter>リソース ファイル</Filter></FXCompile>
-    <FXCompile Include="pixelShader.hlsl"><Filter>リソース ファイル</Filter></FXCompile>
+    <FXCompile Include="vertexShader.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FXCompile>
+    <FXCompile Include="pixelShader.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FXCompile>
+    <FxCompile Include="postEffect_ps.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="postEffect_vs.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="outline_ps.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="outline_vs.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

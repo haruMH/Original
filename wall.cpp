@@ -1,9 +1,9 @@
-#include "enemy.h"
+﻿#include "wall.h"
 #include "renderer.h"
 
-void Enemy::Init()
+void Wall::Init()
 {
-    m_Position = XMFLOAT3(0.0f, -0.5f, 0.0f);
+    m_Position = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_Rotation = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_Scale    = XMFLOAT3(1.0f, 1.0f, 1.0f);
     m_Size     = XMFLOAT3(1.0f, 1.0f, 1.0f);
@@ -70,12 +70,12 @@ void Enemy::Init()
     D3D11_SUBRESOURCE_DATA sd; ZeroMemory(&sd, sizeof(sd)); sd.pSysMem = vertex;
     Renderer::GetDevice()->CreateBuffer(&bd, &sd, &m_VertexBuffer);
 
-    Renderer::CreateTexture("enemy.png",        &m_Texture);
+    Renderer::CreateTexture("grid.png",        &m_Texture);
     Renderer::CreateVertexShader(&m_VertexShader, &m_VertexLayout, "vertexShader.cso");
     Renderer::CreatePixelShader(&m_PixelShader, "pixelShader.cso");
 }
 
-void Enemy::Uninit()
+void Wall::Uninit()
 {
     if (m_VertexLayout) m_VertexLayout->Release();
     if (m_PixelShader)  m_PixelShader->Release();
@@ -83,28 +83,12 @@ void Enemy::Uninit()
     if (m_VertexBuffer) m_VertexBuffer->Release();
 }
 
-void Enemy::Update()
+void Wall::Update()
 {
-    if (m_EnemyState == EnemyState::FLYING) {
-        m_VelocityY -= 0.02f;
-
-        m_Position.x += m_Velocity.x;
-        m_Position.z += m_Velocity.z;
-        m_Position.y += m_VelocityY;
-
-        if (m_Position.y <= -0.5f) {
-            m_Position.y = -0.5f;
-            m_Velocity   = XMFLOAT3(0, 0, 0);
-            m_VelocityY  = 0.0f;
-            m_EnemyState = EnemyState::NORMAL;
-        }
-
-        m_Rotation.x += 0.2f;
-        m_Rotation.z += 0.15f;
-    }
+    // 壁は動かないため特に処理なし
 }
 
-void Enemy::Draw()
+void Wall::Draw()
 {
     XMMATRIX worldMatrix =
         XMMatrixScaling(m_Scale.x, m_Scale.y, m_Scale.z) *
@@ -126,8 +110,6 @@ void Enemy::Draw()
     ZeroMemory(&material, sizeof(material));
     material.Diffuse       = XMFLOAT4(1,1,1,1);
     material.Ambient       = XMFLOAT4(1,1,1,1);
-    material.Specular      = XMFLOAT4(0.6f,0.6f,0.6f,1);
-    material.Shininess     = 20.0f;
     material.TextureEnable = TRUE;
     Renderer::SetMaterial(material);
 

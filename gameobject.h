@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "main.h"
 
 class GameObject
@@ -22,7 +22,6 @@ public:
     }
     virtual ~GameObject() {}
 
-    // ... 省略 ...
     virtual void Init() = 0;
     virtual void Uninit() = 0;
     virtual void Update() = 0;
@@ -32,9 +31,21 @@ public:
     XMFLOAT3 GetPosition() const { return m_Position; }
     void SetPosition(XMFLOAT3 pos) { m_Position = pos; }
 
+	XMFLOAT3 GetRotation() const { return m_Rotation; }
+    void SetRotation(XMFLOAT3 rot) { m_Rotation = rot; }
+
+    XMFLOAT3 GetScale() const { return m_Scale; }
+    void SetScale(XMFLOAT3 scale) { m_Scale = scale; }
+
     XMFLOAT3 GetSize() const { return m_Size; }
     void SetSize(XMFLOAT3 size) { m_Size = size; }
     
+    // 便利な関数
+    XMVECTOR GetForward() const {
+        return XMVector3TransformNormal(XMVectorSet(0, 0, 1, 0), XMMatrixRotationRollPitchYaw(m_Rotation.x, m_Rotation.y, m_Rotation.z));
+    }
+
     bool IsDestroy() const { return m_Destroy; }
     void SetDestroy() { m_Destroy = true; }
+    virtual float GetRadius() const { return m_Size.x * m_Scale.x; }
 };

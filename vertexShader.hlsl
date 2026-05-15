@@ -1,47 +1,36 @@
-struct VS_IN
+cbuffer WorldBuffer      : register(b0) { matrix World; }
+cbuffer ViewBuffer       : register(b1) { matrix View; }
+cbuffer ProjectionBuffer : register(b2) { matrix Projection; }
+cbuffer ShadowVPBuffer   : register(b5) { matrix LightVP; }
+
+struct VS_INPUT
 {
-    float3 pos      : POSITION;
-    float3 normal   : NORMAL;
-    float4 col      : COLOR;
-    float2 tex      : TEXCOORD0;
+    float4 Position : POSITION;
+    float3 Normal   : NORMAL;
+    float4 Diffuse  : COLOR;
+    float2 TexCoord : TEXCOORD;
+    float3 Tangent  : TANGENT;
 };
 
-struct VS_OUT
+struct VS_OUTPUT
 {
-    float4 pos      : SV_POSITION;
-    float4 col      : COLOR;
-    float2 tex      : TEXCOORD0;
-    float3 normal   : NORMAL;
-    float3 worldPos : POSITION0;
+    float4 Position      : SV_POSITION;
+    float3 Normal        : NORMAL;
+    float4 Diffuse       : COLOR;
+    float2 TexCoord      : TEXCOORD0;
+    float3 WorldPos      : TEXCOORD1;
+    float4 LightSpacePos : TEXCOORD2;
 };
 
-cbuffer WorldBuffer : register(b0)
+VS_OUTPUT main(VS_INPUT input)
 {
-    matrix World;
-}
-cbuffer ViewBuffer : register(b1)
-{
-    matrix View;
-}
-cbuffer ProjectionBuffer : register(b2)
-{
-    matrix Projection;
-}
-
-VS_OUT main(VS_IN input)
-{
-    VS_OUT output;
-    
-    matrix wvp = mul(World, View);
-    wvp = mul(wvp, Projection);
-    output.pos = mul(float4(input.pos, 1.0f), wvp);
-    
-    output.worldPos = mul(float4(input.pos, 1.0f), World).xyz;
-
-    output.normal = normalize(mul(input.normal, (float3x3)World));
-    
-    output.col = input.col;
-    output.tex = input.tex;
-    
+    VS_OUTPUT output;
+    matrix wvp = mul(mul(World, View), Projection);
+    output.Position      = mul(input.Position, wvp);
+    output.Normal        = normalize(mul(input.Normal, (float3x3)World));
+    output.Diffuse       = input.Diffuse;
+    output.TexCoord      = input.TexCoord;
+    output.WorldPos      = mul(input.Position, World).xyz;
+    output.LightSpacePos = mul(float4(output.WorldPos, 1.0f), LightVP);
     return output;
 }

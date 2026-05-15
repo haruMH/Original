@@ -1,4 +1,4 @@
-﻿#include "field.h"
+#include "field.h"
 #include "renderer.h"
 
 void Field::Init()
@@ -69,8 +69,9 @@ void Field::Draw()
 
     MATERIAL material;
     ZeroMemory(&material, sizeof(material));
-    material.Diffuse  = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    material.Ambient  = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.Diffuse       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.Ambient       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.TextureEnable = TRUE; // テクスチャを有効にする
     Renderer::SetMaterial(material);
 
     deviceContext->Draw(m_VertexCount, 0);
