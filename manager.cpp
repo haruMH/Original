@@ -9,6 +9,7 @@
 
 Scene *Manager::m_Scene = nullptr;
 Camera *g_Camera = nullptr;
+int Manager::m_HitStopFrames = 0;
 
 void Manager::Init() {
   Renderer::Init();
@@ -50,6 +51,13 @@ void Manager::Uninit() {
 
 void Manager::Update() {
   Input::Update();
+
+  // ヒットストップ中はカメラのみ更新し、シーンの更新はスキップする
+  if (m_HitStopFrames > 0) {
+    m_HitStopFrames--;
+    g_Camera->Update();
+    return;
+  }
 
   if (m_Scene) {
     m_Scene->Update();

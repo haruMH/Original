@@ -15,6 +15,9 @@ void Camera::Init()
     m_AngleX = 0.3f;    // 少し上から見下ろす角度 (約17度)
     m_Distance = 6.0f;    // プレイヤーとの距離
 
+    m_ShakeIntensity = 0.0f;
+    m_ShakeTimer = 0;
+
     // プロジェクション行列の設定
     XMMATRIX proj = XMMatrixPerspectiveFovLH(
         XM_PIDIV4,
@@ -70,14 +73,34 @@ void Camera::Update()
     m_Target = playerPos;
     m_Target.y += 1.2f;//プレイヤーの地面ではなく背中のあたりを見るために＋1.2fしている
 
+    // --- カメラシェイク（振動）の適用 ---
+    XMFLOAT3 finalPosition = m_Position;
+    XMFLOAT3 finalTarget = m_Target;
+    if (m_ShakeTimer > 0) {
+        float rx = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * m_ShakeIntensity;
+        float ry = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * m_ShakeIntensity;
+        float rz = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * m_ShakeIntensity;
+        
+        finalPosition.x += rx;
+        finalPosition.y += ry;
+        finalPosition.z += rz;
+
+        finalTarget.x += rx;
+        finalTarget.y += ry;
+        finalTarget.z += rz;
+
+        m_ShakeTimer--;
+        m_ShakeIntensity *= 0.9f; // 徐々に減衰
+    }
+
     // 行列設定
-    XMVECTOR eye = XMLoadFloat3(&m_Position);
-    XMVECTOR at = XMLoadFloat3(&m_Target);
+    XMVECTOR eye = XMLoadFloat3(&finalPosition);
+    XMVECTOR at = XMLoadFloat3(&finalTarget);
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMMATRIX view = XMMatrixLookAtLH(eye, at, up);
 
     Renderer::SetViewMatrix(view);
-    Renderer::SetCameraPosition(m_Position);
+    Renderer::SetCameraPosition(finalPosition);
 }
 
 

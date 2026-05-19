@@ -22,6 +22,8 @@ private:
     PlayerState m_State = PlayerState::IDLE;
     Enemy*      m_GrabbedEnemy = nullptr;
     float       m_AngularVelocity = 0.0f; // プレイヤーの旋回速度（遠心力用）
+    bool        m_IsAutoSpinning = false;  // 右クリックによる自動回転状態フラグ
+    float       m_CurrentSpinSpeed = 0.0f; // 現在の自動スピン速度（徐々に加速させるため）
 
 public:
     void Init() override;

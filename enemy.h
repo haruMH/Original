@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "gameobject.h"
 
 enum class EnemyState {
@@ -6,6 +6,7 @@ enum class EnemyState {
     GRABBED,   // プレイヤーにつかまれている状態
     FLYING,    // 投げられて飛んでいる状態
     CHASING,   // プレイヤーを追尾している状態
+    DEFEATED,  // 撃破されて消滅演出中の状態
 };
 
 class Enemy : public GameObject
@@ -23,6 +24,7 @@ private:
     float      m_VelocityY  = 0.0f;
 
     int        m_ScoreValue = 100;   // 撃破時のスコア加算値
+    int        m_UprightTimer = 0;   // 着地後、起き上がるまでのタイマー
 
 public:
     void Init()   override;
@@ -33,6 +35,7 @@ public:
     EnemyState GetEnemyState() const         { return m_EnemyState; }
     void       SetEnemyState(EnemyState s)   { m_EnemyState = s; }
     void       SetVelocity(XMFLOAT3 v)       { m_Velocity = v; m_VelocityY = v.y; }
+    XMFLOAT3   GetVelocity() const           { return m_Velocity; }
 
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }

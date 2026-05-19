@@ -12,12 +12,19 @@ private:
     float m_AngleY;      // ヨー角（左右）
     float m_Distance;    // プレイヤーとの距離
 
+    float m_ShakeIntensity = 0.0f; // 振動の強さ
+    int   m_ShakeTimer = 0;        // 振動の残り時間
+
 public:
     void Init();
     void Uninit();
     void Update();
     void Draw();
 
+    void Shake(float intensity, int duration) {
+        m_ShakeIntensity = intensity;
+        m_ShakeTimer = duration;
+    }
 
     float GetAngleY() const { return m_AngleY; }
     // ゲッター（必要に応じて）

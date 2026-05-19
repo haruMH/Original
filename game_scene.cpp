@@ -1,4 +1,4 @@
-﻿#include "game_scene.h"
+#include "game_scene.h"
 #include <list>
 #include <sstream>
 #include "camera.h"
@@ -8,7 +8,7 @@
 #include "field.h"
 #include "renderer.h"
 #include "input.h"
-
+#include "manager.h"
 // ─────────────────────────────────────────────
 // 初期化
 // ─────────────────────────────────────────────
@@ -88,6 +88,18 @@ void GameScene::Update() {
 
     Scene::Update();
 
+    // 敵の位置を出力するデバッグログ
+    int enemyIdx = 0;
+    for (GameObject* obj : m_GameObjectList) {
+        Enemy* e = dynamic_cast<Enemy*>(obj);
+        if (e && !e->IsDestroy()) {
+            XMFLOAT3 ePos = e->GetPosition();
+            char dbgMsg[256];
+            sprintf_s(dbgMsg, "[Debug] 敵%d 位置: (%.2f, %.2f, %.2f)\n", enemyIdx++, ePos.x, ePos.y, ePos.z);
+            OutputDebugStringA(dbgMsg);
+        }
+    }
+
     // プレイヤーを取得
     Player* player = nullptr;
     for (GameObject* obj : m_GameObjectList) {
@@ -152,8 +164,9 @@ void GameScene::Update() {
 
                 // 遠心力ブースト：回転速度が速いほど威力が上がる
                 float force = 0.5f + abs(player->GetAngularVelocity()) * 5.0f;
-                target->SetVelocity(XMFLOAT3(dir.x * force, 0.4f, dir.z * force));
+                target->SetVelocity(XMFLOAT3(dir.x * force, 0.0f, dir.z * force));
                 target->SetEnemyState(EnemyState::FLYING);
+                Manager::AddHitStop(4); // 振り回し攻撃ヒット時のヒットストップ（少し短め）
             }
         }
     }
@@ -176,17 +189,31 @@ void GameScene::Update() {
             // --- 壁との衝突判定 ---
             Wall* wall = dynamic_cast<Wall*>(obj);
             if (wall) {
+                // 壁との当たり判定（球ではなく直方体 / AABB で正確に判定）
                 XMFLOAT3 wPos = wall->GetPosition();
-                float dx = fPos.x - wPos.x;
-                float dy = fPos.y - wPos.y;
-                float dz = fPos.z - wPos.z;
-                float dist = sqrtf(dx*dx + dy*dy + dz*dz);
-                
-                // 壁の大きさを考慮した当たり判定（簡易）
-                float collisionRadius = flying->GetRadius() + wall->GetRadius();
-                if (dist < collisionRadius) {
+                XMFLOAT3 fSize = flying->GetSize();
+                XMFLOAT3 fScale = flying->GetScale();
+                XMFLOAT3 wSize = wall->GetSize();
+                XMFLOAT3 wScale = wall->GetScale();
+
+                bool colX = abs(fPos.x - wPos.x) < (fSize.x * fScale.x + wSize.x * wScale.x) * 0.5f;
+                bool colY = abs(fPos.y - wPos.y) < (fSize.y * fScale.y + wSize.y * wScale.y) * 0.5f;
+                bool colZ = abs(fPos.z - wPos.z) < (fSize.z * fScale.z + wSize.z * wScale.z) * 0.5f;
+
+                if (colX && colY && colZ) {
+                    char dbgMsg[256];
+                    sprintf_s(dbgMsg, "[Debug] 敵が壁と衝突しました！（衝突済み） 位置: (%.2f, %.2f, %.2f)\n", fPos.x, fPos.y, fPos.z);
+                    OutputDebugStringA(dbgMsg);
+
                     OnEnemyDefeated(flying->GetScoreValue());
-                    flying->SetDestroy();
+                    
+                    // 瞬時に消さず、撃破状態（DEFEATED）にして縮小消滅演出を行う
+                    flying->SetEnemyState(EnemyState::DEFEATED);
+                    XMFLOAT3 oldVel = flying->GetVelocity();
+                    flying->SetVelocity(XMFLOAT3(oldVel.x * -0.3f, 0.1f, oldVel.z * -0.3f));
+
+                    Manager::AddHitStop(6); // 壁衝突時のヒットストップ
+                    g_Camera->Shake(0.15f, 10); // 壁衝突のカメラシェイク
                     break;
                 }
                 continue;
@@ -205,16 +232,25 @@ void GameScene::Update() {
             float collisionRadius = flying->GetRadius() + target->GetRadius();
             if (dist >= collisionRadius) continue;                   // 衝突なし
 
-            // ─── 通常の敵に衝突 → 連鎖させて自分は撃破 ──────────
+            // ─── 通常の敵に衝突 → 相手を吹き飛ばし、自分はそのまま貫通して飛び続ける ──────────
             if (target->GetEnemyState() == EnemyState::NORMAL) {
                 XMVECTOR vHitDir = XMVector3Normalize(
                     XMLoadFloat3(&tPos) - XMLoadFloat3(&fPos));
                 XMFLOAT3 dir;
                 XMStoreFloat3(&dir, vHitDir);
-                target->SetVelocity(XMFLOAT3(dir.x * 0.5f, 0.4f, dir.z * 0.5f));
+                
+                // ぶつかられた敵（target）をさらに高く上に吹き飛ばす
+                target->SetVelocity(XMFLOAT3(dir.x * 0.4f, 0.35f, dir.z * 0.4f));
                 target->SetEnemyState(EnemyState::FLYING);
-                OnEnemyDefeated(flying->GetScoreValue());
-                flying->SetDestroy();
+                
+                // ぶつかられた敵に、ぶつかってきた方向（飛んできた敵の方向）を向かせる
+                float rotY = atan2f(-dir.x, -dir.z);
+                target->SetRotation(XMFLOAT3(0.0f, rotY, 0.0f));
+
+                // 飛んでいる自分（flying）は消滅せず、速度も変えずにそのまま飛び続ける
+
+                Manager::AddHitStop(8); // 敵同士の衝突時のヒットストップ（少し短めにしてテンポを良くする）
+                g_Camera->Shake(0.3f, 12); // 連鎖衝突時のダイナミックなカメラシェイク
                 break;
             }
         }

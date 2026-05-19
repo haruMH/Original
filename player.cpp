@@ -6,12 +6,15 @@
 #include "enemy.h"
 #include "camera.h"
 
+
 void Player::Init()
 {
     // キューブの中心をY=-0.5にすることで、底辺がY=-1.0（地面）に接するようにする
     m_Position = XMFLOAT3(0.0f, -0.5f, 0.0f);
     m_Rotation = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_Scale    = XMFLOAT3(1.0f, 1.0f, 1.0f);
+    m_IsAutoSpinning = false;
+    m_CurrentSpinSpeed = 0.0f;
 
     // 頂点データの作成（立体的なキューブ・正六面体に変更：36頂点）
     VERTEX_3D vertex[36];
@@ -141,9 +144,41 @@ void Player::Update()
         camYaw = g_Camera->GetAngleY();
     }
 
-    // マウス操作がある場合は、プレイヤーの向きをカメラの向き（マウスで向いた方向）に合わせる
-    if (abs(mouseMoveX) > 0.1f) {
-        m_Rotation.y = camYaw;
+    // 右クリックで自動回転のトグル（敵を掴んでいる場合のみ有効）
+    if (m_GrabbedEnemy && Input::GetKeyTrigger(VK_RBUTTON)) {
+        m_IsAutoSpinning = !m_IsAutoSpinning;
+    }
+
+    // もし掴んでいる敵がいないなら、自動回転フラグをオフにする（安全策）
+    if (!m_GrabbedEnemy) {
+        m_IsAutoSpinning = false;
+    }
+
+    bool isSpinning = false;
+    // トグルされた自動スピン状態を処理
+    if (m_GrabbedEnemy && m_IsAutoSpinning) {
+        isSpinning = true;
+
+        // 徐々に最大回転速度（0.30f）まで滑らかに加速させる（LERP補間）
+        float targetSpinSpeed = 0.80f; // 目標最大回転速度
+        m_CurrentSpinSpeed += (targetSpinSpeed - m_CurrentSpinSpeed) * 0.001f; // 加速係数
+
+        m_Rotation.y += m_CurrentSpinSpeed;
+        if (m_Rotation.y > XM_2PI) m_Rotation.y -= XM_2PI;
+
+        // 回転スピードのビルドアップに同期した、気持ちのいい段階的カメラシェイク！
+        if (g_Camera) {
+            float dynamicShake = 0.01f + m_CurrentSpinSpeed * 0.15f; // 最大で0.055f
+            g_Camera->Shake(dynamicShake, 2);
+        }
+    }
+    else {
+        m_CurrentSpinSpeed = 0.0f; // スピン停止時は即座に速度リセット
+        
+        // マウス操作がある場合は、プレイヤーの向きをカメラの向き（マウスで向いた方向）に合わせる
+        if (abs(mouseMoveX) > 0.1f) {
+            m_Rotation.y = camYaw;
+        }
     }
 
     // カメラの向きを基準にした前後左右ベクトル
@@ -166,8 +201,8 @@ void Player::Update()
         moveDir = XMVector3Normalize(moveDir);
         pos += moveDir * speed;
 
-        // マウス操作がない場合は、プレイヤーのモデルを移動方向に回転させる
-        if (abs(mouseMoveX) <= 0.1f) {
+        // スピン中でない場合のみ、移動方向を向く
+        if (!isSpinning && abs(mouseMoveX) <= 0.1f) {
             m_Rotation.y = atan2f(XMVectorGetX(moveDir), XMVectorGetZ(moveDir));
         }
     }
@@ -178,8 +213,11 @@ void Player::Update()
     XMFLOAT3 fwdF;
     XMStoreFloat3(&fwdF, forward);
 
-    // 旋回速度（角速度）の計算
-    m_AngularVelocity = m_Rotation.y - oldRotY;
+    // 旋回速度（角速度）の計算（境界のラッピングを考慮）
+    float diff = m_Rotation.y - oldRotY;
+    while (diff < -XM_PI) diff += XM_2PI;
+    while (diff > XM_PI)  diff -= XM_2PI;
+    m_AngularVelocity = diff;
 
     // 掴んでいる敵の位置をプレイヤーの前方に固定
     if (m_State == PlayerState::ATTACK && m_GrabbedEnemy) {
@@ -217,31 +255,44 @@ void Player::Update()
 void Player::Throw()
 {
     if (m_GrabbedEnemy) {
+        float camYaw = 0.0f;
+        if (g_Camera) {
+            camYaw = g_Camera->GetAngleY();
+        }
+
+        // 投擲の瞬間、プレイヤーの向きをカメラの正面（エイム方向）に強制同期させる
+        m_Rotation.y = camYaw;
+
         XMMATRIX rotY = XMMatrixRotationY(m_Rotation.y);
         XMVECTOR forward = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotY);
-        XMVECTOR right   = XMVector3TransformNormal(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), rotY);
-        XMFLOAT3 fwdF, rightF;
+        XMFLOAT3 fwdF;
         XMStoreFloat3(&fwdF, forward);
-        XMStoreFloat3(&rightF, right);
 
         // 基本の投擲速度（前方）
-        float baseThrowSpeed = 0.5f;
+        float baseThrowSpeed = 0.8f;
         
-        // 遠心力による接線方向の速度（マウスの振り幅に応じて横に飛ばす）
-        // ※プレイヤーが右に回転（正の角速度）していれば敵は右(接線)方向へ飛ぶ
-        float swingSpeed = m_AngularVelocity * 15.0f; 
+        // スピン（遠心力）による速度ボーナス
+        // 回転が速いほど、カメラ正面にすっ飛んでいくスピードが加速する！
+        float speedBoost = abs(m_AngularVelocity) * 6.0f; 
+        float totalSpeed = baseThrowSpeed + speedBoost;
 
-        // 前方＋遠心力のベクトルを合成
+        // カメラ正面へのベクトルを算出
         XMFLOAT3 throwVelocity = XMFLOAT3(
-            fwdF.x * baseThrowSpeed + rightF.x * swingSpeed,
-            0.4f,
-            fwdF.z * baseThrowSpeed + rightF.z * swingSpeed
+            fwdF.x * totalSpeed,
+            0.0f,
+            fwdF.z * totalSpeed
         );
 
         m_GrabbedEnemy->SetVelocity(throwVelocity);
         m_GrabbedEnemy->SetEnemyState(EnemyState::FLYING);
         m_GrabbedEnemy = nullptr;
         m_State = PlayerState::IDLE;
+        m_IsAutoSpinning = false; // 投げたら自動回転をストップ
+
+        // 投擲時の爽快なカメラシェイク（遠心力に応じてインパクトを極大化）
+        float throwShake = 0.08f + abs(m_AngularVelocity) * 1.8f;
+        if (throwShake > 0.40f) throwShake = 0.40f;
+        g_Camera->Shake(throwShake, 12);
     }
 }
 
@@ -285,4 +336,35 @@ void Player::Draw()
 
     // 描画 (36頂点)
     deviceContext->Draw(36, 0);
+
+    // 2. 敵を掴んでいる時にエイムガイド（3Dレーザーライン）を描画
+    if (m_GrabbedEnemy) {
+        float camYaw = 0.0f;
+        if (g_Camera) {
+            camYaw = g_Camera->GetAngleY();
+        }
+
+        // カメラ正面を指す極細のレーザービームのワールド行列を作成
+        XMMATRIX guideWorld = XMMatrixScaling(0.04f, 0.04f, 8.0f) * 
+                              XMMatrixTranslation(0.0f, 0.0f, 4.0f) * // プレイヤーの目の前から前方8ユニット分に伸ばす
+                              XMMatrixRotationRollPitchYaw(0.0f, camYaw, 0.0f) *
+                              XMMatrixTranslation(m_Position.x, m_Position.y + 0.3f, m_Position.z); // ウエストの高さから射出
+
+        Renderer::SetWorldMatrix(guideWorld);
+
+        // 鮮やかなネオングリーンの自発光（エミッシブ）マテリアルを設定
+        MATERIAL guideMaterial;
+        ZeroMemory(&guideMaterial, sizeof(guideMaterial));
+        guideMaterial.Diffuse        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+        guideMaterial.Ambient        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+        guideMaterial.Specular       = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+        guideMaterial.Emission       = XMFLOAT4(0.0f, 1.8f, 0.5f, 1.0f); // 輝度を1.0以上に設定してBloomを強く発光させる！
+        guideMaterial.Shininess      = 0.0f;
+        guideMaterial.TextureEnable  = FALSE; // 単色ネオン光
+        guideMaterial.RimPower       = 0.0f;
+        Renderer::SetMaterial(guideMaterial);
+
+        // デバイスへの描画指示（頂点バッファやシェーダーはプレイヤーのものをそのまま流用）
+        deviceContext->Draw(36, 0);
+    }
 }

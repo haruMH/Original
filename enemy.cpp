@@ -7,6 +7,7 @@ void Enemy::Init()
     m_Rotation = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_Scale    = XMFLOAT3(1.0f, 1.0f, 1.0f);
     m_Size     = XMFLOAT3(1.0f, 1.0f, 1.0f);
+    m_UprightTimer = 0;
 
     XMFLOAT3 ltf(-0.5f,  0.5f,  0.5f), rtf( 0.5f,  0.5f,  0.5f);
     XMFLOAT3 lbf(-0.5f, -0.5f,  0.5f), rbf( 0.5f, -0.5f,  0.5f);
@@ -86,21 +87,71 @@ void Enemy::Uninit()
 void Enemy::Update()
 {
     if (m_EnemyState == EnemyState::FLYING) {
-        m_VelocityY -= 0.02f;
+        // 摩擦（空気抵抗）で徐々に減速させる（摩擦を強くして飛びすぎを防止）
+        m_Velocity.x *= 0.94f;
+        m_Velocity.z *= 0.94f;
+
+        // 重力の適用（Y軸の落下）
+        m_VelocityY -= 0.015f; 
 
         m_Position.x += m_Velocity.x;
         m_Position.z += m_Velocity.z;
         m_Position.y += m_VelocityY;
 
-        if (m_Position.y <= -0.5f) {
-            m_Position.y = -0.5f;
+        // 回転中のめり込みを防ぐため、飛行中のクランプ床面を少し浮かせた高さ(-0.3f)にする
+        float flightFloorY = -0.3f;
+
+        // 地面（床）への着地クランプ
+        if (m_Position.y < flightFloorY) {
+            m_Position.y = flightFloorY;
+            m_VelocityY = 0.0f;
+        }
+
+        // 速度が十分に落ち、かつ浮かせた地面に着地しているならNORMALに戻す
+        if (m_Position.y <= flightFloorY && abs(m_Velocity.x) < 0.05f && abs(m_Velocity.z) < 0.05f) {
+            m_Position.y = -0.5f; // 静止時に本来の地面の高さ(-0.5f)に密着させる
             m_Velocity   = XMFLOAT3(0, 0, 0);
             m_VelocityY  = 0.0f;
             m_EnemyState = EnemyState::NORMAL;
+            m_UprightTimer = 60;  // 1秒後にゆっくり起き上がるようにタイマーをセット
         }
 
         m_Rotation.x += 0.2f;
         m_Rotation.z += 0.15f;
+    }
+    else if (m_EnemyState == EnemyState::DEFEATED) {
+        // 撃破演出：縮小しながら高速回転して飛んでいく
+        m_Scale.x *= 0.85f;
+        m_Scale.y *= 0.85f;
+        m_Scale.z *= 0.85f;
+
+        m_Rotation.x += 0.5f;
+        m_Rotation.y += 0.5f;
+        m_Rotation.z += 0.5f;
+
+        // 吹っ飛ぶ慣性を少しだけ維持してスライドさせる
+        m_Velocity.x *= 0.9f;
+        m_Velocity.z *= 0.9f;
+        m_Position.x += m_Velocity.x;
+        m_Position.z += m_Velocity.z;
+
+        if (m_Scale.x < 0.05f) {
+            SetDestroy(); // 完全に消滅
+        }
+    }
+    else if (m_EnemyState == EnemyState::NORMAL) {
+        // 静止後、1秒間（60フレーム）待機してからゆっくり直立に戻す
+        if (m_UprightTimer > 0) {
+            m_UprightTimer--;
+        }
+        else {
+            // X軸とZ軸の回転を徐々に0（直立）に近づける（LERP）
+            m_Rotation.x *= 0.9f;
+            m_Rotation.z *= 0.9f;
+
+            if (abs(m_Rotation.x) < 0.001f) m_Rotation.x = 0.0f;
+            if (abs(m_Rotation.z) < 0.001f) m_Rotation.z = 0.0f;
+        }
     }
 }
 
