@@ -22,7 +22,7 @@ void GameScene::Init() {
     // プレイヤー生成
     Player *player = new Player();
     player->Init();
-    player->SetPosition(XMFLOAT3(0.0f, 2.0f, 0.0f));
+    player->SetPosition(XMFLOAT3(0.0f, 0.0f, 0.0f));
     m_GameObjectList.push_back(player);
 
     // フィールド生成

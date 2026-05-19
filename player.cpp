@@ -4,6 +4,7 @@
 #include "manager.h"
 #include "field.h"
 #include "enemy.h"
+#include "camera.h"
 
 void Player::Init()
 {
@@ -131,26 +132,54 @@ void Player::Update()
 {
     float oldRotY = m_Rotation.y;
 
-    // プレイヤーの回転（A/Dキーで左右に旋回）
-    if (Input::GetKeyPress('A')) m_Rotation.y -= 0.05f;
-    if (Input::GetKeyPress('D')) m_Rotation.y += 0.05f;
+    // マウスの移動量を取得
+    float mouseMoveX = (float)Input::GetMouseMoveX();
+
+    // カメラの角度(Yaw)を取得
+    float camYaw = 0.0f;
+    if (g_Camera) {
+        camYaw = g_Camera->GetAngleY();
+    }
+
+    // マウス操作がある場合は、プレイヤーの向きをカメラの向き（マウスで向いた方向）に合わせる
+    if (abs(mouseMoveX) > 0.1f) {
+        m_Rotation.y = camYaw;
+    }
+
+    // カメラの向きを基準にした前後左右ベクトル
+    XMMATRIX camRotY = XMMatrixRotationY(camYaw);
+    XMVECTOR camForward = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), camRotY);
+    XMVECTOR camRight   = XMVector3TransformNormal(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), camRotY);
+
+    // WASD入力による移動方向の決定
+    XMVECTOR moveDir = XMVectorZero();
+    if (Input::GetKeyPress('W')) moveDir += camForward;
+    if (Input::GetKeyPress('S')) moveDir -= camForward;
+    if (Input::GetKeyPress('A')) moveDir -= camRight;
+    if (Input::GetKeyPress('D')) moveDir += camRight;
+
+    // プレイヤーの移動
+    float speed = 0.1f;
+    XMVECTOR pos = XMLoadFloat3(&m_Position);
+    
+    if (XMVectorGetX(XMVector3LengthSq(moveDir)) > 0.001f) {
+        moveDir = XMVector3Normalize(moveDir);
+        pos += moveDir * speed;
+
+        // マウス操作がない場合は、プレイヤーのモデルを移動方向に回転させる
+        if (abs(mouseMoveX) <= 0.1f) {
+            m_Rotation.y = atan2f(XMVectorGetX(moveDir), XMVectorGetZ(moveDir));
+        }
+    }
+
+    // 前方ベクトルを再計算（現在のm_Rotation.yを使用）
+    XMMATRIX rotY = XMMatrixRotationY(m_Rotation.y);
+    XMVECTOR forward = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotY);
+    XMFLOAT3 fwdF;
+    XMStoreFloat3(&fwdF, forward);
 
     // 旋回速度（角速度）の計算
     m_AngularVelocity = m_Rotation.y - oldRotY;
-
-    // 前方ベクトルを計算（Y軸の回転をもとに進行方向を決定）
-    XMMATRIX rotY = XMMatrixRotationY(m_Rotation.y);
-    XMVECTOR forward = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotY);
-    XMVECTOR right   = XMVector3TransformNormal(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), rotY);
-    
-    // プレイヤーの移動（W/Sキーで前進後退、Q/Eキーでカニ歩き）
-    float speed = 0.1f;
-    XMVECTOR pos = XMLoadFloat3(&m_Position);
-    if (Input::GetKeyPress('W')) pos += forward * speed;
-    if (Input::GetKeyPress('S')) pos -= forward * speed;
-
-    XMFLOAT3 fwdF;
-    XMStoreFloat3(&fwdF, forward);
 
     // 掴んでいる敵の位置をプレイヤーの前方に固定
     if (m_State == PlayerState::ATTACK && m_GrabbedEnemy) {
@@ -168,11 +197,12 @@ void Player::Update()
 
         XMFLOAT3 objPos = obj->GetPosition();
         XMFLOAT3 objSize = obj->GetSize();
+        XMFLOAT3 objScale = obj->GetScale();
 
-        // X, Y, Z 各軸で重なりをチェック
-        bool collisionX = abs(nextPos.x - objPos.x) < (m_Size.x + objSize.x) * 0.5f;
-        bool collisionY = abs(nextPos.y - objPos.y) < (m_Size.y + objSize.y) * 0.5f;
-        bool collisionZ = abs(nextPos.z - objPos.z) < (m_Size.z + objSize.z) * 0.5f;
+        // X, Y, Z 各軸で重なりをチェック (スケールを考慮)
+        bool collisionX = abs(nextPos.x - objPos.x) < (m_Size.x * m_Scale.x + objSize.x * objScale.x) * 0.5f;
+        bool collisionY = abs(nextPos.y - objPos.y) < (m_Size.y * m_Scale.y + objSize.y * objScale.y) * 0.5f;
+        bool collisionZ = abs(nextPos.z - objPos.z) < (m_Size.z * m_Scale.z + objSize.z * objScale.z) * 0.5f;
 
         if (collisionX && collisionY && collisionZ) {
             // 衝突している場合は移動をキャンセル（元の座標に戻す）
@@ -189,12 +219,26 @@ void Player::Throw()
     if (m_GrabbedEnemy) {
         XMMATRIX rotY = XMMatrixRotationY(m_Rotation.y);
         XMVECTOR forward = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotY);
-        XMFLOAT3 fwdF;
+        XMVECTOR right   = XMVector3TransformNormal(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), rotY);
+        XMFLOAT3 fwdF, rightF;
         XMStoreFloat3(&fwdF, forward);
+        XMStoreFloat3(&rightF, right);
 
-        // 敵を投げる（遠心力を考慮）
-        float throwSpeed = 0.5f + abs(m_AngularVelocity) * 2.0f;
-        m_GrabbedEnemy->SetVelocity(XMFLOAT3(fwdF.x * throwSpeed, 0.4f, fwdF.z * throwSpeed));
+        // 基本の投擲速度（前方）
+        float baseThrowSpeed = 0.5f;
+        
+        // 遠心力による接線方向の速度（マウスの振り幅に応じて横に飛ばす）
+        // ※プレイヤーが右に回転（正の角速度）していれば敵は右(接線)方向へ飛ぶ
+        float swingSpeed = m_AngularVelocity * 15.0f; 
+
+        // 前方＋遠心力のベクトルを合成
+        XMFLOAT3 throwVelocity = XMFLOAT3(
+            fwdF.x * baseThrowSpeed + rightF.x * swingSpeed,
+            0.4f,
+            fwdF.z * baseThrowSpeed + rightF.z * swingSpeed
+        );
+
+        m_GrabbedEnemy->SetVelocity(throwVelocity);
         m_GrabbedEnemy->SetEnemyState(EnemyState::FLYING);
         m_GrabbedEnemy = nullptr;
         m_State = PlayerState::IDLE;
