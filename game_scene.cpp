@@ -37,13 +37,18 @@ void GameScene::Init() {
     wall->SetScale(XMFLOAT3(5.0f, 5.0f, 5.0f));
     m_GameObjectList.push_back(wall);
 
-    // 敵を3体生成
-    for (int i = 0; i < 3; i++) {
-        Enemy *enemy = new Enemy();
-        enemy->Init();
-        enemy->SetPosition(XMFLOAT3((float)(i * 4 - 4), -0.5f, -3.0f));
-        m_GameObjectList.push_back(enemy);
-        m_TotalEnemies++;                        // 敵の合計数をカウント
+    // 敵を多め（4x4の計16体）に生成して、ド派手な連鎖反応が起きるようにする！
+    for (int x = -2; x <= 1; x++) {
+        for (int z = -2; z <= 1; z++) {
+            Enemy *enemy = new Enemy();
+            enemy->Init();
+            // プレイヤーの前方エリアに高密度な配置を作る
+            float posX = (float)x * 3.2f + 1.0f;
+            float posZ = (float)z * 3.2f - 7.0f; 
+            enemy->SetPosition(XMFLOAT3(posX, -0.5f, posZ));
+            m_GameObjectList.push_back(enemy);
+            m_TotalEnemies++;                        // 敵の合計数をカウント
+        }
     }
 
     // デバッグ：初期情報を出力
