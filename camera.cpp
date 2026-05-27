@@ -2,6 +2,7 @@
 #include "renderer.h"
 #include "manager.h"
 #include "gameobject.h"
+#include "player.h"
 #include <math.h>
 #include "input.h"
 
@@ -32,7 +33,7 @@ void Camera::Uninit() {}
 void Camera::Update()
 {
     // 1. プレイヤーを取得
-    GameObject* player = Manager::GetPlayer();
+    GameObject* player = Manager::GetGameObject<Player>();
     if (!player) return;
 
     // --- 回転速度の設定 ---

@@ -39,11 +39,14 @@
     <ClCompile Include="input.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="scene.cpp">
+    <ClCompile Include="game_rule.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="game_scene.cpp">
-      <Filter>ソース ファイル\Scene</Filter>
+    <ClCompile Include="collision_system.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="explosion_system.cpp">
+      <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="wall.cpp">
       <Filter>ソース ファイル\GameObject</Filter>
@@ -92,11 +95,14 @@
     <ClInclude Include="input.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="scene.h">
+    <ClInclude Include="game_rule.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="game_scene.h">
-      <Filter>ヘッダー ファイル\Scene</Filter>
+    <ClInclude Include="collision_system.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="explosion_system.h">
+      <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="wall.h">
       <Filter>ヘッダー ファイル\GameObject</Filter>

@@ -87,7 +87,7 @@ void Player::UpdateIdle()
     }
 
     // 壁・敵への衝突で移動ブロック（掴みは行わない）
-    if (!Collision::CheckAABBCollision(this, nextPos, Manager::GetScene()->GetGameObjectList())) {
+    if (!Collision::CheckAABBCollision(this, nextPos, Manager::GetGameObjectList())) {
         m_Position = nextPos;
     }
 
@@ -98,7 +98,7 @@ void Player::UpdateIdle()
         Enemy* nearest  = nullptr;
         float  nearestDist = grabRange;
 
-        for (GameObject* obj : Manager::GetScene()->GetGameObjectList()) {
+        for (GameObject* obj : Manager::GetGameObjectList()) {
             if (!obj || obj == this || obj->IsDestroy()) continue;
             Enemy* e = dynamic_cast<Enemy*>(obj);
             if (!e) continue;
@@ -135,7 +135,7 @@ void Player::UpdateGrabbed()
 
     // 壁への衝突で移動ブロック（掴んでいる敵は通り抜け許可、新たな掴みは行わない）
     GameObject* ignoreGrabbed = m_GrabbedEnemy;
-    if (!Collision::CheckAABBCollision(this, nextPos, Manager::GetScene()->GetGameObjectList(), &ignoreGrabbed)) {
+    if (!Collision::CheckAABBCollision(this, nextPos, Manager::GetGameObjectList(), &ignoreGrabbed)) {
         m_Position = nextPos;
     }
 
@@ -187,7 +187,7 @@ void Player::UpdateSpinning()
 
     // 壁への衝突で移動ブロック（掴んでいる敵は通り抜け許可）
     GameObject* ignoreGrabbed = m_GrabbedEnemy;
-    if (!Collision::CheckAABBCollision(this, nextPos, Manager::GetScene()->GetGameObjectList(), &ignoreGrabbed)) {
+    if (!Collision::CheckAABBCollision(this, nextPos, Manager::GetGameObjectList(), &ignoreGrabbed)) {
         m_Position = nextPos;
     }
 
@@ -196,7 +196,7 @@ void Player::UpdateSpinning()
         float vacuumRadius = 8.0f; // 吸引判定半径
         float vacuumForce = 0.03f; // 引力スピード
 
-        for (GameObject* obj : Manager::GetScene()->GetGameObjectList()) {
+        for (GameObject* obj : Manager::GetGameObjectList()) {
             if (!obj || obj == this || obj == m_GrabbedEnemy) continue;
 
             Enemy* enemy = dynamic_cast<Enemy*>(obj);
@@ -282,7 +282,7 @@ void Player::Throw()
         // 吸い込まれて公転していた敵も一斉射出する
         // ─── 挙動：プレイヤー正面方向へ全員まとめて直線発射し、
         //          爆発時に TriggerExplosion で四方八方へ吹き飛ばす ───
-        for (GameObject* obj : Manager::GetScene()->GetGameObjectList()) {
+        for (GameObject* obj : Manager::GetGameObjectList()) {
             if (!obj) continue;
             Enemy* enemy = dynamic_cast<Enemy*>(obj);
             if (enemy && enemy->GetEnemyState() == EnemyState::VACUUMED) {
@@ -356,7 +356,7 @@ void Player::Draw()
             Enemy* nearest  = nullptr;
             float  nearestDist = grabRange;
 
-            for (GameObject* obj : Manager::GetScene()->GetGameObjectList()) {
+            for (GameObject* obj : Manager::GetGameObjectList()) {
                 if (!obj || obj == this || obj->IsDestroy()) continue;
                 Enemy* e = dynamic_cast<Enemy*>(obj);
                 if (!e) continue;

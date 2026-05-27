@@ -4,7 +4,6 @@
 #include "math_helper.h"
 #include "player.h"
 #include "manager.h"
-#include "scene.h"
 
 void Enemy::Init()
 {
@@ -95,14 +94,8 @@ void Enemy::Update()
     }
     else if (m_EnemyState == EnemyState::VACUUMED) {
         // 掴んでいる敵を中心にブラックホールのように公転する挙動
-        Scene* scene = Manager::GetScene();
-        if (scene) {
-            Player* player = nullptr;
-            for (GameObject* obj : scene->GetGameObjectList()) {
-                player = dynamic_cast<Player*>(obj);
-                if (player) break;
-            }
-            if (player) {
+        Player* player = Manager::GetGameObject<Player>();
+        if (player) {
                 // プレイヤーがスピン状態を終えていたら通常に戻す
                 if (player->GetState() != PlayerState::SPINNING) {
                     m_EnemyState = EnemyState::NORMAL;
@@ -136,7 +129,6 @@ void Enemy::Update()
                 m_Rotation.y += 0.15f;
             }
         }
-    }
     else if (m_EnemyState == EnemyState::BLOWN_AWAY) {
         // 爆風で吹き飛ばされる物理挙動
         MathHelper::ScaleXZ(m_Velocity, 0.95f); // 空気抵抗
