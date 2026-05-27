@@ -1,4 +1,4 @@
-#include "input.h"
+ï»¿#include "input.h"
 
 BYTE Input::m_OldKeyState[256];
 BYTE Input::m_KeyState[256];
@@ -13,24 +13,28 @@ void Input::Init() {
 void Input::Uninit() {}
 
 void Input::Update() {
-    // --- ƒL[ƒ{[ƒhXV ---
+    // --- ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰çŠ¶æ…‹ã®æ›´æ–° ---
     memcpy(m_OldKeyState, m_KeyState, 256);
     GetKeyboardState(m_KeyState);
 
-    // --- ƒ}ƒEƒXXV ---
-    POINT point;
-    GetCursorPos(&point); // ƒXƒNƒŠ[ƒ“À•W‚Å‚Ìƒ}ƒEƒXˆÊ’uæ“¾
+    // ãƒã‚¦ã‚¹ã®å·¦å³ã‚¯ãƒªãƒƒã‚¯çŠ¶æ…‹ã‚’ GetAsyncKeyState ã§ç¢ºå®Ÿã«å–å¾—ã—ã¦ä¸Šæ›¸ã
+    m_KeyState[VK_LBUTTON] = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) ? 0x80 : 0x00;
+    m_KeyState[VK_RBUTTON] = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) ? 0x80 : 0x00;
 
-    // ‰æ–Ê’†‰›‚ÌÀ•W‚ğŒvZiSCREEN_WIDTH‚È‚Ç‚Ímain.h‚Å’è‹`‚³‚ê‚Ä‚¢‚é‘O’ñj
-    // –{—ˆ‚ÍƒEƒBƒ“ƒhƒE‚Ì’†S‚ğæ“¾‚·‚×‚«‚Å‚·‚ªA‚Ü‚¸‚ÍŠÈˆÕ“I‚ÉƒfƒXƒNƒgƒbƒv’†‰›•t‹ß
+    // --- ãƒã‚¦ã‚¹ä½ç½®ã®æ›´æ–° ---
+    POINT point;
+    GetCursorPos(&point); // ã‚¹ã‚¯ãƒªãƒ¼ãƒ³åº§æ¨™ã§ã®ãƒã‚¦ã‚¹ä½ç½®å–å¾—
+
+    // ç”»é¢ä¸­å¤®ã®ä½ç½®ã‚’è¨ˆç®—ï¼ˆSCREEN_WIDTHãªã©ã¯main.hã§å®šç¾©ã•ã‚Œã¦ã„ã‚‹å‰æï¼‰
+    // æœ¬æ¥ã¯ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®ä¸­å¿ƒã‚’å–å¾—ã™ã¹ãã§ã™ãŒã€ã“ã“ã§ã¯ç°¡æ˜“çš„ã«ãƒ‡ã‚¹ã‚¯ãƒˆãƒƒãƒ—ã‹ã‚‰ç®—å‡ºã—ã¾ã™
     int centerX = GetSystemMetrics(SM_CXSCREEN) / 2;
     int centerY = GetSystemMetrics(SM_CYSCREEN) / 2;
 
-    // ’†‰›‚©‚ç‚Ì·•ª‚ğˆÚ“®—Ê‚Æ‚·‚é
+    // ä¸­å¤®ä½ç½®ã‹ã‚‰ã®å·®åˆ†ã‚’ç§»å‹•é‡ã¨ã™ã‚‹
     m_MouseMoveX = point.x - centerX;
     m_MouseMoveY = point.y - centerY;
 
-    // ƒ}ƒEƒX‚ğ’†‰›‚É–ß‚·i‚±‚ê‚É‚æ‚Á‚Ä–³ŒÀ‚É‰ñ“]‚µ‘±‚¯‚ç‚ê‚éj
+    // ãƒã‚¦ã‚¹ã‚«ãƒ¼ã‚½ãƒ«ã‚’ä¸­å¤®ã«æˆ»ã™ï¼ˆã“ã‚Œã«ã‚ˆã£ã¦ç„¡é™ã«å›è»¢ã§ãã‚‹ã‚ˆã†ã«ã™ã‚‹ï¼‰
     SetCursorPos(centerX, centerY);
 }
 

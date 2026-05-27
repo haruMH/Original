@@ -1,5 +1,6 @@
-#include "field.h"
+﻿#include "field.h"
 #include "renderer.h"
+#include "resource_manager.h"
 
 void Field::Init()
 {
@@ -25,7 +26,7 @@ void Field::Init()
     Renderer::GetDevice()->CreateBuffer(&bd, &sd, &m_VertexBuffer);
 
     // テクスチャの読み込み
-    Renderer::CreateTexture("grid.png", &m_Texture);
+    m_Texture = ResourceManager::GetTexture("grid.png");
 
     // シェーダーの読み込み
     Renderer::CreateVertexShader(&m_VertexShader, &m_VertexLayout, "vertexShader.cso");

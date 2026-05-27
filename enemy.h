@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "gameobject.h"
 
 enum class EnemyState {
@@ -7,17 +7,14 @@ enum class EnemyState {
     FLYING,    // 投げられて飛んでいる状態
     CHASING,   // プレイヤーを追尾している状態
     DEFEATED,  // 撃破されて消滅演出中の状態
+    VACUUMED,  // スピンに吸い込まれている状態
+    BLOWN_AWAY // 爆発で吹き飛んでいる状態
 };
 
 class Enemy : public GameObject
 {
 private:
-    ID3D11Buffer*             m_VertexBuffer = nullptr;
-    ID3D11VertexShader*       m_VertexShader = nullptr;
-    ID3D11PixelShader*        m_PixelShader  = nullptr;
-    ID3D11InputLayout*        m_VertexLayout = nullptr;
     ID3D11ShaderResourceView* m_Texture      = nullptr;
-    int m_VertexCount = 0;
 
     EnemyState m_EnemyState = EnemyState::NORMAL;
     XMFLOAT3   m_Velocity   = XMFLOAT3(0, 0, 0);
@@ -25,6 +22,7 @@ private:
 
     int        m_ScoreValue = 100;   // 撃破時のスコア加算値
     int        m_UprightTimer = 0;   // 着地後、起き上がるまでのタイマー
+    bool       m_IsExplosive = false; // 爆発属性フラグ
 
 public:
     void Init()   override;
@@ -36,6 +34,8 @@ public:
     void       SetEnemyState(EnemyState s)   { m_EnemyState = s; }
     void       SetVelocity(XMFLOAT3 v)       { m_Velocity = v; m_VelocityY = v.y; }
     XMFLOAT3   GetVelocity() const           { return m_Velocity; }
+    bool       IsExplosive() const           { return m_IsExplosive; }
+    void       SetExplosive(bool explosive)  { m_IsExplosive = explosive; }
 
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }

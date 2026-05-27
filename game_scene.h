@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "scene.h"
+#include "render_system.h"
 
 class GameScene : public Scene {
 private:
@@ -8,9 +9,13 @@ private:
     int  m_DefeatedCount  = 0;     // 撃破した敵の数
     bool m_IsGameClear    = false; // クリアフラグ
     bool m_IsGameOver     = false; // ゲームオーバーフラグ（将来の拡張用）
+    RenderSystem m_RenderSystem;   // インスタンス描画管理システム
 
     // スコアを加算して撃破カウントを増やす
     void OnEnemyDefeated(int scoreValue);
+
+    // 爆発を発生させ周囲の敵を吹き飛ばす
+    void TriggerExplosion(const DirectX::XMFLOAT3& center);
 
 public:
     void Init() override;

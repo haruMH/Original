@@ -1,5 +1,6 @@
-#pragma once
+﻿#pragma once
 #include "main.h"
+#include "render_component.h"
 
 class GameObject
 {
@@ -10,6 +11,7 @@ protected:
     XMFLOAT3 m_Size;     // 当たり判定のサイズ
 
     bool m_Destroy;      // trueになるとManagerによって削除される
+    RenderComponent m_RenderComponent; // 描画コンポーネント
 
 public:
     GameObject()
@@ -26,6 +28,9 @@ public:
     virtual void Uninit() = 0;
     virtual void Update() = 0;
     virtual void Draw() = 0;
+
+    RenderComponent& GetRenderComponent() { return m_RenderComponent; }
+    const RenderComponent& GetRenderComponent() const { return m_RenderComponent; }
 
     // ゲッターとセッター
     XMFLOAT3 GetPosition() const { return m_Position; }

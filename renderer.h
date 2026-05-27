@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "main.h"
 
 struct VERTEX_3D {
@@ -61,6 +61,7 @@ private:
     static ID3D11SamplerState*      m_SamplerState;
     static ID3D11DepthStencilState* m_DepthStateEnable;
     static ID3D11DepthStencilState* m_DepthStateDisable;
+    static ID3D11DepthStencilState* m_DepthStateOutline;
     static ID3D11RasterizerState*   m_RasterizerStateCullBack;
     static ID3D11RasterizerState*   m_RasterizerStateCullFront;
     static ID3D11BlendState*        m_BlendState;
@@ -90,6 +91,19 @@ private:
     static XMMATRIX m_ViewMatrix;
     static XMMATRIX m_ProjectionMatrix;
 
+    // キューブ描画用の共通 GPU リソース
+    static ID3D11Buffer*        m_CubeVertexBuffer;
+    static ID3D11VertexShader*  m_CubeVertexShader;
+    static ID3D11PixelShader*   m_CubePixelShader;
+    static ID3D11InputLayout*   m_CubeInputLayout;
+
+    // コンスタントバッファ（CBuffer）キャッシュ（更新の最小化用）
+    static MATERIAL             m_MaterialCache;
+    static LIGHT                m_LightCache;
+    static XMFLOAT4X4           m_ViewCache;
+    static XMFLOAT4X4           m_ProjectionCache;
+    static bool                 m_IsCacheInitialized;
+
 public:
     static void Init();
     static void Uninit();
@@ -113,12 +127,19 @@ public:
     static LIGHT GetLight() { return m_Light; }
     static XMMATRIX GetViewMatrix() { return m_ViewMatrix; }
     static XMMATRIX GetProjectionMatrix() { return m_ProjectionMatrix; }
+    static XMMATRIX GetShadowMatrix() { return m_ShadowMatrix; }
+    static ID3D11PixelShader* GetOutlinePixelShader() { return m_OutlinePS; }
     
     static ID3D11Device* GetDevice() { return m_Device; }
     static ID3D11DeviceContext* GetDeviceContext() { return m_DeviceContext; }
+    static ID3D11Buffer* GetCubeVertexBuffer() { return m_CubeVertexBuffer; }
+    static bool IsShadowMode() { return m_IsShadowMode; }
     static void CreateVertexShader(ID3D11VertexShader** vs, ID3D11InputLayout** il, const char* name);
     static void CreatePixelShader(ID3D11PixelShader** ps, const char* name);
     static void CreateTexture(const char* name, ID3D11ShaderResourceView** tex);
     static void SetTexture(ID3D11ShaderResourceView* tex);
     static void SetNormalMap(ID3D11ShaderResourceView* tex);
+    // キューブ描画の共通 GPU リソースをパイプラインにセットする
+    static void SetupCubeDraw();
+	static void DrawCube(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* texture);
 };

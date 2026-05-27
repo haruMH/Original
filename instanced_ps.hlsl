@@ -1,11 +1,23 @@
-Texture2D    g_Texture   : register(t0);
-Texture2D    g_ShadowMap : register(t2);
-SamplerState g_Sampler   : register(s0);
+// =================================================================
+// instanced_ps.hlsl
+// インスタンス描画用のピクセルシェーダー（テクスチャ配列対応版）
+// =================================================================
+
+// テクスチャ配列レジスタへのバインド
+Texture2DArray g_TextureArray : register(t0);
+Texture2D      g_ShadowMap    : register(t2);
+SamplerState   g_Sampler      : register(s0);
 SamplerComparisonState g_ShadowSampler : register(s1);
 
 struct MATERIAL {
-    float4 Ambient; float4 Diffuse; float4 Specular; float4 Emission;
-    float Shininess; bool TextureEnable; float RimPower; float Dummy;
+    float4 Ambient;
+    float4 Diffuse;
+    float4 Specular;
+    float4 Emission;
+    float  Shininess;
+    bool   TextureEnable;
+    float  RimPower;
+    float  Dummy;
 };
 cbuffer MaterialBuffer : register(b3) { MATERIAL Material; }
 
@@ -28,6 +40,7 @@ struct PS_INPUT {
     float2 TexCoord      : TEXCOORD0;
     float3 WorldPos      : TEXCOORD1;
     float4 LightSpacePos : TEXCOORD2;
+    float  TextureIndex  : TEXCOORD3; // 頂点シェーダーから渡されるテクスチャ配列インデックス
 };
 
 float4 main(PS_INPUT input) : SV_TARGET
@@ -36,7 +49,8 @@ float4 main(PS_INPUT input) : SV_TARGET
 
     if (Material.TextureEnable)
     {
-        float4 tex = g_Texture.Sample(g_Sampler, input.TexCoord);
+        // Texture2DArray から指定のスライス番号（input.TextureIndex）をサンプリング
+        float4 tex = g_TextureArray.Sample(g_Sampler, float3(input.TexCoord, input.TextureIndex));
         if (tex.r + tex.g + tex.b > 0.01f)
             color = tex;
     }
@@ -62,7 +76,7 @@ float4 main(PS_INPUT input) : SV_TARGET
                     sum += g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler,
                                proj.xy + float2(x, y) * ts, proj.z - bias);
             shadow = sum / 9.0f;
-            if (shadow < 0.5f) shadow = 0.4f;  // 影の最低輝度（明るめ）
+            if (shadow < 0.5f) shadow = 0.4f;  // 影の最低輝度
             else               shadow = 1.0f;
         }
 
@@ -70,11 +84,11 @@ float4 main(PS_INPUT input) : SV_TARGET
         float3 L = normalize(-LightDirection.xyz);
         float3 viewDir = normalize(CameraPosition.xyz - input.WorldPos);
         
-        // トゥーンシェーディング（光の階調化）
+        // トーンシェーディング（光の階調化）
         float diffuse = max(dot(N, L), 0.0f);
-        if      (diffuse > 0.8f)  diffuse = 1.0f;   // 光が強く当たっている面
-        else if (diffuse > 0.3f)  diffuse = 0.6f;   // 少し影になりかけの面
-        else                      diffuse = 0.2f;   // 影の面（明るめに）
+        if      (diffuse > 0.8f)  diffuse = 1.0f;
+        else if (diffuse > 0.3f)  diffuse = 0.6f;
+        else                      diffuse = 0.2f;
         
         float4 diffC = diffuse * LightDiffuse * Material.Diffuse;
         float4 ambC  = LightAmbient * Material.Ambient;
@@ -103,8 +117,6 @@ float4 main(PS_INPUT input) : SV_TARGET
 
         float dist = distance(CameraPosition.xyz, input.WorldPos);
         float fog  = saturate((dist - FogStart) / (FogEnd - FogStart));
-
-        //float fog  = saturate((dist - FogStart) / max(FogEnd - FogStart, 0.001f));
         color.rgb  = lerp(color.rgb, FogColor.rgb, fog);
     }
 
