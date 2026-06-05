@@ -4,6 +4,8 @@
 #include "game_rule.h"
 #include "manager.h"
 #include "math_helper.h"
+#include "score_popup.h"
+#include "shockwave.h"
 
 // ─────────────────────────────────────────────
 // 爆発を発生させ周囲の敵を吹き飛ばす
@@ -17,6 +19,14 @@ void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
     if (g_Camera) {
         g_Camera->Shake(1.2f, 25);
     }
+
+    // 爆発多重波紋（ビジュアルエフェクトのみ、Y座標を地面に這わせ、時間差で3本の赤い波紋が広がる）
+    XMFLOAT3 shockPos = center;
+    shockPos.y = -0.95f; // 地面の高さに完全クランプ
+
+    ShockwaveSystem::AddShockwave(shockPos, explosionRadius,        2.5f, 0.3f, 0.0f, 30, 0.0f, 0);
+    ShockwaveSystem::AddShockwave(shockPos, explosionRadius * 0.75f, 2.5f, 0.3f, 0.0f, 24, 0.0f, 6);
+    ShockwaveSystem::AddShockwave(shockPos, explosionRadius * 0.50f, 2.5f, 0.3f, 0.0f, 18, 0.0f, 12);
 
     // マネージャーからオブジェクト一覧を取得して走査
     for (GameObject* obj : Manager::GetGameObjectList()) {
@@ -56,6 +66,12 @@ void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
 
             // まだ倒されていない敵であれば、爆風に巻き込まれた時点で撃破スコアを加算
             GameRule::OnEnemyDefeated(enemy->GetScoreValue());
+            // 赤色ポップアップ（爆発で撃破）
+            ScorePopupSystem::AddPopup(
+                ePos.x, ePos.y + 1.0f, ePos.z,
+                enemy->GetScoreValue(),
+                2.5f, 0.2f, 0.0f
+            );
 
             // 敵に爆風の速度と吹き飛び状態を設定
             enemy->SetVelocity(vel);

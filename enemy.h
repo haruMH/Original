@@ -23,6 +23,7 @@ private:
     int        m_ScoreValue = 100;   // 撃破時のスコア加算値
     int        m_UprightTimer = 0;   // 着地後、起き上がるまでのタイマー
     bool       m_IsExplosive = false; // 爆発属性フラグ
+    bool       m_IsLightning = false; // 雷電属性フラグ
 
 public:
     void Init()   override;
@@ -34,8 +35,12 @@ public:
     void       SetEnemyState(EnemyState s)   { m_EnemyState = s; }
     void       SetVelocity(XMFLOAT3 v)       { m_Velocity = v; m_VelocityY = v.y; }
     XMFLOAT3   GetVelocity() const           { return m_Velocity; }
+    
     bool       IsExplosive() const           { return m_IsExplosive; }
     void       SetExplosive(bool explosive)  { m_IsExplosive = explosive; }
+
+    bool       IsLightning() const           { return m_IsLightning; }
+    void       SetLightning(bool lightning)  { m_IsLightning = lightning; }
 
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }

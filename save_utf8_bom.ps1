@@ -31,7 +31,16 @@ $files = @(
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\item.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\item.cpp",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\input.h",
-    "c:\Users\HARU17\Desktop\GM31\DX11_Original\input.cpp"
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\input.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\score_popup.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\score_popup.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\manager.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\collision_system.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\explosion_system.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\score_hud.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\score_hud.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\shockwave.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\shockwave.cpp"
 )
 
 foreach ($file in $files) {

@@ -1,7 +1,20 @@
 ﻿#pragma once
 #include "gameobject.h"
+#include <vector>
+#include <list>
 
 class Enemy;
+
+// 稲妻エフェクト用のデータ構造
+struct LightningSegment {
+    DirectX::XMFLOAT3 Start;
+    DirectX::XMFLOAT3 End;
+};
+
+struct LightningEffect {
+    std::vector<LightningSegment> Segments;
+    int Timer; // 残り表示フレーム数
+};
 
 enum class PlayerState {
     IDLE,       // 何も掴んでいない通常状態
@@ -20,13 +33,21 @@ private:
     bool        m_IsAutoSpinning = false;  // 右クリックによる自動回転状態フラグ
     float       m_CurrentSpinSpeed = 0.0f; // 現在の自動スピン速度（徐々に加速させるため）
     bool        m_HasVacuumItem = false;   // 吸引アイテム取得フラグ
+    bool        m_HasGigantItem = false;   // 巨大化アイテム取得フラグ
+    bool        m_HasLightningItem = false;  // 雷電アイテム取得フラグ
     int         m_MarkerTimer = 0;         // マーカー用アニメーションタイマー
+
+    std::list<LightningEffect> m_LightningEffects; // 放電・連鎖雷電エフェクトのリスト
 
     void UpdateIdle();
     void UpdateGrabbed();
     void UpdateSpinning();
 
 public:
+    // 2点間にジグザグの稲妻を描画する内部ヘルパー（他クラスからも呼べるようpublic）
+    void DrawLightningBolt(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness, const DirectX::XMFLOAT4& color);
+    void DrawLightningBoltInternal(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness, const DirectX::XMFLOAT4& color, bool drawBranches, int seedOffset = 0);
+
     void Init() override;
     void Uninit() override;
     void Update() override;
@@ -34,9 +55,21 @@ public:
 
     PlayerState GetState() const { return m_State; }
     Enemy* GetGrabbedEnemy() const { return m_GrabbedEnemy; }
-    void   SetGrabbedEnemy(Enemy* enemy) { m_GrabbedEnemy = enemy; m_State = PlayerState::GRABBED; }
+    void   SetGrabbedEnemy(Enemy* enemy);
     float  GetAngularVelocity() const { return m_AngularVelocity; }
+    
     bool   HasVacuumItem() const { return m_HasVacuumItem; }
     void   SetHasVacuumItem(bool enable) { m_HasVacuumItem = enable; }
+    
+    bool   HasGigantItem() const { return m_HasGigantItem; }
+    void   SetHasGigantItem(bool enable) { m_HasGigantItem = enable; }
+    
+    bool   HasLightningItem() const { return m_HasLightningItem; }
+    void   SetHasLightningItem(bool enable) { m_HasLightningItem = enable; }
+
+    // 稲妻エフェクトの追加
+    void AddLightningEffect(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end);
+
     void   Throw();
 };
+

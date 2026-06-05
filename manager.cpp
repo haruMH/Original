@@ -12,6 +12,9 @@
 #include "item.h"
 #include "game_rule.h"
 #include "collision_system.h"
+#include "score_popup.h"
+#include "score_hud.h"
+#include "shockwave.h"
 
 // 静的メンバ変数の実体定義
 std::list<GameObject*> Manager::m_GameObjects;
@@ -33,6 +36,15 @@ void Manager::Init()
     if (!initRes) {
         MessageBoxA(nullptr, "RenderSystem Init Failed.", "Error", MB_OK | MB_ICONERROR);
     }
+
+    // スコアポップアップシステムの初期化
+    ScorePopupSystem::Init(Renderer::GetDevice());
+
+    // スコアHUDの初期化
+    ScoreHUD::Init(Renderer::GetDevice());
+
+    // 衝撃波システムの初期化
+    ShockwaveSystem::Init(Renderer::GetDevice());
 
     // 光源設定
     LIGHT light;
@@ -75,9 +87,18 @@ void Manager::Init()
     }
     GameRule::SetTotalEnemies(totalEnemies);
 
-    // パワーアップアイテムを生成
-    Item* item = AddGameObject<Item>();
-    item->SetPosition(XMFLOAT3(0.0f, 0.5f, 4.0f));
+    // パワーアップアイテムを生成（吸引、巨大化、雷電をそれぞれ配置）
+    Item* itemVacuum = AddGameObject<Item>();
+    itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, 4.0f));
+    itemVacuum->SetItemType(ItemType::VACUUM);
+
+    Item* itemGigant = AddGameObject<Item>();
+    itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, 4.0f));
+    itemGigant->SetItemType(ItemType::GIGANT);
+
+    Item* itemLightning = AddGameObject<Item>();
+    itemLightning->SetPosition(XMFLOAT3(2.0f, 0.5f, 6.0f));
+    itemLightning->SetItemType(ItemType::LIGHTNING);
 
     // デバッグ出力
     OutputDebugStringA("[Manager] Init完了 - 敵の合計数: ");
@@ -90,6 +111,15 @@ void Manager::Init()
 // ─────────────────────────────────────────────
 void Manager::Uninit()
 {
+    // スコアポップアップシステムの終了処理
+    ScorePopupSystem::Uninit();
+
+    // スコアHUDの終了処理
+    ScoreHUD::Uninit();
+
+    // 衝撃波システムの終了処理
+    ShockwaveSystem::Uninit();
+
     m_RenderSystem.Uninit();
 
     // 登録されたすべてのオブジェクトの解放
@@ -118,6 +148,15 @@ void Manager::Uninit()
 void Manager::Update()
 {
     Input::Update();
+
+    // スコアポップアップはヒットストップ中も含めて常に更新する
+    ScorePopupSystem::Update();
+
+    // スコアHUDも常に更新する
+    ScoreHUD::Update();
+
+    // 衝撃波システムも常に更新する
+    ShockwaveSystem::Update();
 
     // クリア後はゲームオブジェクトの更新を行わない
     if (GameRule::IsGameClear()) return;
@@ -255,6 +294,15 @@ void Manager::Draw()
     Renderer::EndOutlinePass();
 
     if (g_Camera) g_Camera->Draw();
+
+    // スコアポップアップをSceneRTVに描画する（End()の前でブルームにも乗る）
+    ScorePopupSystem::Draw();
+
+    // 衝撃波を描画（3D空間・ブルーム適用）
+    ShockwaveSystem::Draw();
+
+    // スコアHUDを描画（最前面・ブルーム適用）
+    ScoreHUD::Draw();
 
     Renderer::End();
 }

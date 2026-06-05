@@ -140,6 +140,9 @@
     <ClCompile Include="resource_manager.cpp" />
     <ClCompile Include="render_system.cpp" />
     <ClCompile Include="item.cpp" />
+    <ClCompile Include="score_popup.cpp" />
+    <ClCompile Include="score_hud.cpp" />
+    <ClCompile Include="shockwave.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
@@ -162,6 +165,9 @@
     <ClInclude Include="render_component.h" />
     <ClInclude Include="render_system.h" />
     <ClInclude Include="item.h" />
+    <ClInclude Include="score_popup.h" />
+    <ClInclude Include="score_hud.h" />
+    <ClInclude Include="shockwave.h" />
   </ItemGroup>
   <ItemGroup>
     <FXCompile Include="outline_ps.hlsl">
@@ -206,6 +212,11 @@
     </FXCompile>
     <FXCompile Include="vertexShader.hlsl">
       <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+    </FXCompile>
+    <FXCompile Include="ui_ps.hlsl">
+      <ShaderType>Pixel</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
     </FXCompile>

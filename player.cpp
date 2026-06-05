@@ -9,8 +9,6 @@
 #include "player_controller.h"
 #include "resource_manager.h"
 #include "math_helper.h"
-
-
 void Player::Init()
 {
     m_Position = XMFLOAT3(0.0f, -0.5f, 0.0f);
@@ -19,12 +17,33 @@ void Player::Init()
     m_IsAutoSpinning   = false;
     m_CurrentSpinSpeed = 0.0f;
     m_HasVacuumItem    = false;
+    m_HasGigantItem    = false;
+    m_HasLightningItem = false;
     m_MarkerTimer      = 0;
+    m_LightningEffects.clear();
 
     m_Texture = ResourceManager::GetTexture("player.png");
 
     // コンポーネント指向での描画パラメータ初期化
     m_RenderComponent = RenderComponent("player.png", MeshType::Cube, true);
+}
+
+void Player::SetGrabbedEnemy(Enemy* enemy)
+{
+    m_GrabbedEnemy = enemy;
+    m_State = PlayerState::GRABBED;
+    
+    // 巨大化アイテムを持っている場合は、掴んだ敵を巨大化させる
+    if (m_HasGigantItem && enemy) {
+        enemy->SetScale(XMFLOAT3(5.0f, 5.0f, 5.0f));
+        // Sizeは通常(1.0f)のままにして、Scaleのみを5.0fにすることで判定サイズが5.0f倍になります
+        // (SetSizeまで5.0fにすると 5.0f * 5.0f = 25.0f 倍の超巨大判定になり、即衝突消滅バグが発生します)
+        
+        // 地面に埋まらないようにY座標を調整
+        XMFLOAT3 pos = enemy->GetPosition();
+        pos.y = -0.5f + 5.0f * 0.5f; 
+        enemy->SetPosition(pos);
+    }
 }
 
 void Player::Uninit()
@@ -36,7 +55,16 @@ void Player::Update()
     m_MarkerTimer++;
     float oldRotY = m_Rotation.y;
 
-    // 状態別の更新処理
+    // イナズマエフェクトのタイマー更新
+    for (auto it = m_LightningEffects.begin(); it != m_LightningEffects.end(); ) {
+        it->Timer--;
+        if (it->Timer <= 0) {
+            it = m_LightningEffects.erase(it);
+        } else {
+            it++;
+        }
+    }
+
     switch (m_State) {
     case PlayerState::IDLE:
         UpdateIdle();
@@ -113,8 +141,7 @@ void Player::UpdateIdle()
         }
 
         if (nearest) {
-            m_GrabbedEnemy = nearest;
-            m_State = PlayerState::GRABBED;
+            SetGrabbedEnemy(nearest);
         }
     }
 }
@@ -271,12 +298,22 @@ void Player::Throw()
         // カメラ正面へのベクトルを算出（MathHelper の演算子オーバーロードで記述）
         XMFLOAT3 throwVelocity = fwdF * totalSpeed;
 
+        // 巨大化アイテムを持っている場合は、正面の地面に向けて叩きつけるように下方向への初期速度を与える
+        if (m_HasGigantItem) {
+            throwVelocity.y = -0.3f - speedBoost * 0.6f;
+        }
+
         m_GrabbedEnemy->SetVelocity(throwVelocity);
         m_GrabbedEnemy->SetEnemyState(EnemyState::FLYING);
 
         // もし吸い込みアイテムを持っていたら、投げた敵を爆発属性にする
         if (m_HasVacuumItem) {
             m_GrabbedEnemy->SetExplosive(true);
+        }
+
+        // もし雷電アイテムを持っていたら、投げた敵を電撃属性にする
+        if (m_HasLightningItem) {
+            m_GrabbedEnemy->SetLightning(true);
         }
 
         // 吸い込まれて公転していた敵も一斉射出する
@@ -297,14 +334,14 @@ void Player::Throw()
                 enemy->SetExplosive(true);
             }
         }
-
         // アイテム効果を消費
         m_HasVacuumItem = false;
+        m_HasGigantItem = false;
+        m_HasLightningItem = false;
 
         m_GrabbedEnemy = nullptr;
         m_State = PlayerState::IDLE;
         m_IsAutoSpinning = false; // 投げたら自動回転をストップ
-
         // 投擲時の爽快なカメラシェイク（遠心力に応じてインパクトを極大化）
         float throwShake = 0.08f + abs(m_AngularVelocity) * 1.8f;
         if (throwShake > 0.40f) throwShake = 0.40f;
@@ -401,5 +438,210 @@ void Player::Draw()
                 Renderer::GetDeviceContext()->Draw(36, 0);
             }
         }
+
+        // 3. 雷電アイテムを取得しており、かつ敵を掴んでいる場合、プレイヤーと敵の間にイナズマを描画
+        if (m_HasLightningItem && m_GrabbedEnemy) {
+            XMFLOAT3 pPos = m_Position;
+            pPos.y += 0.3f; // ウエストの高さ
+            XMFLOAT3 ePos = m_GrabbedEnemy->GetPosition();
+            ePos.y += 0.3f;
+            DrawLightningBolt(pPos, ePos, 0.05f, XMFLOAT4(0.0f, 1.8f, 2.5f, 1.0f));
+        }
+
+        // 3.5. 雷電アイテム所持中の追加放電エフェクト（プレイヤー周囲＆スピン中の敵からの放電）
+        if (m_HasLightningItem) {
+            // (A) プレイヤー自身の周囲への常時放電（40%の確率で地面へ落雷）
+            if (((float)rand() / RAND_MAX) < 0.4f) {
+                float angle = ((float)rand() / RAND_MAX) * XM_2PI;
+                float dist = 0.5f + ((float)rand() / RAND_MAX) * 1.5f; // 半径0.5〜2.0m
+                XMFLOAT3 start = m_Position;
+                start.y += 0.5f; // 腰から少し上の高さ
+                XMFLOAT3 end = XMFLOAT3(
+                    m_Position.x + sinf(angle) * dist,
+                    -0.5f, // 地面
+                    m_Position.z + cosf(angle) * dist
+                );
+                DrawLightningBolt(start, end, 0.02f, XMFLOAT4(0.0f, 1.8f, 2.5f, 1.0f));
+            }
+
+            // (B) スピン中の掴んでいる敵からの激しい放電（毎フレーム2本の空中放電）
+            if (m_State == PlayerState::SPINNING && m_GrabbedEnemy) {
+                XMFLOAT3 enemyPos = m_GrabbedEnemy->GetPosition();
+                enemyPos.y += 0.3f;
+                for (int i = 0; i < 2; i++) {
+                    float angle = ((float)rand() / RAND_MAX) * XM_2PI;
+                    float pitch = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * XM_PIDIV4; // 上下45度
+                    float dist = 1.5f + ((float)rand() / RAND_MAX) * 2.0f; // 長さ1.5〜3.5m
+                    XMFLOAT3 end = XMFLOAT3(
+                        enemyPos.x + sinf(angle) * cosf(pitch) * dist,
+                        enemyPos.y + sinf(pitch) * dist,
+                        enemyPos.z + cosf(angle) * cosf(pitch) * dist
+                    );
+                    DrawLightningBolt(enemyPos, end, 0.025f, XMFLOAT4(0.0f, 2.0f, 2.8f, 1.0f));
+                }
+            }
+        }
+
+        // 4. 連鎖イナズマエフェクトの描画
+        for (const auto& effect : m_LightningEffects) {
+            for (const auto& segment : effect.Segments) {
+                // パチパチ明滅するシアン/水色のイナズマ
+                DrawLightningBolt(segment.Start, segment.End, 0.04f, XMFLOAT4(0.0f, 2.0f, 2.8f, 1.0f));
+            }
+        }
     }
+}
+
+// ─────────────────────────────────────────────
+// 2点間にジグザグのイナズマを描画する内部ヘルパー
+// ─────────────────────────────────────────────
+void Player::DrawLightningBolt(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness, const DirectX::XMFLOAT4& color)
+{
+    // 通常描画時以外は無視（シャドウやアウトラインパスでは描画しない）
+    if (Renderer::IsShadowMode() || Renderer::IsOutlineMode()) return;
+
+    using namespace DirectX;
+    
+    // 3本の極細プラズマの束として描画する
+    // それぞれ微妙に異なるノイズで高速パチパチ明滅させることで、本物のプラズマ放電に見せる
+    // 1本目：青（太さ極細）
+    DrawLightningBoltInternal(start, end, 0.02f, XMFLOAT4(0.0f, 1.0f, 2.5f, 1.0f), true, 0);
+    // 2本目：シアン（太さ極細、わずかに座標をずらす）
+    DrawLightningBoltInternal(start, end, 0.022f, XMFLOAT4(0.5f, 1.8f, 2.5f, 1.0f), true, 1);
+    // 3本目：白コア（太さ超極細、わずかに座標をずらす）
+    DrawLightningBoltInternal(start, end, 0.015f, XMFLOAT4(1.8f, 2.2f, 2.5f, 1.0f), false, 2);
+}
+
+void Player::DrawLightningBoltInternal(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness, const DirectX::XMFLOAT4& color, bool drawBranches, int seedOffset)
+{
+    using namespace DirectX;
+    
+    XMVECTOR pA = XMLoadFloat3(&start);
+    XMVECTOR pB = XMLoadFloat3(&end);
+    XMVECTOR dir = pB - pA;
+    float len = XMVectorGetX(XMVector3Length(dir));
+    if (len < 0.01f) return;
+
+    // 分割数
+    const int segmentsCount = 5;
+    std::vector<XMVECTOR> points;
+    points.push_back(pA);
+
+    // 直交ベクトルを求める
+    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    XMVECTOR tangentX = XMVector3Cross(XMVector3Normalize(dir), up);
+    if (XMVectorGetX(XMVector3Length(tangentX)) < 0.01f) {
+        tangentX = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+    }
+    tangentX = XMVector3Normalize(tangentX);
+    XMVECTOR tangentY = XMVector3Normalize(XMVector3Cross(XMVector3Normalize(dir), tangentX));
+
+    // 中継点の生成
+    for (int i = 1; i < segmentsCount; i++) {
+        float ratio = (float)i / segmentsCount;
+        XMVECTOR pt = pA + dir * ratio;
+
+        // ジグザグノイズ（明滅感を出すため、毎フレーム変わる）
+        float noiseScale = len * 0.07f; // 長さに応じたノイズ幅
+        if (noiseScale > 0.35f) noiseScale = 0.35f;
+
+        // seedOffsetによって、乱数生成器から取得する値を変え、ライン形状を分離する
+        for (int k = 0; k < seedOffset; k++) {
+            rand();
+        }
+
+        float offsetX = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * noiseScale;
+        float offsetY = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * noiseScale;
+
+        pt += tangentX * offsetX + tangentY * offsetY;
+        points.push_back(pt);
+    }
+    points.push_back(pB);
+
+    // セグメントの描画
+    for (size_t i = 0; i < points.size() - 1; i++) {
+        XMVECTOR segmentDir = points[i+1] - points[i];
+        float segmentLen = XMVectorGetX(XMVector3Length(segmentDir));
+        if (segmentLen > 0.001f) {
+            XMVECTOR midPoint = (points[i] + points[i+1]) * 0.5f;
+
+            XMVECTOR zAxis = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+            XMVECTOR targetDir = XMVector3Normalize(segmentDir);
+            XMVECTOR rotAxis = XMVector3Cross(zAxis, targetDir);
+            float rotAxisLen = XMVectorGetX(XMVector3Length(rotAxis));
+
+            XMMATRIX rotation;
+            if (rotAxisLen < 0.001f) {
+                float dot = XMVectorGetX(XMVector3Dot(zAxis, targetDir));
+                if (dot < 0.0f) {
+                    rotation = XMMatrixRotationY(XM_PI);
+                } else {
+                    rotation = XMMatrixIdentity();
+                }
+            } else {
+                float dot = XMVectorGetX(XMVector3Dot(zAxis, targetDir));
+                float angle = acosf(dot);
+                rotation = XMMatrixRotationAxis(rotAxis, angle);
+            }
+
+            // 毎フレーム少し太さにゆらぎ（明滅ノイズ）を与える
+            float flicker = 0.8f + ((float)rand() / RAND_MAX) * 0.4f; 
+            XMMATRIX scale = XMMatrixScaling(thickness * flicker, thickness * flicker, segmentLen);
+            XMMATRIX translation = XMMatrixTranslationFromVector(midPoint);
+            XMMATRIX world = scale * rotation * translation;
+
+            Renderer::SetWorldMatrix(world);
+
+            MATERIAL segmentMaterial;
+            ZeroMemory(&segmentMaterial, sizeof(segmentMaterial));
+            segmentMaterial.Diffuse        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+            segmentMaterial.Ambient        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+            segmentMaterial.Specular       = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+            segmentMaterial.Emission       = color;
+            segmentMaterial.Shininess      = 0.0f;
+            segmentMaterial.TextureEnable  = FALSE;
+            segmentMaterial.RimPower       = 0.0f;
+            Renderer::SetMaterial(segmentMaterial);
+
+            Renderer::SetupCubeDraw();
+            Renderer::GetDeviceContext()->Draw(36, 0);
+
+            // 枝分かれの描画（アウターの描画時のみ、一定確率で分岐させる）
+            if (drawBranches && i > 0 && i < points.size() - 2) {
+                if (((float)rand() / RAND_MAX) < 0.25f) { // 25%の確率で枝分かれ
+                    // 枝の長さをランダム決定
+                    float branchLen = len * (0.15f + ((float)rand() / RAND_MAX) * 0.15f);
+                    
+                    // 枝の方向（外側へのランダムな方向）
+                    float angle = ((float)rand() / RAND_MAX) * XM_2PI;
+                    XMVECTOR branchDir = XMVector3Normalize(tangentX * cosf(angle) + tangentY * sinf(angle) + XMVector3Normalize(dir) * 0.3f);
+                    
+                    XMVECTOR branchEnd = points[i+1] + branchDir * branchLen;
+                    XMFLOAT3 bStart, bEnd;
+                    XMStoreFloat3(&bStart, points[i+1]);
+                    XMStoreFloat3(&bEnd, branchEnd);
+
+                    // 枝分かれは再帰的に描画するが、枝の枝は作らない（drawBranches=false）
+                    DrawLightningBoltInternal(bStart, bEnd, thickness * 0.4f, color, false, seedOffset + 10);
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────
+// イナズマエフェクトの追加
+// ─────────────────────────────────────────────
+void Player::AddLightningEffect(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end)
+{
+    LightningEffect effect;
+    effect.Timer = 24; // 24フレーム生存（びりびり時間を延長）
+    
+    // 稲妻の経路を等分割して登録（パチパチ震えるのは描画時に行うが、始点と終点は固定）
+    LightningSegment seg;
+    seg.Start = start;
+    seg.End = end;
+    effect.Segments.push_back(seg);
+
+    m_LightningEffects.push_back(effect);
 }

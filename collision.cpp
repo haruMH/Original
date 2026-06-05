@@ -93,7 +93,8 @@ void Collision::ResolveGrabPhysics(GameObject* parent, GameObject* child, float 
     // 算出した理想の距離で座標を設定
     DirectX::XMFLOAT3 grabbedPos;
     grabbedPos.x = parentPos.x + fwdF.x * finalDistance;
-    grabbedPos.y = 0.0f; // 地面高さ固定仕様
+    // 掴んでいる敵の大きさに応じて、地面（-0.5f）にぴったり接地する高さを計算してめり込みを防ぐ
+    grabbedPos.y = -0.5f + (sizeC.y * scaleC.y) * 0.5f;
     grabbedPos.z = parentPos.z + fwdF.z * finalDistance;
 
     child->SetPosition(grabbedPos);

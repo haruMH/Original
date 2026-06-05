@@ -4,6 +4,8 @@
 #include "math_helper.h"
 #include "player.h"
 #include "manager.h"
+#include "camera.h"
+#include "shockwave.h"
 
 void Enemy::Init()
 {
@@ -13,6 +15,7 @@ void Enemy::Init()
     m_Size     = XMFLOAT3(1.0f, 1.0f, 1.0f);
     m_UprightTimer = 0;
     m_IsExplosive  = false;
+    m_IsLightning  = false;
 
     m_Texture = ResourceManager::GetTexture("enemy.png");
     
@@ -36,24 +39,53 @@ void Enemy::Update()
         m_Position.z += m_Velocity.z;
         m_Position.y += m_VelocityY;
 
-        // 回転中のめり込みを防ぐため、飛行中のクランプ床面を少し浮かせた高さ(-0.3f)にする
-        float flightFloorY = -0.3f;
+        // スケールに応じた床面の高さを計算（めり込み防止）
+        float baseOffset = (m_Size.y * m_Scale.y - 1.0f) * 0.5f;
+        float flightFloorY = -0.3f + baseOffset;
 
         // 地面（床）への着地クランプ
         if (m_Position.y < flightFloorY) {
+            // 接地した瞬間の処理（下向きの十分な速度がある場合）
+            if (m_VelocityY < -0.05f) {
+                // 巨大化エネミーが叩きつけられた際のカメラシェイクとヒットストップ
+                if (m_Scale.x > 2.0f) {
+                    if (g_Camera) {
+                        float impactShake = abs(m_VelocityY) * 1.5f;
+                        if (impactShake > 0.6f) impactShake = 0.6f;
+                        g_Camera->Shake(impactShake, 15);
+                    }
+                    Manager::AddHitStop(10);
+                }
+            }
+
             m_Position.y = flightFloorY;
             m_VelocityY = 0.0f;
         }
 
-        // 速度が十分に落ち、かつ浮かせた地面に着地しているならNORMALに戻す
+        // 速度が十分に落ち、かつ浮かせた地面に着地しているならNORMALに戻す（巨大エネミーは消滅）
         // ただし爆発属性がある敵は game_scene 側で爆発処理するため、ここでは遷移しない
         if (m_Position.y <= flightFloorY && abs(m_Velocity.x) < 0.05f && abs(m_Velocity.z) < 0.05f) {
             if (!m_IsExplosive) {
-                m_Position.y = -0.5f; // 静止時に本来の地面の高さ(-0.5f)に密着させる
-                m_Velocity   = XMFLOAT3(0, 0, 0);
-                m_VelocityY  = 0.0f;
-                m_EnemyState = EnemyState::NORMAL;
-                m_UprightTimer = 60;  // 1秒後にゆっくり起き上がるようにタイマーをセット
+                if (m_Scale.x > 2.0f) {
+                    // 巨大化エネミーは飛び終わってスピードが0になったら消滅させる
+                    m_EnemyState = EnemyState::DEFEATED;
+                    m_Velocity   = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                    m_VelocityY  = 0.0f;
+
+                    // スピードが0になり、消滅する瞬間に多重波紋衝撃波を発生させる（Y座標を地面の高さに強制固定し、規模とディレイを拡大）
+                    XMFLOAT3 shockPos = m_Position;
+                    shockPos.y = -0.95f; // 地面の高さに完全クランプ
+
+                    ShockwaveSystem::AddShockwave(shockPos, 15.0f, 1.8f, 0.9f, 0.0f, 32, 1.4f, 0);
+                    ShockwaveSystem::AddShockwave(shockPos, 11.0f, 1.8f, 0.9f, 0.0f, 26, 0.9f, 7);
+                    ShockwaveSystem::AddShockwave(shockPos, 7.0f, 1.8f, 0.9f, 0.0f, 20, 0.5f, 14);
+                } else {
+                    m_Position.y = -0.5f + baseOffset; // 静止時に本来の地面の高さに密着させる
+                    m_Velocity   = XMFLOAT3(0, 0, 0);
+                    m_VelocityY  = 0.0f;
+                    m_EnemyState = EnemyState::NORMAL;
+                    m_UprightTimer = 60;  // 1秒後にゆっくり起き上がるようにタイマーをセット
+                }
             }
             // 爆発属性の場合は FLYING のまま → game_scene の着地+速度0チェックで爆発させる
         }
@@ -138,7 +170,9 @@ void Enemy::Update()
         m_Position.z += m_Velocity.z;
         m_Position.y += m_VelocityY;
         
-        float floorY = -0.5f;
+        // スケールに応じた床面の高さを計算（めり込み防止）
+        float baseOffset = (m_Size.y * m_Scale.y - 1.0f) * 0.5f;
+        float floorY = -0.5f + baseOffset;
         if (m_Position.y < floorY) {
             m_Position.y = floorY;
             m_VelocityY = 0.0f;
@@ -159,9 +193,37 @@ void Enemy::Update()
 
 void Enemy::Draw()
 {
-    // 通常パスの場合は RenderSystem 側で一括描画するため、ここでは描画しない
+    // 通常パスの場合は RenderSystem 側で一括描画するため本体は描画しないが、
+    // 電撃属性（m_IsLightning）がある場合は周囲にスパークエフェクトを描画する
     if (!Renderer::IsShadowMode() && !Renderer::IsOutlineMode())
     {
+        if (m_IsLightning)
+        {
+            Player* player = Manager::GetGameObject<Player>();
+            if (player)
+            {
+                // 敵の中心から周囲の空中へ 2〜3本 ほどビリビリと火花を散らす
+                XMFLOAT3 start = m_Position;
+                start.y += 0.3f; // 中心付近
+
+                int sparks = 2 + (rand() % 2); 
+                for (int i = 0; i < sparks; i++)
+                {
+                    float angle = ((float)rand() / RAND_MAX) * XM_2PI;
+                    float pitch = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * XM_PIDIV4; // 上下45度
+                    float dist = 0.8f + ((float)rand() / RAND_MAX) * 1.2f; // 長さ0.8〜2.0m
+
+                    XMFLOAT3 end = XMFLOAT3(
+                        start.x + sinf(angle) * cosf(pitch) * dist,
+                        start.y + sinf(pitch) * dist,
+                        start.z + cosf(angle) * cosf(pitch) * dist
+                    );
+
+                    // パチパチ明滅するシアンのイナズマを描画
+                    player->DrawLightningBolt(start, end, 0.02f, XMFLOAT4(0.0f, 2.0f, 2.8f, 1.0f));
+                }
+            }
+        }
         return;
     }
 
