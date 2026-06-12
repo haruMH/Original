@@ -44,37 +44,122 @@ void AttackingEnemy::Update()
                 toPlayer.z /= dist;
             }
 
-            // プレイヤーに向かってゆっくりと接近
-            float speed = ATTACK_SPEED;
-            XMFLOAT3 vel = GetVelocity();
-            vel.x = toPlayer.x * speed;
-            vel.z = toPlayer.z * speed;
-            SetVelocity(vel);
+            // ─── ① 周囲の敵を迂回するための反発ベクトル（Steering Avoidance）の計算 ───
+            XMFLOAT3 steer = toPlayer; // 基本はプレイヤーへの方向
 
-            // 移動方向（プレイヤー方向）を向かせる
-            float angle = atan2f(toPlayer.x, toPlayer.z);
+            for (GameObject* obj : Manager::GetGameObjectList())
+            {
+                if (!obj || obj == this || obj->IsDestroy()) continue;
+
+                // 他の敵（サンドバックエネミー または 射撃エネミー）に対して反発する
+                if (obj->GetObjectType() == ObjectType::Enemy)
+                {
+                    XMFLOAT3 otherPos = obj->GetPosition();
+                    XMFLOAT3 diff = m_Position - otherPos;
+                    diff.y = 0.0f; // 水平面のみ考慮
+
+                    float d = MathHelper::Length(diff);
+                    if (d < AVOID_RADIUS && d > 0.001f)
+                    {
+                        // 距離が近いほど、強い反発力を進行方向にブレンドする
+                        float strength = (AVOID_RADIUS - d) / AVOID_RADIUS;
+                        steer.x += (diff.x / d) * strength * AVOID_FORCE;
+                        steer.z += (diff.z / d) * strength * AVOID_FORCE;
+                    }
+                }
+            }
+
+            // 回避ベクトルを正規化
+            float steerLen = MathHelper::Length(steer);
+            if (steerLen > 0.001f)
+            {
+                steer.x /= steerLen;
+                steer.z /= steerLen;
+            }
+
+            // 移動方向（調整後の進行方向）を向かせる
+            float angle = atan2f(steer.x, steer.z);
             m_Rotation.y = angle;
 
-            // 移動先座標を計算して衝突判定
+            // ─── ② Y軸ジャンプと重力の物理計算 ───
+            XMFLOAT3 vel = GetVelocity();
+            float speed = ATTACK_SPEED;
+            vel.x = steer.x * speed;
+            vel.z = steer.z * speed;
+
+            // 接地チェックと重力適用
+            float baseOffset = (m_Size.y * m_Scale.y - 1.0f) * 0.5f;
+            float floorY = -0.5f + baseOffset;
+            bool isGrounded = (m_Position.y <= floorY + 0.001f);
+
+            if (!isGrounded)
+            {
+                // 空中なら重力を適用
+                vel.y -= GRAVITY;
+            }
+            else
+            {
+                m_Position.y = floorY;
+                vel.y = 0.0f;
+            }
+
+            // 移動先座標を計算（X, Z成分のみ）
             XMFLOAT3 nextPos = m_Position;
             nextPos.x += vel.x;
             nextPos.z += vel.z;
 
-            // 衝突しなければ座標を更新
-            if (!Collision::CheckAABBCollision(this, nextPos, Manager::GetGameObjectList()))
+            // XZ軸の移動先で衝突判定
+            bool hasCollision = Collision::CheckAABBCollision(this, nextPos, Manager::GetGameObjectList());
+
+            if (!hasCollision)
             {
-                m_Position = nextPos;
+                m_Position.x = nextPos.x;
+                m_Position.z = nextPos.z;
                 SetEnemyState(EnemyState::CHASING);
             }
             else
             {
-                // 壁などに衝突した場合は移動を止める
-                XMFLOAT3 stopVel = GetVelocity();
-                stopVel.x = 0.0f;
-                stopVel.z = 0.0f;
-                SetVelocity(stopVel);
-                SetEnemyState(EnemyState::NORMAL);
+                // 進行方向のX, Z軸移動で衝突した場合
+                // 衝突した相手が敵であるかチェックし、敵ならジャンプする
+                if (isGrounded)
+                {
+                    // 自身のAABBと衝突する敵を特定する
+                    for (GameObject* obj : Manager::GetGameObjectList())
+                    {
+                        if (!obj || obj == this || obj->IsDestroy()) continue;
+                        if (obj->GetObjectType() == ObjectType::Enemy)
+                        {
+                            // AABB判定
+                            if (Collision::CheckAABB(this, nextPos, obj))
+                            {
+                                // 敵と衝突しているなら、ジャンプ初速を付与！
+                                vel.y = JUMP_FORCE;
+                                isGrounded = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // 壁などの他の障害物でジャンプもできない（または敵以外の衝突）場合
+                if (isGrounded)
+                {
+                    vel.x = 0.0f;
+                    vel.z = 0.0f;
+                    SetEnemyState(EnemyState::NORMAL);
+                }
             }
+
+            // Y軸の移動を反映
+            m_Position.y += vel.y;
+            if (m_Position.y < floorY)
+            {
+                m_Position.y = floorY;
+                vel.y = 0.0f;
+            }
+
+            // 物理速度を保存
+            SetVelocity(vel);
 
             // プレイヤーとの距離が一定（SHOOT_RANGE）以内なら射撃する
             if (dist < SHOOT_RANGE)
