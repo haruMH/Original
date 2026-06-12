@@ -333,8 +333,8 @@ void ShockwaveSystem::ApplyShockwavePhysics(const XMFLOAT3& center, float radius
     for (GameObject* obj : Manager::GetGameObjectList()) {
         if (!obj || obj->IsDestroy()) continue;
 
-        Enemy* enemy = dynamic_cast<Enemy*>(obj);
-        if (!enemy) continue;
+        if (obj->GetObjectType() != ObjectType::Enemy) continue;
+        Enemy* enemy = static_cast<Enemy*>(obj);
 
         EnemyState state = enemy->GetEnemyState();
         // すでに倒されている、あるいは持ち上げられている敵は物理対象外

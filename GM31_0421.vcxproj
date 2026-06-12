@@ -143,6 +143,8 @@
     <ClCompile Include="score_popup.cpp" />
     <ClCompile Include="score_hud.cpp" />
     <ClCompile Include="shockwave.cpp" />
+    <ClCompile Include="attacking_enemy.cpp" />
+    <ClCompile Include="enemy_bullet.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
@@ -168,6 +170,8 @@
     <ClInclude Include="score_popup.h" />
     <ClInclude Include="score_hud.h" />
     <ClInclude Include="shockwave.h" />
+    <ClInclude Include="attacking_enemy.h" />
+    <ClInclude Include="enemy_bullet.h" />
   </ItemGroup>
   <ItemGroup>
     <FXCompile Include="outline_ps.hlsl">

@@ -14,12 +14,14 @@ private:
     static ID3D11ShaderResourceView* m_Texture;     // スコア描画テクスチャ
 
     static int   m_LastScore;                       // 前回のスコア値
+    static int   m_LastHP;                          // 前回のプレイヤーHP値
     static float m_ScaleEffect;                     // スコア増加時のスケール演出値
 
     // GDI でスコアHUDのテクスチャを作成する
     static ID3D11ShaderResourceView* CreateHUDTexture(
         ID3D11Device* device,
-        int score
+        int score,
+        int hp
     );
 
 public:

@@ -46,7 +46,7 @@ bool Collision::CheckAABBCollision(const GameObject* self, const DirectX::XMFLOA
     for (GameObject* obj : objList) {
         if (obj == self) continue;
         if (ignoreObj && obj == *ignoreObj) continue;       // 既に掴んでいる敵は衝突除外
-        if (dynamic_cast<const Field*>(obj)) continue;      // 地面は除外
+        if (obj->GetObjectType() == ObjectType::Field) continue; // 地面は除外
         if (obj->IsDestroy()) continue;
 
         if (CheckAABB(self, nextPos, obj)) {
@@ -55,9 +55,11 @@ bool Collision::CheckAABBCollision(const GameObject* self, const DirectX::XMFLOA
             // → GRABBED / SPINNING 中は絶対に上書きしない（持ち替わりバグ防止）
             // → FLYING / VACUUMED などの非NORMAL敵は掴まない（連鎖衝突バグ防止）
             if (ignoreObj && !(*ignoreObj)) {
-                Enemy* e = dynamic_cast<Enemy*>(obj);
-                if (e && e->GetEnemyState() == EnemyState::NORMAL) {
-                    *ignoreObj = obj;
+                if (obj->GetObjectType() == ObjectType::Enemy) {
+                    Enemy* e = static_cast<Enemy*>(obj);
+                    if (e->GetEnemyState() == EnemyState::NORMAL) {
+                        *ignoreObj = obj;
+                    }
                 }
             }
             return true;

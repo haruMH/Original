@@ -7,6 +7,7 @@
 #include "resource_manager.h"
 #include "collision.h"
 #include "enemy.h"
+#include "attacking_enemy.h"
 #include "field.h"
 #include "wall.h"
 #include "item.h"
@@ -78,7 +79,13 @@ void Manager::Init()
     int totalEnemies = 0;
     for (int x = -2; x <= 1; x++) {
         for (int z = -2; z <= 1; z++) {
-            Enemy* enemy = AddGameObject<Enemy>();
+            Enemy* enemy = nullptr;
+            // 碁盤の目状に、半数をサンドバック用の Enemy、残りを攻撃する AttackingEnemy として生成
+            if ((x + z) % 2 == 0) {
+                enemy = AddGameObject<AttackingEnemy>();
+            } else {
+                enemy = AddGameObject<Enemy>();
+            }
             float posX = (float)x * 3.2f + 1.0f;
             float posZ = (float)z * 3.2f - 7.0f;
             enemy->SetPosition(XMFLOAT3(posX, -0.5f, posZ));
@@ -199,7 +206,7 @@ void Manager::Update()
     if (!GameRule::IsGameClear() && GameRule::GetDefeatedCount() >= GameRule::GetTotalEnemies()) {
         bool enemyExists = false;
         for (GameObject* obj : m_GameObjects) {
-            if (dynamic_cast<Enemy*>(obj)) {
+            if (obj->GetObjectType() == ObjectType::Enemy) {
                 enemyExists = true;
                 break;
             }
@@ -237,10 +244,11 @@ void Manager::Draw()
     Renderer::BeginShadowPass();
     Renderer::SetupCubeDraw(); // キューブ共通アセットをバインド
     for (GameObject* obj : m_GameObjects) {
-        if (!dynamic_cast<Field*>(obj) && 
-            !dynamic_cast<Enemy*>(obj) && 
-            !dynamic_cast<Player*>(obj) && 
-            !dynamic_cast<Wall*>(obj)) {
+        ObjectType type = obj->GetObjectType();
+        if (type != ObjectType::Field && 
+            type != ObjectType::Enemy && 
+            type != ObjectType::Player && 
+            type != ObjectType::Wall) {
             obj->Draw();
             Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
@@ -256,7 +264,7 @@ void Manager::Draw()
 
     // 床(Field)を描画
     for (GameObject* obj : m_GameObjects) {
-        if (dynamic_cast<Field*>(obj)) { obj->Draw(); }
+        if (obj->GetObjectType() == ObjectType::Field) { obj->Draw(); }
     }
 
     // 床描画で変更されたトポロジーをLISTに戻す
@@ -265,9 +273,10 @@ void Manager::Draw()
     // 一括描画以外のオブジェクトを個別描画（プレイヤーはガイドライン描画のため呼ぶ）
     Renderer::SetupCubeDraw();
     for (GameObject* obj : m_GameObjects) {
-        if (!dynamic_cast<Field*>(obj) && 
-            !dynamic_cast<Enemy*>(obj) && 
-            !dynamic_cast<Wall*>(obj)) {
+        ObjectType type = obj->GetObjectType();
+        if (type != ObjectType::Field && 
+            type != ObjectType::Enemy && 
+            type != ObjectType::Wall) {
             obj->Draw();
             Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
@@ -281,10 +290,11 @@ void Manager::Draw()
     Renderer::BeginOutlinePass();
     Renderer::SetupCubeDraw();
     for (GameObject* obj : m_GameObjects) {
-        if (!dynamic_cast<Field*>(obj) && 
-            !dynamic_cast<Enemy*>(obj) && 
-            !dynamic_cast<Player*>(obj) && 
-            !dynamic_cast<Wall*>(obj)) {
+        ObjectType type = obj->GetObjectType();
+        if (type != ObjectType::Field && 
+            type != ObjectType::Enemy && 
+            type != ObjectType::Player && 
+            type != ObjectType::Wall) {
             obj->Draw();
             Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }

@@ -33,8 +33,8 @@ static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
 
         for (GameObject* obj : gameObjects) {
             if (!obj || obj->IsDestroy() || obj == player) continue;
-            Enemy* enemy = dynamic_cast<Enemy*>(obj);
-            if (!enemy) continue;
+            if (obj->GetObjectType() != ObjectType::Enemy) continue;
+            Enemy* enemy = static_cast<Enemy*>(obj);
 
             // すでに撃破済み、または今回の連鎖リストに含まれている敵は除外
             EnemyState eState = enemy->GetEnemyState();
@@ -104,8 +104,8 @@ void CollisionSystem::Update()
     // ─── プレイヤーとアイテムの衝突判定（各種アイテム取得） ───
     for (GameObject* obj : gameObjects) {
         if (!obj || obj->IsDestroy()) continue;
-        Item* item = dynamic_cast<Item*>(obj);
-        if (item) {
+        if (obj->GetObjectType() == ObjectType::Item) {
+            Item* item = static_cast<Item*>(obj);
             XMFLOAT3 iPos = item->GetPosition();
             float dx = pPos.x - iPos.x;
             float dy = pPos.y - iPos.y;
@@ -140,8 +140,8 @@ void CollisionSystem::Update()
 
             for (GameObject* obj : gameObjects) {
                 if (!obj || obj->IsDestroy() || obj == player || obj == grabbed) continue;
-                Enemy* enemy = dynamic_cast<Enemy*>(obj);
-                if (!enemy) continue;
+                if (obj->GetObjectType() != ObjectType::Enemy) continue;
+                Enemy* enemy = static_cast<Enemy*>(obj);
 
                 // 対象エネミーがすでに倒されていたら除外
                 EnemyState eState = enemy->GetEnemyState();
@@ -196,9 +196,12 @@ void CollisionSystem::Update()
     // ─── 飛んでいる敵 → 他の敵・壁への連鎖衝突 ────────────────
     std::list<Enemy*> flyingEnemies;
     for (GameObject* obj : gameObjects) {
-        Enemy* e = dynamic_cast<Enemy*>(obj);
-        if (e && !e->IsDestroy() && e->GetEnemyState() == EnemyState::FLYING)
-            flyingEnemies.push_back(e);
+        if (obj && !obj->IsDestroy() && obj->GetObjectType() == ObjectType::Enemy) {
+            Enemy* e = static_cast<Enemy*>(obj);
+            if (e->GetEnemyState() == EnemyState::FLYING) {
+                flyingEnemies.push_back(e);
+            }
+        }
     }
 
     // フリーズ防止：1フレームに発生する爆発は1回のみに制限する
@@ -226,8 +229,8 @@ void CollisionSystem::Update()
             if (obj == flying || obj->IsDestroy()) continue;
 
             // --- 壁との衝突判定 ---
-            Wall* wall = dynamic_cast<Wall*>(obj);
-            if (wall) {
+            if (obj->GetObjectType() == ObjectType::Wall) {
+                Wall* wall = static_cast<Wall*>(obj);
                 if (Collision::CheckAABB(flying, wall)) {
                     bool triggeredLightning = false;
                     if (flying->IsLightning()) {
@@ -266,8 +269,8 @@ void CollisionSystem::Update()
             }
 
             // --- 他の敵との衝突判定 ---
-            Enemy* target = dynamic_cast<Enemy*>(obj);
-            if (!target) continue;
+            if (obj->GetObjectType() != ObjectType::Enemy) continue;
+            Enemy* target = static_cast<Enemy*>(obj);
 
             EnemyState targetState = target->GetEnemyState();
             if (targetState == EnemyState::DEFEATED || targetState == EnemyState::BLOWN_AWAY) continue;

@@ -1,6 +1,8 @@
 ﻿#include "score_hud.h"
 #include "renderer.h"
 #include "game_rule.h"
+#include "player.h"
+#include "manager.h"
 #include <vector>
 
 // =================================================================
@@ -14,6 +16,7 @@ ID3D11DepthStencilState* ScoreHUD::m_DepthState = nullptr;
 ID3D11ShaderResourceView* ScoreHUD::m_Texture    = nullptr;
 
 int   ScoreHUD::m_LastScore   = 0;
+int   ScoreHUD::m_LastHP      = 5;
 float ScoreHUD::m_ScaleEffect = 1.0f;
 
 // ─────────────────────────────────────────────────────────────────
@@ -22,10 +25,11 @@ float ScoreHUD::m_ScaleEffect = 1.0f;
 // ─────────────────────────────────────────────────────────────────
 ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
     ID3D11Device* device,
-    int score
+    int score,
+    int hp
 )
 {
-    const int W = 384, H = 64;
+    const int W = 512, H = 64;
 
     // ─── GDI DIB セクションの作成 ───
     BITMAPINFO bmi = {};
@@ -62,7 +66,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
     SetTextColor(hdc, RGB(255, 255, 255)); // 白色で描画
 
     wchar_t buf[64];
-    swprintf_s(buf, L"SCORE: %06d", score);
+    swprintf_s(buf, L"SCORE: %06d  LIFE: %d", score, hp);
 
     RECT rc = { 0, 0, W, H };
     DrawTextW(hdc, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
@@ -185,9 +189,14 @@ bool ScoreHUD::Init(ID3D11Device* device)
     dsd.DepthFunc      = D3D11_COMPARISON_ALWAYS;
     if (FAILED(device->CreateDepthStencilState(&dsd, &m_DepthState))) return false;
 
-    // ─── 初期テクスチャ（スコア0）の生成 ───
+    // ─── 初期テクスチャ（スコア0、HP5）の生成 ───
     m_LastScore = GameRule::GetScore();
-    m_Texture = CreateHUDTexture(device, m_LastScore);
+    m_LastHP = 5;
+    Player* player = Manager::GetGameObject<Player>();
+    if (player) {
+        m_LastHP = player->GetHP();
+    }
+    m_Texture = CreateHUDTexture(device, m_LastScore, m_LastHP);
     m_ScaleEffect = 1.0f;
 
     OutputDebugStringA("[ScoreHUD] 初期化が正常に完了しました\n");
@@ -212,16 +221,23 @@ void ScoreHUD::Uninit()
 // ─────────────────────────────────────────────────────────────────
 void ScoreHUD::Update()
 {
-    // スコア変化の監視
+    // スコアとHP変化の監視
     int currentScore = GameRule::GetScore();
-    if (currentScore != m_LastScore) {
-        // スコアが変わったらテクスチャを再構築
+    int currentHP = m_LastHP;
+    Player* player = Manager::GetGameObject<Player>();
+    if (player) {
+        currentHP = player->GetHP();
+    }
+
+    if (currentScore != m_LastScore || currentHP != m_LastHP) {
+        // スコアまたはHPが変わったらテクスチャを再構築
         if (m_Texture) {
             m_Texture->Release();
             m_Texture = nullptr;
         }
-        m_Texture = CreateHUDTexture(Renderer::GetDevice(), currentScore);
+        m_Texture = CreateHUDTexture(Renderer::GetDevice(), currentScore, currentHP);
         m_LastScore = currentScore;
+        m_LastHP = currentHP;
 
         // スケールポップ効果を発動（少し大きくなる）
         m_ScaleEffect = 1.25f;
@@ -269,7 +285,7 @@ void ScoreHUD::Draw()
 
     // ─── ワールド行列の算出 ───
     // 画面上部中央付近に描画する
-    float w = 384.0f * m_ScaleEffect;
+    float w = 512.0f * m_ScaleEffect;
     float h = 64.0f * m_ScaleEffect;
     float posX = (float)SCREEN_WIDTH * 0.5f; // 画面中央
     float posY = 45.0f;                      // 画面上部から少し下げた位置

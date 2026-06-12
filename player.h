@@ -39,9 +39,16 @@ private:
 
     std::list<LightningEffect> m_LightningEffects; // 放電・連鎖雷電エフェクトのリスト
 
+    int         m_HP               = 5;         // プレイヤーの現在HP
+    int         m_MaxHP            = 5;         // プレイヤーの最大HP
+    int         m_DamageTimer      = 0;         // 被弾スタンタイマー
+    int         m_InvincibleTimer  = 0;         // 被弾無敵タイマー
+    XMFLOAT3    m_KnockbackVelocity = XMFLOAT3(0, 0, 0); // ノックバック速度
+
     void UpdateIdle();
     void UpdateGrabbed();
     void UpdateSpinning();
+    void Restart();
 
 public:
     // 2点間にジグザグの稲妻を描画する内部ヘルパー（他クラスからも呼べるようpublic）
@@ -71,5 +78,13 @@ public:
     void AddLightningEffect(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end);
 
     void   Throw();
+
+    // 戦闘システム用
+    void ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos);
+    int  GetHP() const { return m_HP; }
+    int  GetMaxHP() const { return m_MaxHP; }
+    bool IsInvincible() const { return m_InvincibleTimer > 0; }
+    bool IsStunned() const { return m_DamageTimer > 0; }
+    ObjectType GetObjectType() const override { return ObjectType::Player; }
 };
 

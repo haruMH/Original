@@ -27,9 +27,9 @@ public:
 
     // インスタンスバッファに流し込むデータ構造（頂点シェーダーへ送る情報）
     struct InstanceData {
-        DirectX::XMFLOAT4X4 World;      // ワールド行列
+        DirectX::XMFLOAT4X4 World;        // ワールド行列
         float               TextureIndex; // テクスチャ配列インデックス
-        float               Padding[3];   // 16バイトアライメントのためのパディング
+        DirectX::XMFLOAT3   Emissive;     // 自発光（RGB）
     };
 
     RenderSystem();

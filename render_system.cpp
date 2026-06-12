@@ -162,7 +162,8 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
         { "WORLD",    1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
         { "WORLD",    2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
         { "WORLD",    3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-        { "TEXINDEX", 0, DXGI_FORMAT_R32_FLOAT,          1, 64, D3D11_INPUT_PER_INSTANCE_DATA, 1 } // インスタンスごとのテクスチャインデックスを追加
+        { "TEXINDEX", 0, DXGI_FORMAT_R32_FLOAT,          1, 64, D3D11_INPUT_PER_INSTANCE_DATA, 1 }, // インスタンスごとのテクスチャインデックスを追加
+        { "EMISSIVE", 0, DXGI_FORMAT_R32G32B32_FLOAT,    1, 68, D3D11_INPUT_PER_INSTANCE_DATA, 1 }  // インスタンスごとのエミッシブ（自発光）を追加
     };
 
     hr = device->CreateInputLayout(inputLayoutDesc, _countof(inputLayoutDesc), vsBuffer.data(), vsSize, &m_InstancedInputLayout);
@@ -387,10 +388,8 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
                 // テクスチャインデックスを設定
                 dataPtr[i].TextureIndex = m_TextureIndexMap[rc.textureKey];
                 
-                // パディング初期化
-                dataPtr[i].Padding[0] = 0.0f;
-                dataPtr[i].Padding[1] = 0.0f;
-                dataPtr[i].Padding[2] = 0.0f;
+                // 自発光（Emissive）を設定
+                dataPtr[i].Emissive = obj->GetEmissive();
             }
 
             context->Unmap(m_InstanceBuffer, 0);

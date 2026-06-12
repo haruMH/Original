@@ -27,5 +27,6 @@ public:
 
     ItemType GetItemType() const { return m_Type; }
     void     SetItemType(ItemType type) { m_Type = type; }
+    ObjectType GetObjectType() const override { return ObjectType::Item; }
 };
 

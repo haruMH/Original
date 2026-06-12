@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "gameobject.h"
 
 class Field : public GameObject
@@ -17,4 +17,5 @@ public:
     void Uninit() override;
     void Update() override;
     void Draw() override;
+    ObjectType GetObjectType() const override { return ObjectType::Field; }
 };

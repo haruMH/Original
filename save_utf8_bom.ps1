@@ -10,6 +10,7 @@ $files = @(
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\player_controller.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\player_controller.cpp",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\resource_manager.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\resource_manager.cpp",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\manager.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\manager.cpp",
@@ -40,7 +41,11 @@ $files = @(
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\score_hud.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\score_hud.cpp",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\shockwave.h",
-    "c:\Users\HARU17\Desktop\GM31\DX11_Original\shockwave.cpp"
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\shockwave.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\attacking_enemy.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\attacking_enemy.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\enemy_bullet.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\enemy_bullet.cpp"
 )
 
 foreach ($file in $files) {

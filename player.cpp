@@ -9,6 +9,8 @@
 #include "player_controller.h"
 #include "resource_manager.h"
 #include "math_helper.h"
+#include "enemy_bullet.h"
+#include "shockwave.h"
 void Player::Init()
 {
     m_Position = XMFLOAT3(0.0f, -0.5f, 0.0f);
@@ -21,6 +23,12 @@ void Player::Init()
     m_HasLightningItem = false;
     m_MarkerTimer      = 0;
     m_LightningEffects.clear();
+
+    m_HP = 5;
+    m_MaxHP = 5;
+    m_DamageTimer = 0;
+    m_InvincibleTimer = 0;
+    m_KnockbackVelocity = XMFLOAT3(0.0f, 0.0f, 0.0f);
 
     m_Texture = ResourceManager::GetTexture("player.png");
 
@@ -52,8 +60,42 @@ void Player::Uninit()
 
 void Player::Update()
 {
+    // HP0 死亡判定
+    if (m_HP <= 0) {
+        Restart();
+        return;
+    }
+
     m_MarkerTimer++;
     float oldRotY = m_Rotation.y;
+
+    // 被弾ダメージタイマーの更新（しびれスタン）
+    if (m_DamageTimer > 0) {
+        m_DamageTimer--;
+        
+        // ノックバック物理
+        XMFLOAT3 nextPos = m_Position;
+        nextPos.x += m_KnockbackVelocity.x;
+        nextPos.z += m_KnockbackVelocity.z;
+        
+        // ノックバックの減衰
+        m_KnockbackVelocity.x *= 0.9f;
+        m_KnockbackVelocity.z *= 0.9f;
+        
+        // 壁・敵との衝突判定を行って移動
+        if (!Collision::CheckAABBCollision(this, nextPos, Manager::GetGameObjectList())) {
+            m_Position = nextPos;
+        }
+    }
+
+    // 無敵タイマーの更新と点滅処理
+    if (m_InvincibleTimer > 0) {
+        m_InvincibleTimer--;
+        // 8フレーム周期で点滅（4F表示、4F非表示）
+        GetRenderComponent().visible = (m_InvincibleTimer % 8 < 4);
+    } else {
+        GetRenderComponent().visible = true;
+    }
 
     // イナズマエフェクトのタイマー更新
     for (auto it = m_LightningEffects.begin(); it != m_LightningEffects.end(); ) {
@@ -65,16 +107,19 @@ void Player::Update()
         }
     }
 
-    switch (m_State) {
-    case PlayerState::IDLE:
-        UpdateIdle();
-        break;
-    case PlayerState::GRABBED:
-        UpdateGrabbed();
-        break;
-    case PlayerState::SPINNING:
-        UpdateSpinning();
-        break;
+    // しびれスタン中でなければ、キー入力を受け付ける通常ステートの更新を行う
+    if (m_DamageTimer <= 0) {
+        switch (m_State) {
+        case PlayerState::IDLE:
+            UpdateIdle();
+            break;
+        case PlayerState::GRABBED:
+            UpdateGrabbed();
+            break;
+        case PlayerState::SPINNING:
+            UpdateSpinning();
+            break;
+        }
     }
 
     // 角速度（旋回速度）の計算（境界のラッピングを考慮）
@@ -128,8 +173,8 @@ void Player::UpdateIdle()
 
         for (GameObject* obj : Manager::GetGameObjectList()) {
             if (!obj || obj == this || obj->IsDestroy()) continue;
-            Enemy* e = dynamic_cast<Enemy*>(obj);
-            if (!e) continue;
+            if (obj->GetObjectType() != ObjectType::Enemy) continue;
+            Enemy* e = static_cast<Enemy*>(obj);
             if (e->GetEnemyState() != EnemyState::NORMAL) continue;
 
             XMFLOAT3 toEnemy = e->GetPosition() - m_Position;
@@ -226,8 +271,8 @@ void Player::UpdateSpinning()
         for (GameObject* obj : Manager::GetGameObjectList()) {
             if (!obj || obj == this || obj == m_GrabbedEnemy) continue;
 
-            Enemy* enemy = dynamic_cast<Enemy*>(obj);
-            if (enemy) {
+            if (obj->GetObjectType() == ObjectType::Enemy) {
+                Enemy* enemy = static_cast<Enemy*>(obj);
                 if (enemy->GetEnemyState() == EnemyState::NORMAL || enemy->GetEnemyState() == EnemyState::CHASING) {
                     XMFLOAT3 enemyPos = enemy->GetPosition();
                     XMFLOAT3 diff = m_Position - enemyPos;
@@ -321,8 +366,9 @@ void Player::Throw()
         //          爆発時に TriggerExplosion で四方八方へ吹き飛ばす ───
         for (GameObject* obj : Manager::GetGameObjectList()) {
             if (!obj) continue;
-            Enemy* enemy = dynamic_cast<Enemy*>(obj);
-            if (enemy && enemy->GetEnemyState() == EnemyState::VACUUMED) {
+            if (obj->GetObjectType() != ObjectType::Enemy) continue;
+            Enemy* enemy = static_cast<Enemy*>(obj);
+            if (enemy->GetEnemyState() == EnemyState::VACUUMED) {
                 // プレイヤーの向いている正面方向（fwdF）へ直線発射
                 // 掴んでいた敵と同じ方向に全員まとめてぶっ放す！
                 float finalSpeed = totalSpeed * 0.9f;
@@ -356,6 +402,28 @@ void Player::Draw()
 
     // ─── 通常パス時のみ UI や ガイドラインを描画 ───
     if (!Renderer::IsShadowMode() && !Renderer::IsOutlineMode()) {
+        // 0. しびれスタン中の放電演出
+        if (m_DamageTimer > 0) {
+            XMFLOAT3 start = m_Position;
+            start.y += 0.3f; // 中心付近
+
+            int sparks = 2 + (rand() % 2); 
+            for (int i = 0; i < sparks; i++) {
+                float angle = ((float)rand() / RAND_MAX) * XM_2PI;
+                float pitch = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * XM_PIDIV4;
+                float dist = 0.8f + ((float)rand() / RAND_MAX) * 1.2f;
+
+                XMFLOAT3 end = XMFLOAT3(
+                    start.x + sinf(angle) * cosf(pitch) * dist,
+                    start.y + sinf(pitch) * dist,
+                    start.z + cosf(angle) * cosf(pitch) * dist
+                );
+
+                // パチパチ明滅するマゼンタ（ピンク）のイナズマを描画
+                DrawLightningBolt(start, end, 0.02f, XMFLOAT4(2.8f, 0.0f, 2.0f, 1.0f));
+            }
+        }
+
         // 1. 敵を掴んでいる時にエイムガイド（3Dレーザーライン）を描画
         if (m_GrabbedEnemy) {
             float camYaw = 0.0f;
@@ -395,8 +463,8 @@ void Player::Draw()
 
             for (GameObject* obj : Manager::GetGameObjectList()) {
                 if (!obj || obj == this || obj->IsDestroy()) continue;
-                Enemy* e = dynamic_cast<Enemy*>(obj);
-                if (!e) continue;
+                if (obj->GetObjectType() != ObjectType::Enemy) continue;
+                Enemy* e = static_cast<Enemy*>(obj);
                 if (e->GetEnemyState() != EnemyState::NORMAL) continue;
 
                 XMFLOAT3 toEnemy = e->GetPosition() - m_Position;
@@ -644,4 +712,103 @@ void Player::AddLightningEffect(const DirectX::XMFLOAT3& start, const DirectX::X
     effect.Segments.push_back(seg);
 
     m_LightningEffects.push_back(effect);
+}
+
+// ─────────────────────────────────────────────
+// ダメージ被弾処理
+// ─────────────────────────────────────────────
+void Player::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
+{
+    // 無敵状態、または既にHP0の場合はダメージを無視
+    if (m_InvincibleTimer > 0 || m_HP <= 0) return;
+
+    m_HP -= damage;
+    if (m_HP < 0) m_HP = 0;
+
+    // 被弾しびれスタンタイマーと無敵タイマーを設定
+    m_DamageTimer = 60;        // 1秒間スタン（しびれ操作不能）
+    m_InvincibleTimer = 180;   // 3秒間無敵
+
+    // 掴んでいるエネミーの強制解放
+    if (m_GrabbedEnemy)
+    {
+        m_GrabbedEnemy->SetEnemyState(EnemyState::NORMAL);
+        m_GrabbedEnemy->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
+        m_GrabbedEnemy = nullptr;
+    }
+    m_State = PlayerState::IDLE;
+
+    // ノックバック物理の計算
+    DirectX::XMFLOAT3 diff = m_Position - enemyPos;
+    diff.y = 0.0f; // Y軸は無視
+    float dist = MathHelper::Length(diff);
+    if (dist > 0.001f)
+    {
+        diff.x /= dist;
+        diff.z /= dist;
+    }
+    else
+    {
+        // 重なっている場合は真後ろへ吹き飛ばす
+        diff = DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f);
+    }
+
+    // ノックバックの初速を設定
+    m_KnockbackVelocity = DirectX::XMFLOAT3(diff.x * 0.35f, 0.0f, diff.z * 0.35f);
+
+    // 被弾時のカメラシェイクとヒットストップ
+    if (g_Camera)
+    {
+        g_Camera->Shake(0.35f, 12);
+    }
+    Manager::AddHitStop(5); // 5フレームのヒットストップで衝撃を表現
+}
+
+// ─────────────────────────────────────────────
+// リスタート（復活）処理
+// ─────────────────────────────────────────────
+void Player::Restart()
+{
+    // ステータスのリセット
+    m_HP = m_MaxHP;
+    m_DamageTimer = 30;       // リスタート時の硬直は少し短く（0.5秒）
+    m_InvincibleTimer = 180;  // 3秒間無敵
+    m_KnockbackVelocity = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+
+    // プレイヤーを初期座標に戻す
+    m_Position = DirectX::XMFLOAT3(0.0f, -0.5f, 0.0f);
+    m_Rotation = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+
+    // 掴みの解放
+    if (m_GrabbedEnemy)
+    {
+        m_GrabbedEnemy->SetEnemyState(EnemyState::NORMAL);
+        m_GrabbedEnemy->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
+        m_GrabbedEnemy = nullptr;
+    }
+    m_State = PlayerState::IDLE;
+
+    // 画面内の敵の弾をすべて消去する
+    for (GameObject* obj : Manager::GetGameObjectList())
+    {
+        if (obj)
+        {
+            if (obj->GetObjectType() == ObjectType::Bullet)
+            {
+                EnemyBullet* bullet = static_cast<EnemyBullet*>(obj);
+                bullet->SetDestroy();
+            }
+        }
+    }
+    
+    // プレイヤーの足元に強力な多重衝撃波を発生させて、周囲の敵をなぎ払う
+    DirectX::XMFLOAT3 shockPos = m_Position;
+    shockPos.y = -0.95f; // 床面に完全クランプ
+    ShockwaveSystem::AddShockwave(shockPos, 18.0f, 2.5f, 1.8f, 0.0f, 40, 2.2f, 0);
+
+    // カメラの強いシェイク
+    if (g_Camera)
+    {
+        g_Camera->Shake(0.8f, 25);
+    }
 }

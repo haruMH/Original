@@ -24,6 +24,7 @@ struct VS_INPUT
     // C++側で D3D11_INPUT_PER_INSTANCE_DATA を指定してバインドしたワールド行列
     row_major float4x4 World : WORLD;
     float TextureIndex : TEXINDEX; // テクスチャ配列インデックス
+    float3 Emissive : EMISSIVE; // インスタンスごとの自発光
 };
 
 // 頂点シェーダーからの出力構造体（既存のピクセルシェーダーへの入力と一致させる）
@@ -36,6 +37,7 @@ struct VS_OUTPUT
     float3 WorldPos      : TEXCOORD1;
     float4 LightSpacePos : TEXCOORD2;
     float  TextureIndex  : TEXCOORD3; // ピクセルシェーダーへの受け渡し用
+    float3 Emissive      : TEXCOORD4; // ピクセルシェーダーへの自発光受け渡し用
 };
 
 // メイン関数
@@ -63,6 +65,9 @@ VS_OUTPUT main(VS_INPUT input)
 
     // テクスチャ配列インデックスを出力
     output.TextureIndex = input.TextureIndex;
+
+    // 自発光を出力
+    output.Emissive = input.Emissive;
 
     return output;
 }

@@ -45,4 +45,5 @@ public:
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }
     void       SetScoreValue(int v)          { m_ScoreValue = v; }
+    ObjectType GetObjectType() const override { return ObjectType::Enemy; }
 };

@@ -32,8 +32,9 @@ void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
     for (GameObject* obj : Manager::GetGameObjectList()) {
         if (!obj) continue;
         
-        Enemy* enemy = dynamic_cast<Enemy*>(obj);
-        if (!enemy || enemy->IsDestroy()) continue;
+        if (obj->GetObjectType() != ObjectType::Enemy) continue;
+        Enemy* enemy = static_cast<Enemy*>(obj);
+        if (enemy->IsDestroy()) continue;
 
         EnemyState oldState = enemy->GetEnemyState();
         // すでに撃破済み、または既に吹き飛んでいる敵は除外

@@ -41,6 +41,7 @@ struct PS_INPUT {
     float3 WorldPos      : TEXCOORD1;
     float4 LightSpacePos : TEXCOORD2;
     float  TextureIndex  : TEXCOORD3; // 頂点シェーダーから渡されるテクスチャ配列インデックス
+    float3 Emissive      : TEXCOORD4; // 頂点シェーダーから渡される自発光
 };
 
 float4 main(PS_INPUT input) : SV_TARGET
@@ -120,6 +121,7 @@ float4 main(PS_INPUT input) : SV_TARGET
         color.rgb  = lerp(color.rgb, FogColor.rgb, fog);
     }
 
+    color.rgb += input.Emissive;
     color += Material.Emission;
     color.a = 1.0f;
     return color;

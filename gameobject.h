@@ -2,6 +2,20 @@
 #include "main.h"
 #include "render_component.h"
 
+// =================================================================
+// オブジェクトの型識別用列挙型
+// =================================================================
+enum class ObjectType
+{
+    Player,
+    Enemy,
+    Wall,
+    Item,
+    Field,
+    Bullet,
+    Unknown
+};
+
 class GameObject
 {
 protected:
@@ -53,4 +67,6 @@ public:
     bool IsDestroy() const { return m_Destroy; }
     void SetDestroy() { m_Destroy = true; }
     virtual float GetRadius() const { return m_Size.x * m_Scale.x; }
+    virtual XMFLOAT3 GetEmissive() const { return XMFLOAT3(0.0f, 0.0f, 0.0f); }
+    virtual ObjectType GetObjectType() const { return ObjectType::Unknown; }
 };
