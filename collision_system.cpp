@@ -12,6 +12,7 @@
 #include "game_rule.h"
 #include "explosion_system.h"
 #include "score_popup.h"
+#include "boss_enemy.h"
 
 // ─────────────────────────────────────────────
 // チェインライトニング（電撃連鎖）の処理
@@ -71,15 +72,8 @@ static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
             nearest->SetEnemyState(EnemyState::BLOWN_AWAY);
             nearest->SetLightning(true); // スパーク放電を有効化
 
-            // スコア加算（チェインライトニング擃鉖）
-            GameRule::OnEnemyDefeated(nearest->GetScoreValue());
-            // シアン色ポップアップ（電撃連鎖演出）
-            XMFLOAT3 nPos = nearest->GetPosition();
-            ScorePopupSystem::AddPopup(
-                nPos.x, nPos.y + 1.0f, nPos.z,
-                nearest->GetScoreValue(),
-                0.0f, 1.5f, 2.5f
-            );
+            // 撃破処理（チェインライトニング）
+            nearest->Defeat(0.0f, 1.5f, 2.5f);
             
             chainedEnemies.push_back(nearest);
             currentPos = nextPos; // 次の連鎖の開始点にする
@@ -172,18 +166,18 @@ void CollisionSystem::Update()
                     pushVel.x += tangent.x;
                     pushVel.z += tangent.z;
 
-                    // 吹き飛ばす
-                    enemy->SetVelocity(pushVel);
-                    enemy->SetEnemyState(EnemyState::BLOWN_AWAY);
+                    // ボスかどうかの分岐
+                    if (enemy->GetObjectType() == ObjectType::Boss) {
+                        BossEnemy* boss = static_cast<BossEnemy*>(enemy);
+                        boss->ApplyBossDamage(1, grabbed->GetPosition()); // スピンなぎ払いは1ダメージ
+                    } else {
+                        // 吹き飛ばす
+                        enemy->SetVelocity(pushVel);
+                        enemy->SetEnemyState(EnemyState::BLOWN_AWAY);
 
-                    // 擃鉖スコア（スピンなぎ払い）
-                    GameRule::OnEnemyDefeated(enemy->GetScoreValue());
-                    // 黄金色ポップアップ（スピンなぎ払い撞撃）
-                    XMFLOAT3 ePopPos = enemy->GetPosition();
-                    ScorePopupSystem::AddPopup(
-                        ePopPos.x, ePopPos.y + 1.0f, ePopPos.z,
-                        enemy->GetScoreValue()
-                    );
+                        // 撃破処理（スピンなぎ払い）
+                        enemy->Defeat();
+                    }
 
                     // ヒットインパクト演出（ヒットストップとカメラ揺れ）
                     Manager::AddHitStop(6);
@@ -245,13 +239,8 @@ void CollisionSystem::Update()
                         flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
                         explosionThisFrame = true;
                     } else {
-                        GameRule::OnEnemyDefeated(flying->GetScoreValue());
-                        // 黄金色ポップアップ（壁路激突擃鉖）
-                        XMFLOAT3 fPopPos = flying->GetPosition();
-                        ScorePopupSystem::AddPopup(
-                            fPopPos.x, fPopPos.y + 1.0f, fPopPos.z,
-                            flying->GetScoreValue()
-                        );
+                        // 撃破処理（壁衝突）
+                        flying->Defeat();
                         flying->SetEnemyState(EnemyState::DEFEATED);
                         if (flying->GetScale().x > 2.0f) {
                             flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f)); // 巨大エネミーは壁衝突時に跳ね返らない
@@ -269,7 +258,7 @@ void CollisionSystem::Update()
             }
 
             // --- 他の敵との衝突判定 ---
-            if (obj->GetObjectType() != ObjectType::Enemy) continue;
+            if (obj->GetObjectType() != ObjectType::Enemy && obj->GetObjectType() != ObjectType::Boss) continue;
             Enemy* target = static_cast<Enemy*>(obj);
 
             EnemyState targetState = target->GetEnemyState();
@@ -303,22 +292,29 @@ void CollisionSystem::Update()
                 target->SetEnemyState(EnemyState::DEFEATED);
                 target->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
                 target->SetLightning(true); // 対象エネミーもスパーク放電させる
-                GameRule::OnEnemyDefeated(target->GetScoreValue());
-                // シアン色ポップアップ（電撃連鎖で擃鉖）
-                XMFLOAT3 tLightPos = target->GetPosition();
-                ScorePopupSystem::AddPopup(
-                    tLightPos.x, tLightPos.y + 1.0f, tLightPos.z,
-                    target->GetScoreValue(),
-                    0.0f, 1.5f, 2.5f
-                );
+                // 撃破処理（電撃衝突）
+                target->Defeat(0.0f, 1.5f, 2.5f);
 
                 Manager::AddHitStop(10);
                 if (g_Camera) g_Camera->Shake(0.35f, 12);
                 break;
             }
 
-            // ─── 通常の敵に衝突 ───
-            if (target->GetEnemyState() == EnemyState::NORMAL) {
+            // ─── 通常の敵またはボスに衝突 ───
+            if (target->GetObjectType() == ObjectType::Boss) {
+                BossEnemy* boss = static_cast<BossEnemy*>(target);
+                int dmg = (flying->GetScale().x > 2.0f) ? 3 : 1; // 巨大化飛行敵ぶつかりは3ダメージ、通常は1
+                boss->ApplyBossDamage(dmg, flying->GetPosition());
+
+                // ぶつかった飛行敵自身は撃破消滅へ移行
+                flying->SetEnemyState(EnemyState::DEFEATED);
+                flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
+
+                Manager::AddHitStop(10);
+                if (g_Camera) g_Camera->Shake(0.4f, 15);
+                break;
+            }
+            else if (target->GetEnemyState() == EnemyState::NORMAL) {
                 XMFLOAT3 dir = MathHelper::Normalize(tPos - fPos);
                 
                 // 投げられたエネミーが巨大化している場合、ぶつかられた敵はダメージを受けて撃破される
@@ -326,15 +322,9 @@ void CollisionSystem::Update()
                     XMFLOAT3 vel = dir * 0.8f;
                     vel.y = 0.4f;
                     target->SetVelocity(vel);
-                    target->SetEnemyState(EnemyState::BLOWN_AWAY); // 擃鉖吹き飛び状態
-                    GameRule::OnEnemyDefeated(target->GetScoreValue()); // スコア加算
-                    // オレンジ色ポップアップ（ギガント投げ擃鉖）
-                    XMFLOAT3 tPos2 = target->GetPosition();
-                    ScorePopupSystem::AddPopup(
-                        tPos2.x, tPos2.y + 1.0f, tPos2.z,
-                        target->GetScoreValue(),
-                        2.5f, 0.7f, 0.0f
-                    );
+                    target->SetEnemyState(EnemyState::BLOWN_AWAY); // 撃退吹き飛び状態
+                    // 撃破処理（ギガント投げ撃退）
+                    target->Defeat(2.5f, 0.7f, 0.0f);
 
                     Manager::AddHitStop(10); 
                     if (g_Camera) g_Camera->Shake(0.4f, 15);

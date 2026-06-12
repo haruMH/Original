@@ -29,6 +29,7 @@ public:
     float GetAngleY() const { return m_AngleY; }
     // ゲッター（必要に応じて）
     XMFLOAT3 GetPosition() { return m_Position; }
+    XMFLOAT3 GetForward() const;
 };
 
 // ゲームグローバルカメラ（manager.cpp で実体化）

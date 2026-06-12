@@ -25,6 +25,9 @@ public:
     // 移動方向の設定
     void SetDirection(XMFLOAT3 dir) { m_Direction = dir; }
 
+    // 移動速度の設定
+    void SetSpeed(float speed) { m_Speed = speed; }
+
     // 味方弾フラグの設定・取得
     void SetPlayerOwned(bool owned) { m_IsPlayerOwned = owned; }
     bool IsPlayerOwned() const { return m_IsPlayerOwned; }

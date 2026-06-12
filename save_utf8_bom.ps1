@@ -45,7 +45,9 @@ $files = @(
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\attacking_enemy.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\attacking_enemy.cpp",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\enemy_bullet.h",
-    "c:\Users\HARU17\Desktop\GM31\DX11_Original\enemy_bullet.cpp"
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\enemy_bullet.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\boss_enemy.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\boss_enemy.cpp"
 )
 
 foreach ($file in $files) {

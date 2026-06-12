@@ -55,24 +55,14 @@ void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
             float attenuation = (explosionRadius - dist) / explosionRadius;
 
             // XZ平面での吹き飛ぶ方向ベクトル
-            XMFLOAT3 dir = XMFLOAT3(dx / dist, 0.0f, dz / dz); // ※修正：dz/distのはず
-            // 正しくは dir.z = dz / dist です。元のコードも dz / dist でしたね。
-            // 元のコードは：XMFLOAT3 dir = XMFLOAT3(dx / dist, 0.0f, dz / dist);
-            // なので、dz / dist に修正します。
-            dir.z = dz / dist;
+            XMFLOAT3 dir = XMFLOAT3(dx / dist, 0.0f, dz / dist);
 
             // 爆風速度ベクトル（水平ベクトル ＋ 打ち上げ力）
             float force = baseForce * attenuation;
             XMFLOAT3 vel = XMFLOAT3(dir.x * force, 1.0f * attenuation + 0.4f, dir.z * force);
 
-            // まだ倒されていない敵であれば、爆風に巻き込まれた時点で撃破スコアを加算
-            GameRule::OnEnemyDefeated(enemy->GetScoreValue());
-            // 赤色ポップアップ（爆発で撃破）
-            ScorePopupSystem::AddPopup(
-                ePos.x, ePos.y + 1.0f, ePos.z,
-                enemy->GetScoreValue(),
-                2.5f, 0.2f, 0.0f
-            );
+            // 撃破処理（爆発・赤色ポップアップ）
+            enemy->Defeat(2.5f, 0.2f, 0.0f);
 
             // 敵に爆風の速度と吹き飛び状態を設定
             enemy->SetVelocity(vel);

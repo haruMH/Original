@@ -368,15 +368,8 @@ void ShockwaveSystem::ApplyShockwavePhysics(const XMFLOAT3& center, float radius
             vel.y = 0.35f * attenuation + 0.15f; // 上空へ軽く打ち上げる
             vel.z = dir.z * finalForce;
 
-            // スコア加算
-            GameRule::OnEnemyDefeated(enemy->GetScoreValue());
-
-            // 黄金〜オレンジのスコアポップアップを表示
-            ScorePopupSystem::AddPopup(
-                ePos.x, ePos.y + 1.0f, ePos.z,
-                enemy->GetScoreValue(),
-                2.5f, 0.8f, 0.0f
-            );
+            // 撃破処理（衝撃波・黄金オレンジポップアップ）
+            enemy->Defeat(2.5f, 0.8f, 0.0f);
 
             // 吹き飛ばし状態の設定
             enemy->SetVelocity(vel);

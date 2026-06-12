@@ -1,4 +1,5 @@
 ﻿#include "manager.h"
+#include <string>
 #include "camera.h"
 #include "input.h"
 #include "main.h"
@@ -8,6 +9,7 @@
 #include "collision.h"
 #include "enemy.h"
 #include "attacking_enemy.h"
+#include "boss_enemy.h"
 #include "field.h"
 #include "wall.h"
 #include "item.h"
@@ -23,6 +25,16 @@ RenderSystem           Manager::m_RenderSystem;
 int                    Manager::m_HitStopFrames = 0;
 int                    Manager::m_SlowMotionTimer = 0;
 int                    Manager::m_SlowMotionDuration = 0;
+
+// ★ デバッグ用切り替えマクロ: 1にすると最初からボス戦、0にすると通常の16体ステージから始まります
+#define START_FROM_BOSS 1
+
+#if START_FROM_BOSS
+bool                   Manager::m_IsBossStage = true;
+#else
+bool                   Manager::m_IsBossStage = false;
+#endif
+
 Camera*                g_Camera = nullptr;
 
 // ─────────────────────────────────────────────
@@ -75,7 +87,39 @@ void Manager::Init()
     Player* player = AddGameObject<Player>();
     player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
 
-    // 壁オブジェクトの生成
+#if START_FROM_BOSS
+    // ─────────────────────────────────────────────
+    // 【ボス戦から開始】ボス部屋の壁とボス本体の生成
+    // ─────────────────────────────────────────────
+    float roomSize = 18.0f;
+    // 北の壁
+    Wall* wallN = AddGameObject<Wall>();
+    wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
+    wallN->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+    // 南の壁
+    Wall* wallS = AddGameObject<Wall>();
+    wallS->SetPosition(XMFLOAT3(0.0f, 1.5f, -roomSize));
+    wallS->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+    // 東の壁
+    Wall* wallE = AddGameObject<Wall>();
+    wallE->SetPosition(XMFLOAT3(roomSize, 1.5f, 0.0f));
+    wallE->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+    // 西の壁
+    Wall* wallW = AddGameObject<Wall>();
+    wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
+    wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+
+    // ボスエネミーの生成
+    BossEnemy* boss = AddGameObject<BossEnemy>();
+    boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f)); // プレイヤーの少し前方に配置
+
+    // ボス1体のみのため、敵総数を1にする
+    GameRule::SetTotalEnemies(1);
+    int totalEnemies = 1;
+#else
+    // ─────────────────────────────────────────────
+    // 【通常ステージから開始】通常壁オブジェクトと敵の生成
+    // ─────────────────────────────────────────────
     Wall* wall = AddGameObject<Wall>();
     wall->SetPosition(XMFLOAT3(3.0f, 1.5f, 3.0f));
     wall->SetScale(XMFLOAT3(5.0f, 5.0f, 5.0f));
@@ -98,6 +142,7 @@ void Manager::Init()
         }
     }
     GameRule::SetTotalEnemies(totalEnemies);
+#endif
 
     // パワーアップアイテムを生成（吸引、巨大化、雷電をそれぞれ配置）
     Item* itemVacuum = AddGameObject<Item>();
@@ -233,19 +278,41 @@ void Manager::Update()
         }
     }
 
-    // 4. 遅延ゲームクリア判定
-    if (!GameRule::IsGameClear() && GameRule::GetDefeatedCount() >= GameRule::GetTotalEnemies()) {
-        bool enemyExists = false;
+    // 4. ボスステージ遷移およびゲームクリア判定
+    if (!m_IsBossStage) {
+        // 通常ステージ：攻撃してくる敵が全て全滅したかを監視
+        bool attackingEnemyExists = false; 
         for (GameObject* obj : m_GameObjects) {
-            if (obj->GetObjectType() == ObjectType::Enemy) {
-                enemyExists = true;
-                break;
+            if (dynamic_cast<AttackingEnemy*>(obj)) {
+                Enemy* enemy = static_cast<Enemy*>(obj);
+                if (enemy->GetEnemyState() != EnemyState::DEFEATED) {
+                    attackingEnemyExists = true;
+                    break;
+                }
             }
         }
 
-        if (!enemyExists) {
-            GameRule::SetGameClear(true);
-            OutputDebugStringA("[GameRule] *** ゲームクリア! ***\n");
+        if (!attackingEnemyExists) {
+            TransitionToBossStage();
+        }
+    } else {
+        // ボスステージ：ボスが倒されたかを監視
+        if (!GameRule::IsGameClear()) {
+            bool bossExists = false;
+            for (GameObject* obj : m_GameObjects) {
+                if (obj->GetObjectType() == ObjectType::Boss) {
+                    Enemy* boss = static_cast<Enemy*>(obj);
+                    if (boss->GetEnemyState() != EnemyState::DEFEATED) {
+                        bossExists = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!bossExists) {
+                GameRule::SetGameClear(true);
+                OutputDebugStringA("[GameRule] *** ボス撃破！ゲームクリア! ***\n");
+            }
         }
     }
 
@@ -289,7 +356,8 @@ void Manager::Draw()
         if (type != ObjectType::Field && 
             type != ObjectType::Enemy && 
             type != ObjectType::Player && 
-            type != ObjectType::Wall) {
+            type != ObjectType::Wall &&
+            type != ObjectType::Boss) {
             obj->Draw();
             Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
@@ -317,7 +385,8 @@ void Manager::Draw()
         ObjectType type = obj->GetObjectType();
         if (type != ObjectType::Field && 
             type != ObjectType::Enemy && 
-            type != ObjectType::Wall) {
+            type != ObjectType::Wall &&
+            type != ObjectType::Boss) {
             obj->Draw();
             Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
@@ -335,7 +404,8 @@ void Manager::Draw()
         if (type != ObjectType::Field && 
             type != ObjectType::Enemy && 
             type != ObjectType::Player && 
-            type != ObjectType::Wall) {
+            type != ObjectType::Wall &&
+            type != ObjectType::Boss) {
             obj->Draw();
             Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
@@ -356,4 +426,71 @@ void Manager::Draw()
     ScoreHUD::Draw();
 
     Renderer::End();
+}
+
+// ─────────────────────────────────────────────
+// ボスステージへの移行処理
+// ─────────────────────────────────────────────
+void Manager::TransitionToBossStage()
+{
+    OutputDebugStringA("[Manager] TransitionToBossStage - 開始\n");
+    m_IsBossStage = true;
+
+    // プレイヤーを取得
+    Player* player = GetGameObject<Player>();
+    if (player) {
+        OutputDebugStringA("[Manager] プレイヤー位置をリセット\n");
+        player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
+    }
+
+    // プレイヤー、フィールド以外のすべてのオブジェクトを破棄（リストから削除）
+    OutputDebugStringA("[Manager] オブジェクト破棄処理を開始します...\n");
+    int destroyedCount = 0;
+    for (auto it = m_GameObjects.begin(); it != m_GameObjects.end(); ) {
+        GameObject* obj = *it;
+        if (obj->GetObjectType() != ObjectType::Player && obj->GetObjectType() != ObjectType::Field) {
+            obj->Uninit();
+            delete obj;
+            it = m_GameObjects.erase(it);
+            destroyedCount++;
+        } else {
+            it++;
+        }
+    }
+    std::string destroyMsg = "[Manager] オブジェクト破棄が完了しました (個数: " + std::to_string(destroyedCount) + ")\n";
+    OutputDebugStringA(destroyMsg.c_str());
+
+    // ボス部屋の壁を生成
+    OutputDebugStringA("[Manager] ボス部屋の壁を生成します...\n");
+    float roomSize = 18.0f;
+    // 北の壁
+    Wall* wallN = AddGameObject<Wall>();
+    wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
+    wallN->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+    // 南の壁
+    Wall* wallS = AddGameObject<Wall>();
+    wallS->SetPosition(XMFLOAT3(0.0f, 1.5f, -roomSize));
+    wallS->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+    // 東の壁
+    Wall* wallE = AddGameObject<Wall>();
+    wallE->SetPosition(XMFLOAT3(roomSize, 1.5f, 0.0f));
+    wallE->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+    // 西の壁
+    Wall* wallW = AddGameObject<Wall>();
+    wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
+    wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+    OutputDebugStringA("[Manager] 壁生成完了\n");
+
+    // ボスエネミーの生成
+    OutputDebugStringA("[Manager] ボスエネミーの生成を開始します...\n");
+    BossEnemy* boss = AddGameObject<BossEnemy>();
+    boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f)); // プレイヤーの少し前方に配置
+    OutputDebugStringA("[Manager] ボスエネミー生成完了\n");
+    
+    // ボス戦の演出：巨大な衝撃波をプレイヤーとボスの間に走らせる
+    ShockwaveSystem::AddShockwave(XMFLOAT3(0.0f, -0.95f, 5.0f), 15.0f, 0.0f, 2.0f, 4.0f, 40, 0.0f, 0);
+
+    // カメラをボスに向けて強めにシェイク
+    if (g_Camera) g_Camera->Shake(0.6f, 20);
+    OutputDebugStringA("[Manager] TransitionToBossStage - 正常終了\n");
 }

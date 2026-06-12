@@ -9,6 +9,7 @@
 #include "wall.h"
 #include "camera.h"
 #include "shockwave.h"
+#include "boss_enemy.h"
 #include "score_popup.h"
 #include "game_rule.h"
 
@@ -45,6 +46,7 @@ void EnemyBullet::Update()
 {
     // 直線移動
     m_Position.x += m_Direction.x * m_Speed;
+    m_Position.y += m_Direction.y * m_Speed;
     m_Position.z += m_Direction.z * m_Speed;
 
     Player* player = Manager::GetGameObject<Player>();
@@ -115,7 +117,7 @@ void EnemyBullet::Update()
         for (GameObject* obj : Manager::GetGameObjectList())
         {
             if (!obj || obj->IsDestroy() || obj == this || obj == player) continue;
-            if (obj->GetObjectType() != ObjectType::Enemy) continue;
+            if (obj->GetObjectType() != ObjectType::Enemy && obj->GetObjectType() != ObjectType::Boss) continue;
 
             Enemy* enemy = static_cast<Enemy*>(obj);
 
@@ -131,18 +133,22 @@ void EnemyBullet::Update()
 
             if (dist < limitDist)
             {
-                // 敵に衝突：敵を吹き飛ばす
-                float force = 0.35f;
-                XMFLOAT3 pushVel = XMFLOAT3(m_Direction.x * force, 0.18f, m_Direction.z * force);
-                enemy->SetVelocity(pushVel);
-                enemy->SetEnemyState(EnemyState::BLOWN_AWAY);
+                if (enemy->GetObjectType() == ObjectType::Boss)
+                {
+                    BossEnemy* boss = static_cast<BossEnemy*>(enemy);
+                    boss->ApplyBossDamage(2, m_Position); // 反射弾はボスに2ダメージ
+                }
+                else
+                {
+                    // 敵に衝突：敵を吹き飛ばす
+                    float force = 0.35f;
+                    XMFLOAT3 pushVel = XMFLOAT3(m_Direction.x * force, 0.18f, m_Direction.z * force);
+                    enemy->SetVelocity(pushVel);
+                    enemy->SetEnemyState(EnemyState::BLOWN_AWAY);
 
-                // スコア加算
-                GameRule::OnEnemyDefeated(enemy->GetScoreValue());
-
-                // スコアポップアップの表示
-                XMFLOAT3 ePos = enemy->GetPosition();
-                ScorePopupSystem::AddPopup(ePos.x, ePos.y + 0.5f, ePos.z, enemy->GetScoreValue());
+                    // 撃破処理
+                    enemy->Defeat();
+                }
 
                 // 弾は消滅
                 SetDestroy();
@@ -155,7 +161,16 @@ void EnemyBullet::Update()
     for (GameObject* obj : Manager::GetGameObjectList())
     {
         if (!obj || obj->IsDestroy() || obj == this || obj == player) continue;
-        if (obj->GetObjectType() == ObjectType::Enemy) continue; // 敵への衝突は上で処理済み
+        
+        // 敵、ボス、地面、他の弾丸は除外（壁などの障害物のみと衝突させる）
+        ObjectType type = obj->GetObjectType();
+        if (type == ObjectType::Enemy || 
+            type == ObjectType::Boss || 
+            type == ObjectType::Field || 
+            type == ObjectType::Bullet) 
+        {
+            continue;
+        }
 
         if (Collision::CheckAABB(this, obj))
         {

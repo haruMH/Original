@@ -13,7 +13,7 @@ enum class EnemyState {
 
 class Enemy : public GameObject
 {
-private:
+protected:
     ID3D11ShaderResourceView* m_Texture      = nullptr;
 
     EnemyState m_EnemyState = EnemyState::NORMAL;
@@ -24,6 +24,7 @@ private:
     int        m_UprightTimer = 0;   // 着地後、起き上がるまでのタイマー
     bool       m_IsExplosive = false; // 爆発属性フラグ
     bool       m_IsLightning = false; // 雷電属性フラグ
+    bool       m_IsDefeatedCounted = false; // 二重撃破ガード用フラグ
 
 public:
     void Init()   override;
@@ -46,4 +47,8 @@ public:
     int        GetScoreValue() const         { return m_ScoreValue; }
     void       SetScoreValue(int v)          { m_ScoreValue = v; }
     ObjectType GetObjectType() const override { return ObjectType::Enemy; }
+
+    // 撃破処理（二重カウント防止機能付き）
+    void       Defeat(float colorR = 2.5f, float colorG = 1.8f, float colorB = 0.0f);
+    bool       IsDefeatedCounted() const     { return m_IsDefeatedCounted; }
 };

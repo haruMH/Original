@@ -6,6 +6,8 @@
 #include "manager.h"
 #include "camera.h"
 #include "shockwave.h"
+#include "game_rule.h"
+#include "score_popup.h"
 
 void Enemy::Init()
 {
@@ -16,6 +18,7 @@ void Enemy::Init()
     m_UprightTimer = 0;
     m_IsExplosive  = false;
     m_IsLightning  = false;
+    m_IsDefeatedCounted = false;
 
     m_Texture = ResourceManager::GetTexture("enemy.png");
     
@@ -234,4 +237,19 @@ void Enemy::Draw()
     Renderer::SetWorldMatrix(worldMatrix);
 
     Renderer::DrawCube(worldMatrix, m_Texture);
+}
+
+// ─────────────────────────────────────────────
+// 撃破処理（二重カウント防止機能付き）
+// ─────────────────────────────────────────────
+void Enemy::Defeat(float colorR, float colorG, float colorB)
+{
+    if (m_IsDefeatedCounted) return;
+    m_IsDefeatedCounted = true;
+
+    // スコア加算と撃破数インクリメント
+    GameRule::OnEnemyDefeated(m_ScoreValue);
+
+    // スコアポップアップ表示
+    ScorePopupSystem::AddPopup(m_Position.x, m_Position.y + 1.0f, m_Position.z, m_ScoreValue, colorR, colorG, colorB);
 }

@@ -5,6 +5,7 @@
 #include "player.h"
 #include <math.h>
 #include "input.h"
+#include <DirectXCollision.h>
 
 void Camera::Init()
 {
@@ -74,6 +75,48 @@ void Camera::Update()
     m_Target = playerPos;
     m_Target.y += 1.2f;//プレイヤーの地面ではなく背中のあたりを見るために＋1.2fしている
 
+    // --- 壁との衝突によるカメラの押し戻し処理 ---
+    using namespace DirectX;
+    XMVECTOR vTarget = XMLoadFloat3(&m_Target);
+    XMVECTOR vCamPos = XMLoadFloat3(&m_Position);
+    XMVECTOR vToCam = vCamPos - vTarget;
+    float currentDist = XMVectorGetX(XMVector3Length(vToCam));
+
+    if (currentDist > 0.001f) {
+        XMVECTOR vRayDir = XMVector3Normalize(vToCam);
+        float nearestDist = currentDist;
+        bool hit = false;
+
+        for (GameObject* obj : Manager::GetGameObjectList()) {
+            if (!obj || obj->IsDestroy()) continue;
+            if (obj->GetObjectType() == ObjectType::Wall) {
+                // 壁のBBoxを構築
+                XMFLOAT3 wPos = obj->GetPosition();
+                XMFLOAT3 wScale = obj->GetScale();
+                XMFLOAT3 wSize = obj->GetSize();
+                
+                BoundingBox box(wPos, XMFLOAT3(wSize.x * wScale.x * 0.5f, wSize.y * wScale.y * 0.5f, wSize.z * wScale.z * 0.5f));
+                
+                float dist = 0.0f;
+                if (box.Intersects(vTarget, vRayDir, dist)) {
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        hit = true;
+                    }
+                }
+            }
+        }
+
+        if (hit) {
+            // 壁に衝突している場合、衝突位置より少し手前（マージン0.3m）にカメラを配置する
+            float finalDist = nearestDist - 0.3f;
+            if (finalDist < 0.5f) finalDist = 0.5f; // 最低でもプレイヤーから0.5mは離す
+            
+            XMVECTOR vNewCamPos = vTarget + vRayDir * finalDist;
+            XMStoreFloat3(&m_Position, vNewCamPos);
+        }
+    }
+
     // --- カメラシェイク（振動）の適用 ---
     XMFLOAT3 finalPosition = m_Position;
     XMFLOAT3 finalTarget = m_Target;
@@ -106,3 +149,12 @@ void Camera::Update()
 
 
 void Camera::Draw() {}
+
+XMFLOAT3 Camera::GetForward() const
+{
+    XMFLOAT3 fwd(0.0f, 0.0f, 1.0f);
+    XMVECTOR dir = XMLoadFloat3(&m_Target) - XMLoadFloat3(&m_Position);
+    dir = XMVector3Normalize(dir);
+    XMStoreFloat3(&fwd, dir);
+    return fwd;
+}

@@ -45,11 +45,15 @@ private:
     int         m_InvincibleTimer  = 0;         // 被弾無敵タイマー
     XMFLOAT3    m_KnockbackVelocity = XMFLOAT3(0, 0, 0); // ノックバック速度
     int         m_GuardTimer       = 0;         // ガード入力フレームタイマー（0:非ガード、>0:ガード中）
+    Enemy*      m_LockOnTarget     = nullptr;   // ロックオンしている敵へのポインタ
+    int         m_LockOnFrame      = 0;         // ロックオン対象が確定してからの経過フレーム数
+    int         m_WarpSlashCount   = 0;         // スローモーション中のテレポートスラッシュ回数
 
     void UpdateIdle();
     void UpdateGrabbed();
     void UpdateSpinning();
     void Restart();
+    void FindLockOnTarget();
 
 public:
     // 2点間にジグザグの稲妻を描画する内部ヘルパー（他クラスからも呼べるようpublic）
@@ -90,6 +94,8 @@ public:
     bool IsParryActive() const { return m_GuardTimer > 0 && m_GuardTimer <= 12; }
     DirectX::XMFLOAT3 GetForwardVector() const;
     DirectX::XMFLOAT3 GetEmissive() const override;
+    Enemy* GetLockOnTarget() const { return m_LockOnTarget; }
+    int    GetLockOnFrame() const { return m_LockOnFrame; }
     ObjectType GetObjectType() const override { return ObjectType::Player; }
 };
 

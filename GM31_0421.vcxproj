@@ -145,6 +145,7 @@
     <ClCompile Include="shockwave.cpp" />
     <ClCompile Include="attacking_enemy.cpp" />
     <ClCompile Include="enemy_bullet.cpp" />
+    <ClCompile Include="boss_enemy.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
@@ -172,6 +173,7 @@
     <ClInclude Include="shockwave.h" />
     <ClInclude Include="attacking_enemy.h" />
     <ClInclude Include="enemy_bullet.h" />
+    <ClInclude Include="boss_enemy.h" />
   </ItemGroup>
   <ItemGroup>
     <FXCompile Include="outline_ps.hlsl">

@@ -14,6 +14,7 @@ private:
     static int                    m_HitStopFrames;    // ヒットストップの残りフレーム数
     static int                    m_SlowMotionTimer;  // スローモーションの残りフレーム数
     static int                    m_SlowMotionDuration;// スローモーションの総開始フレーム数
+    static bool                   m_IsBossStage;      // ボスステージ中フラグ
 
 public:
     // 初期化と終了処理
@@ -76,4 +77,6 @@ public:
     static void  StartSlowMotion(int duration) { m_SlowMotionTimer = duration; m_SlowMotionDuration = duration; }
     static float GetSlowMotionIntensity();
     static bool  IsSlowMotionActive() { return m_SlowMotionTimer > 0; }
+    static bool  IsBossStage() { return m_IsBossStage; }
+    static void  TransitionToBossStage();
 };
