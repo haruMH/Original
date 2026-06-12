@@ -12,6 +12,8 @@ private:
     static std::list<GameObject*> m_GameObjects;     // シーン上の全オブジェクトリスト
     static RenderSystem           m_RenderSystem;     // インスタンス一括描画システム
     static int                    m_HitStopFrames;    // ヒットストップの残りフレーム数
+    static int                    m_SlowMotionTimer;  // スローモーションの残りフレーム数
+    static int                    m_SlowMotionDuration;// スローモーションの総開始フレーム数
 
 public:
     // 初期化と終了処理
@@ -69,4 +71,9 @@ public:
 
     // 現在ヒットストップ中かどうか.
     static bool IsHitStopping() { return m_HitStopFrames > 0; }
+
+    // スローモーション（ウィッチタイム）制御用
+    static void  StartSlowMotion(int duration) { m_SlowMotionTimer = duration; m_SlowMotionDuration = duration; }
+    static float GetSlowMotionIntensity();
+    static bool  IsSlowMotionActive() { return m_SlowMotionTimer > 0; }
 };

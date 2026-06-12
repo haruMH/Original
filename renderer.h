@@ -37,7 +37,7 @@ struct POSTEFFECT {
     int   Mode;
     float Threshold;
     float BlurIntensity;
-    float Dummy;
+    float SlowMotionIntensity; // スローモーション中のカラー彩度・色調補正度
 };
 
 class Renderer {

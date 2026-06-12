@@ -7,6 +7,10 @@
 #include "collision.h"
 #include "enemy.h"
 #include "wall.h"
+#include "camera.h"
+#include "shockwave.h"
+#include "score_popup.h"
+#include "game_rule.h"
 
 // ─────────────────────────────────────────────
 // 初期化
@@ -20,6 +24,8 @@ void EnemyBullet::Init()
     m_Life     = BULLET_LIFE;
     m_Speed    = BULLET_SPEED;
     m_Destroy  = false;
+    m_IsPlayerOwned = false;
+    m_EmissiveColor = XMFLOAT3(2.5f, 0.5f, 0.0f);
 
     // 描画には enemy.png を流用し、インスタンス描画で描く
     m_RenderComponent = RenderComponent("enemy.png", MeshType::Cube, true);
@@ -41,35 +47,116 @@ void EnemyBullet::Update()
     m_Position.x += m_Direction.x * m_Speed;
     m_Position.z += m_Direction.z * m_Speed;
 
-    // プレイヤーとの衝突判定
     Player* player = Manager::GetGameObject<Player>();
-    if (player)
-    {
-        // 簡易的な球判定（半径を考慮）
-        XMFLOAT3 diff = m_Position - player->GetPosition();
-        diff.y = 0.0f; // 高さのブレを無視してXZ平面上で判定
-        float dist = MathHelper::Length(diff);
-        float limitDist = GetRadius() + player->GetRadius() * 0.7f; // プレイヤーの当たり判定を少し狭めにしてゲーム性向上
 
-        if (dist < limitDist)
+    // ─── ① プレイヤー反射状態（味方弾）かどうかの分岐 ───
+    if (!m_IsPlayerOwned)
+    {
+        // === 敵の弾：プレイヤーとの衝突判定 ===
+        if (player)
         {
-            // プレイヤーに1ダメージを与える
-            player->ApplyDamage(1, m_Position);
-            // 弾は消滅
-            SetDestroy();
-            return;
+            XMFLOAT3 diff = m_Position - player->GetPosition();
+            diff.y = 0.0f;
+            float dist = MathHelper::Length(diff);
+            float limitDist = GetRadius() + player->GetRadius() * 0.7f;
+
+            if (dist < limitDist)
+            {
+                if (player->IsParryActive())
+                {
+                    // ─── パリィ成功 ───
+                    m_IsPlayerOwned = true; // 所有権をプレイヤー側に
+                    m_Speed *= 1.8f;        // 速度アップ
+                    m_EmissiveColor = XMFLOAT3(4.0f, 3.0f, 0.0f); // 眩しいゴールド色に変更
+                    
+                    // 軌道をプレイヤーの正面方向に反射
+                    m_Direction = player->GetForwardVector();
+
+                    // 残り寿命リセット
+                    m_Life = BULLET_LIFE;
+
+                    // ウィッチタイム（周囲のスローモーション）を発動
+                    Manager::StartSlowMotion(120);
+
+                    // 強烈なフィードバック
+                    Manager::AddHitStop(12); // ヒットストップ
+                    if (g_Camera)
+                    {
+                        g_Camera->Shake(0.45f, 15); // カメラシェイク
+                    }
+
+                    // プレイヤーの周囲に衝撃波エフェクト（敵をひるませる）
+                    DirectX::XMFLOAT3 shockPos = player->GetPosition();
+                    shockPos.y = -0.95f; // 床面に完全クランプ
+                    // 小規模な衝撃波を発生
+                    ShockwaveSystem::AddShockwave(shockPos, 6.0f, 1.2f, 0.8f, 0.0f, 16, 0.6f, 0);
+                }
+                else if (player->IsGuardActive())
+                {
+                    // ─── 通常ガード成功 ───
+                    // ダメージを無効化し、弾は消滅
+                    Manager::AddHitStop(2);
+                    SetDestroy();
+                    return;
+                }
+                else
+                {
+                    // ─── 被弾（通常ダメージ） ───
+                    player->ApplyDamage(1, m_Position);
+                    SetDestroy();
+                    return;
+                }
+            }
+        }
+    }
+    else
+    {
+        // === 反射された味方の弾：エネミー（Enemy）との衝突判定 ===
+        for (GameObject* obj : Manager::GetGameObjectList())
+        {
+            if (!obj || obj->IsDestroy() || obj == this || obj == player) continue;
+            if (obj->GetObjectType() != ObjectType::Enemy) continue;
+
+            Enemy* enemy = static_cast<Enemy*>(obj);
+
+            // すでに倒されているエネミーは対象外
+            EnemyState eState = enemy->GetEnemyState();
+            if (eState == EnemyState::DEFEATED || eState == EnemyState::BLOWN_AWAY || eState == EnemyState::VACUUMED) continue;
+
+            // 弾と敵の距離判定
+            XMFLOAT3 diff = m_Position - enemy->GetPosition();
+            diff.y = 0.0f;
+            float dist = MathHelper::Length(diff);
+            float limitDist = GetRadius() + enemy->GetRadius();
+
+            if (dist < limitDist)
+            {
+                // 敵に衝突：敵を吹き飛ばす
+                float force = 0.35f;
+                XMFLOAT3 pushVel = XMFLOAT3(m_Direction.x * force, 0.18f, m_Direction.z * force);
+                enemy->SetVelocity(pushVel);
+                enemy->SetEnemyState(EnemyState::BLOWN_AWAY);
+
+                // スコア加算
+                GameRule::OnEnemyDefeated(enemy->GetScoreValue());
+
+                // スコアポップアップの表示
+                XMFLOAT3 ePos = enemy->GetPosition();
+                ScorePopupSystem::AddPopup(ePos.x, ePos.y + 0.5f, ePos.z, enemy->GetScoreValue());
+
+                // 弾は消滅
+                SetDestroy();
+                return;
+            }
         }
     }
 
-    // 壁との衝突判定（壁に当たったら消滅）
+    // 壁との衝突判定（壁に当たったら消滅。味方弾でも同様）
     for (GameObject* obj : Manager::GetGameObjectList())
     {
         if (!obj || obj->IsDestroy() || obj == this || obj == player) continue;
-        
-        // エネミー（他のエネミーや自分自身）とは衝突させない
-        if (obj->GetObjectType() == ObjectType::Enemy) continue;
+        if (obj->GetObjectType() == ObjectType::Enemy) continue; // 敵への衝突は上で処理済み
 
-        // 壁などのオブジェクトと衝突したら弾を消す
         if (Collision::CheckAABB(this, obj))
         {
             SetDestroy();

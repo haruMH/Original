@@ -29,6 +29,7 @@ void Player::Init()
     m_DamageTimer = 0;
     m_InvincibleTimer = 0;
     m_KnockbackVelocity = XMFLOAT3(0.0f, 0.0f, 0.0f);
+    m_GuardTimer = 0;
 
     m_Texture = ResourceManager::GetTexture("player.png");
 
@@ -64,6 +65,18 @@ void Player::Update()
     if (m_HP <= 0) {
         Restart();
         return;
+    }
+
+    // ガード状態の更新（しびれスタン中でなく、かつ敵を掴んでいない通常状態のときのみ可能）
+    if (m_DamageTimer <= 0 && m_State == PlayerState::IDLE && !m_GrabbedEnemy) {
+        // LSHIFTキー(0x10) または 右クリック(VK_RBUTTON = 0x02) が押されている間ガード
+        if (Input::GetKeyPress(0x10) || Input::GetKeyPress(0x02)) {
+            m_GuardTimer++;
+        } else {
+            m_GuardTimer = 0;
+        }
+    } else {
+        m_GuardTimer = 0;
     }
 
     m_MarkerTimer++;
@@ -148,7 +161,9 @@ void Player::UpdateIdle()
 
     XMFLOAT3 nextPos = m_Position;
     if (MathHelper::LengthSq(moveDir) > 0.001f) {
-        nextPos += moveDir * 0.1f;
+        // ガード中は移動速度を通常の25%に制限する（通常: 0.1f -> ガード中: 0.025f）
+        float moveSpeed = IsGuardActive() ? 0.025f : 0.1f;
+        nextPos += moveDir * moveSpeed;
 
         if (abs(mouseMoveX) <= 0.1f) {
             m_Rotation.y = atan2f(moveDir.x, moveDir.z);
@@ -402,6 +417,39 @@ void Player::Draw()
 
     // ─── 通常パス時のみ UI や ガイドラインを描画 ───
     if (!Renderer::IsShadowMode() && !Renderer::IsOutlineMode()) {
+        // -1. ガード/パリィ中のプラズマシールドエフェクト描画
+        if (IsGuardActive()) {
+            XMFLOAT3 center = m_Position;
+            center.y += 0.3f; // 中心付近
+
+            // パリィ中はシアン、通常ガードは青
+            XMFLOAT4 sparkColor = IsParryActive() 
+                ? XMFLOAT4(0.0f, 2.5f, 4.0f, 1.0f) 
+                : XMFLOAT4(0.0f, 1.0f, 2.5f, 1.0f);
+
+            int sparks = IsParryActive() ? 4 : 2;
+            for (int i = 0; i < sparks; i++) {
+                float angle = ((float)rand() / RAND_MAX) * XM_2PI;
+                float pitch = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * XM_PIDIV4;
+                float radius = 1.0f; // プレイヤーより少し広い球状
+
+                XMFLOAT3 start = XMFLOAT3(
+                    center.x + sinf(angle) * cosf(pitch) * radius,
+                    center.y + sinf(pitch) * radius,
+                    center.z + cosf(angle) * cosf(pitch) * radius
+                );
+
+                float angle2 = angle + XM_PIDIV4 + (((float)rand() / RAND_MAX) * 0.1f);
+                XMFLOAT3 end = XMFLOAT3(
+                    center.x + sinf(angle2) * cosf(pitch) * radius,
+                    center.y + sinf(pitch) * radius,
+                    center.z + cosf(angle2) * cosf(pitch) * radius
+                );
+
+                DrawLightningBolt(start, end, 0.02f, sparkColor);
+            }
+        }
+
         // 0. しびれスタン中の放電演出
         if (m_DamageTimer > 0) {
             XMFLOAT3 start = m_Position;
@@ -811,4 +859,28 @@ void Player::Restart()
     {
         g_Camera->Shake(0.8f, 25);
     }
+}
+
+// ─────────────────────────────────────────────
+// プレイヤーの正面方向ベクトルの取得
+// ─────────────────────────────────────────────
+DirectX::XMFLOAT3 Player::GetForwardVector() const
+{
+    return DirectX::XMFLOAT3(sinf(m_Rotation.y), 0.0f, cosf(m_Rotation.y));
+}
+
+// ─────────────────────────────────────────────
+// 自発光（Emissive）情報の取得（ガード/パリィ中のエフェクト発光）
+// ─────────────────────────────────────────────
+DirectX::XMFLOAT3 Player::GetEmissive() const
+{
+    if (IsParryActive())
+    {
+        return DirectX::XMFLOAT3(0.0f, 2.0f, 5.0f); // パリィ受付時間中は眩しいシアン/ブルー
+    }
+    if (IsGuardActive())
+    {
+        return DirectX::XMFLOAT3(0.0f, 0.5f, 1.5f); // ガード中は落ち着いた青色
+    }
+    return DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f); // 通常時は無発光
 }

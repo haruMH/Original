@@ -44,6 +44,7 @@ private:
     int         m_DamageTimer      = 0;         // 被弾スタンタイマー
     int         m_InvincibleTimer  = 0;         // 被弾無敵タイマー
     XMFLOAT3    m_KnockbackVelocity = XMFLOAT3(0, 0, 0); // ノックバック速度
+    int         m_GuardTimer       = 0;         // ガード入力フレームタイマー（0:非ガード、>0:ガード中）
 
     void UpdateIdle();
     void UpdateGrabbed();
@@ -85,6 +86,10 @@ public:
     int  GetMaxHP() const { return m_MaxHP; }
     bool IsInvincible() const { return m_InvincibleTimer > 0; }
     bool IsStunned() const { return m_DamageTimer > 0; }
+    bool IsGuardActive() const { return m_GuardTimer > 0; }
+    bool IsParryActive() const { return m_GuardTimer > 0 && m_GuardTimer <= 12; }
+    DirectX::XMFLOAT3 GetForwardVector() const;
+    DirectX::XMFLOAT3 GetEmissive() const override;
     ObjectType GetObjectType() const override { return ObjectType::Player; }
 };
 

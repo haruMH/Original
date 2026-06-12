@@ -1,4 +1,5 @@
 ﻿#include "renderer.h"
+#include "manager.h"
 #include "main.h"
 #include <stdio.h>
 #include <wincodec.h>
@@ -473,6 +474,7 @@ void Renderer::End() {
     m_DeviceContext->PSSetShaderResources(0, 1, &m_SceneSRV);
     m_DeviceContext->PSSetShaderResources(1, 1, &m_LumSRV);
     pe.Mode = 3;
+    pe.SlowMotionIntensity = Manager::GetSlowMotionIntensity();
     m_DeviceContext->UpdateSubresource(m_PostBuffer, 0, NULL, &pe, 0, 0);
     m_DeviceContext->Draw(3, 0);
 

@@ -21,6 +21,8 @@
 std::list<GameObject*> Manager::m_GameObjects;
 RenderSystem           Manager::m_RenderSystem;
 int                    Manager::m_HitStopFrames = 0;
+int                    Manager::m_SlowMotionTimer = 0;
+int                    Manager::m_SlowMotionDuration = 0;
 Camera*                g_Camera = nullptr;
 
 // ─────────────────────────────────────────────
@@ -31,6 +33,9 @@ void Manager::Init()
     Renderer::Init();
     Input::Init();
     GameRule::Init();
+    m_HitStopFrames = 0;
+    m_SlowMotionTimer = 0;
+    m_SlowMotionDuration = 0;
 
     // 描画システムの初期化
     bool initRes = m_RenderSystem.Init(Renderer::GetDevice());
@@ -162,8 +167,21 @@ void Manager::Update()
     // スコアHUDも常に更新する
     ScoreHUD::Update();
 
-    // 衝撃波システムも常に更新する
-    ShockwaveSystem::Update();
+    // スローモーションタイマーの更新
+    if (m_SlowMotionTimer > 0) {
+        m_SlowMotionTimer--;
+    }
+
+    // スローモーション中はプレイヤー以外の更新頻度を1/5にする
+    bool updateOthers = true;
+    if (m_SlowMotionTimer > 0) {
+        updateOthers = (m_SlowMotionTimer % 5 == 0);
+    }
+
+    // 衝撃波システムも更新（スロー時は間引く）
+    if (updateOthers) {
+        ShockwaveSystem::Update();
+    }
 
     // クリア後はゲームオブジェクトの更新を行わない
     if (GameRule::IsGameClear()) return;
@@ -175,25 +193,38 @@ void Manager::Update()
         return;
     }
 
+    Player* player = GetGameObject<Player>();
+
     // 1. 各オブジェクトの更新と破棄処理
     for (auto it = m_GameObjects.begin(); it != m_GameObjects.end(); ) {
-        (*it)->Update();
+        GameObject* obj = *it;
+        bool shouldUpdate = true;
 
-        if ((*it)->IsDestroy()) {
-            (*it)->Uninit();
-            delete *it;
+        // プレイヤー以外はスロー時は間引く
+        if (obj->GetObjectType() != ObjectType::Player) {
+            shouldUpdate = updateOthers;
+        }
+
+        if (shouldUpdate) {
+            obj->Update();
+        }
+
+        if (obj->IsDestroy()) {
+            obj->Uninit();
+            delete obj;
             it = m_GameObjects.erase(it);
         } else {
             it++;
         }
     }
 
-    // 2. 衝突判定システムによる判定・物理連鎖の更新
-    CollisionSystem::Update();
+    // 2. 衝突判定システムによる判定・物理連鎖の更新（スロー時は間引く）
+    if (updateOthers) {
+        CollisionSystem::Update();
+    }
 
-    // 3. 掴んでいるエネミーの位置確定後処理 (LateUpdate)
-    Player* player = GetGameObject<Player>();
-    if (player) {
+    // 3. 掴んでいるエネミーの位置確定後処理 (LateUpdate)（スロー時は間引く）
+    if (updateOthers && player) {
         if (player->GetState() == PlayerState::GRABBED || player->GetState() == PlayerState::SPINNING) {
             Enemy* grabbedEnemy = player->GetGrabbedEnemy();
             if (grabbedEnemy) {
@@ -219,6 +250,16 @@ void Manager::Update()
     }
 
     if (g_Camera) g_Camera->Update();
+}
+
+// ─────────────────────────────────────────────
+// スローモーション強度の取得（フェードアウト用）
+// ─────────────────────────────────────────────
+float Manager::GetSlowMotionIntensity()
+{
+    if (m_SlowMotionTimer <= 0) return 0.0f;
+    if (m_SlowMotionTimer > 30) return 1.0f;
+    return (float)m_SlowMotionTimer / 30.0f;
 }
 
 // ─────────────────────────────────────────────
