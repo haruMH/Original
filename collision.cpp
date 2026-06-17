@@ -1,4 +1,4 @@
-﻿#include "collision.h"
+#include "collision.h"
 #include "field.h"
 #include "enemy.h"
 #include "math_helper.h"
@@ -95,8 +95,8 @@ void Collision::ResolveGrabPhysics(GameObject* parent, GameObject* child, float 
     // 算出した理想の距離で座標を設定
     DirectX::XMFLOAT3 grabbedPos;
     grabbedPos.x = parentPos.x + fwdF.x * finalDistance;
-    // 掴んでいる敵の大きさに応じて、地面（-0.5f）にぴったり接地する高さを計算してめり込みを防ぐ
-    grabbedPos.y = -0.5f + (sizeC.y * scaleC.y) * 0.5f;
+    // 掴んでいる敵の大きさに応じて、プレイヤーの高さを基準に設定してめり込みを防ぐ
+    grabbedPos.y = parentPos.y + (sizeC.y * scaleC.y) * 0.5f;
     grabbedPos.z = parentPos.z + fwdF.z * finalDistance;
 
     child->SetPosition(grabbedPos);

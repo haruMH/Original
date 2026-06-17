@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "gameobject.h"
 #include <vector>
 #include <list>
@@ -48,6 +48,17 @@ private:
     Enemy*      m_LockOnTarget     = nullptr;   // ロックオンしている敵へのポインタ
     int         m_LockOnFrame      = 0;         // ロックオン対象が確定してからの経過フレーム数
     int         m_WarpSlashCount   = 0;         // スローモーション中のテレポートスラッシュ回数
+    float       m_MoveAnimation    = 0.0f;      // 移動アニメーション進捗フェーズ
+
+    // ジャンプ・空中挙動
+    float       m_VelocityY        = 0.0f;      // 垂直方向の速度
+    bool        m_IsJumping        = false;     // ジャンプ中フラグ
+    int         m_JumpCount        = 0;         // 二段ジャンプカウンター
+
+    // 弾性（もちもち）アニメーション用
+    float       m_ScaleVelocityX   = 0.0f;      // スケールXの変形速度
+    float       m_ScaleVelocityY   = 0.0f;      // スケールYの変形速度
+    float       m_ScaleVelocityZ   = 0.0f;      // スケールZの変形速度
 
     void UpdateIdle();
     void UpdateGrabbed();

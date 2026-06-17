@@ -1,7 +1,15 @@
-﻿#pragma once
+#pragma once
 #include <list>
 #include "render_system.h"
 #include "gameobject.h"
+
+// シーン状態を定義する列挙型
+enum class Scene {
+    TITLE,
+    GAMEPLAY,
+    CLEAR,
+    GAMEOVER
+};
 
 // =================================================================
 // ゲーム統括管理クラス (Manager)
@@ -15,6 +23,7 @@ private:
     static int                    m_SlowMotionTimer;  // スローモーションの残りフレーム数
     static int                    m_SlowMotionDuration;// スローモーションの総開始フレーム数
     static bool                   m_IsBossStage;      // ボスステージ中フラグ
+    static Scene                  m_CurrentScene;     // 現在のシーン状態
 
 public:
     // 初期化と終了処理
@@ -23,6 +32,7 @@ public:
     
     // 更新と描画
     static void Update();
+    static void UpdateGameplay();
     static void Draw();
 
     // テンプレート関数によるオブジェクトの生成・追加.
@@ -79,4 +89,6 @@ public:
     static bool  IsSlowMotionActive() { return m_SlowMotionTimer > 0; }
     static bool  IsBossStage() { return m_IsBossStage; }
     static void  TransitionToBossStage();
+    static void  ChangeScene(Scene nextScene);
+    static Scene GetCurrentScene() { return m_CurrentScene; }
 };

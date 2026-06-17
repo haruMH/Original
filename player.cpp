@@ -1,4 +1,4 @@
-﻿#include "player.h"
+#include "player.h"
 #include "renderer.h"
 #include "input.h"
 #include "manager.h"
@@ -36,6 +36,14 @@ void Player::Init()
     m_LockOnTarget = nullptr;
     m_LockOnFrame = 0;
     m_WarpSlashCount = 0;
+    m_MoveAnimation = 0.0f;
+
+    m_VelocityY = 0.0f;
+    m_IsJumping = false;
+    m_JumpCount = 0;
+    m_ScaleVelocityX = 0.0f;
+    m_ScaleVelocityY = 0.0f;
+    m_ScaleVelocityZ = 0.0f;
 
     m_Texture = ResourceManager::GetTexture("player.png");
 
@@ -67,9 +75,11 @@ void Player::Uninit()
 
 void Player::Update()
 {
+    XMFLOAT3 oldPos = m_Position; // 更新前の位置を記録
+
     // HP0 死亡判定
     if (m_HP <= 0) {
-        Restart();
+        Manager::ChangeScene(Scene::GAMEOVER);
         return;
     }
 
@@ -137,6 +147,23 @@ void Player::Update()
 
     // しびれスタン中でなければ、キー入力を受け付ける通常ステートの更新を行う
     if (m_DamageTimer <= 0) {
+        // スペースキーによるジャンプ入力（二段ジャンプ対応）
+        if (Input::GetKeyTrigger(0x20) && m_JumpCount < 2) {
+            m_VelocityY = 0.16f; // ジャンプ初速
+            m_IsJumping = true;
+            m_JumpCount++;
+
+            // 踏み切り時のもちもち演出（縦に縮み、横に広がる）
+            m_Scale.y = 0.6f;
+            m_Scale.x = 1.3f;
+            m_Scale.z = 1.3f;
+
+            // スプリングの初期速度を設定
+            m_ScaleVelocityY = 0.1f;
+            m_ScaleVelocityX = -0.05f;
+            m_ScaleVelocityZ = -0.05f;
+        }
+
         switch (m_State) {
         case PlayerState::IDLE:
             UpdateIdle();
@@ -156,14 +183,73 @@ void Player::Update()
     while (diff > XM_PI)  diff -= XM_2PI;
     m_AngularVelocity = diff;
 
-    //// 掴んでいる敵の位置をプレイヤーの前方に固定（sinf/cosf で前方ベクトルを直接計算）
-    //if ((m_State == PlayerState::GRABBED || m_State == PlayerState::SPINNING) && m_GrabbedEnemy) {
-    //    // 前方ベクトルを sinf/cosf で計算、敵を前方2ユニットの位置に配置（Y は地面高さに固定）
-    //    XMFLOAT3 fwdF = XMFLOAT3(sinf(m_Rotation.y), 0.0f, cosf(m_Rotation.y));
-    //    XMFLOAT3 grabbedPos = m_Position + fwdF * 2.0f;
-    //    grabbedPos.y = 0.0f;
-    //    m_GrabbedEnemy->SetPosition(grabbedPos);
-    //}
+    // ─────────────────────────────────────────────
+    // 物理：重力と接地判定の適用
+    // ─────────────────────────────────────────────
+    if (m_Position.y > -0.5f || m_VelocityY != 0.0f) {
+        m_VelocityY -= 0.008f; // 重力加速度
+        m_Position.y += m_VelocityY;
+
+        // 空中でのストレッチ演出（Y方向の速度に合わせて縦に伸び、横に潰れる）
+        if (m_VelocityY > 0.01f) {
+            m_Scale.y += (1.0f + m_VelocityY * 1.5f - m_Scale.y) * 0.2f;
+            m_Scale.x += (1.0f - m_VelocityY * 0.75f - m_Scale.x) * 0.2f;
+            m_Scale.z += (1.0f - m_VelocityY * 0.75f - m_Scale.z) * 0.2f;
+        }
+
+        // 接地判定
+        if (m_Position.y <= -0.5f) {
+            m_Position.y = -0.5f;
+            m_VelocityY = 0.0f;
+            m_IsJumping = false;
+            m_JumpCount = 0;
+
+            // 着地時のもちもち演出（落下の勢いで縦に強く潰れ、横に広がる）
+            m_Scale.y = 0.5f;
+            m_Scale.x = 1.3f;
+            m_Scale.z = 1.3f;
+
+            // スプリング速度もリセットして初期衝撃を与える
+            m_ScaleVelocityY = -0.1f;
+            m_ScaleVelocityX = 0.05f;
+            m_ScaleVelocityZ = 0.05f;
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // 移動による伸縮（ぷにぷに）アニメーションの適用
+    // ─────────────────────────────────────────────
+    // 1フレームの移動量を擬似的な速度（Velocity）として算出
+    XMFLOAT3 velocity = XMFLOAT3(m_Position.x - oldPos.x, m_Position.y - oldPos.y, m_Position.z - oldPos.z);
+    float speed = sqrtf(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z);
+
+    // 目標スケール (1.0f) に向けてスプリング物理を計算して減衰振動（もちもち復元）させる
+    float springK = 0.18f; // バネの硬さ
+    float damping = 0.78f; // 減衰比
+
+    float forceX = (1.0f - m_Scale.x) * springK;
+    m_ScaleVelocityX += forceX;
+    m_ScaleVelocityX *= damping;
+    m_Scale.x += m_ScaleVelocityX;
+
+    float forceY = (1.0f - m_Scale.y) * springK;
+    m_ScaleVelocityY += forceY;
+    m_ScaleVelocityY *= damping;
+    m_Scale.y += m_ScaleVelocityY;
+
+    float forceZ = (1.0f - m_Scale.z) * springK;
+    m_ScaleVelocityZ += forceZ;
+    m_ScaleVelocityZ *= damping;
+    m_Scale.z += m_ScaleVelocityZ;
+
+    // 移動中のとき、sin波による弾む揺れを加算（1フレーム約16.6ms）
+    float dt = 1.0f / 60.0f;
+    if (speed > 0.005f) {
+        m_MoveAnimation += speed * dt * 30.0f; // スピードに合わせて進行速度を調整
+        m_Scale.y += sinf(m_MoveAnimation * 3.0f) * 0.03f;
+        m_Scale.x -= sinf(m_MoveAnimation * 3.0f) * 0.015f;
+        m_Scale.z -= sinf(m_MoveAnimation * 3.0f) * 0.015f;
+    }
 }
 
 void Player::UpdateIdle()
@@ -203,6 +289,11 @@ void Player::UpdateIdle()
             
             // 座標と回転の更新
             m_Position = warpPos;
+            
+            // テレポートの瞬間の伸縮演出（一瞬縦に潰れることで接地感を強調）
+            m_Scale.y = 0.4f;
+            m_Scale.x = 1.8f;
+            m_Scale.z = 1.8f;
             
             XMFLOAT3 dir;
             XMStoreFloat3(&dir, vDir);
@@ -501,6 +592,12 @@ void Player::Throw()
         m_GrabbedEnemy = nullptr;
         m_State = PlayerState::IDLE;
         m_IsAutoSpinning = false; // 投げたら自動回転をストップ
+
+        // 投擲の瞬間の伸縮演出（横にグッと潰れてからバウンド）
+        m_Scale.y = 0.5f;
+        m_Scale.x = 1.6f;
+        m_Scale.z = 1.6f;
+
         // 投擲時の爽快なカメラシェイク（遠心力に応じてインパクトを極大化）
         float throwShake = 0.08f + abs(m_AngularVelocity) * 1.8f;
         if (throwShake > 0.40f) throwShake = 0.40f;
@@ -966,6 +1063,11 @@ void Player::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
     m_HP -= damage;
     if (m_HP < 0) m_HP = 0;
 
+    // 被弾の衝撃による伸縮演出（ペチャンコになってから元に戻る）
+    m_Scale.y = 0.5f;
+    m_Scale.x = 1.7f;
+    m_Scale.z = 1.7f;
+
     // 被弾しびれスタンタイマーと無敵タイマーを設定
     m_DamageTimer = 60;        // 1秒間スタン（しびれ操作不能）
     m_InvincibleTimer = 180;   // 3秒間無敵
@@ -1019,6 +1121,11 @@ void Player::Restart()
     // プレイヤーを初期座標に戻す
     m_Position = DirectX::XMFLOAT3(0.0f, -0.5f, 0.0f);
     m_Rotation = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+
+    // 復活時のバウンド伸縮演出（縦に引き伸ばされてから着地バウンド）
+    m_Scale.y = 2.0f;
+    m_Scale.x = 0.5f;
+    m_Scale.z = 0.5f;
 
     // 掴みの解放
     if (m_GrabbedEnemy)

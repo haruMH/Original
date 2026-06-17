@@ -1,4 +1,4 @@
-﻿#include "manager.h"
+#include "manager.h"
 #include <string>
 #include "camera.h"
 #include "input.h"
@@ -25,15 +25,13 @@ RenderSystem           Manager::m_RenderSystem;
 int                    Manager::m_HitStopFrames = 0;
 int                    Manager::m_SlowMotionTimer = 0;
 int                    Manager::m_SlowMotionDuration = 0;
+Scene                  Manager::m_CurrentScene = Scene::TITLE;
 
 // ★ デバッグ用切り替えマクロ: 1にすると最初からボス戦、0にすると通常の16体ステージから始まります
-#define START_FROM_BOSS 1
+#define START_FROM_BOSS 0
 
-#if START_FROM_BOSS
-bool                   Manager::m_IsBossStage = true;
-#else
 bool                   Manager::m_IsBossStage = false;
-#endif
+
 
 Camera*                g_Camera = nullptr;
 
@@ -76,91 +74,8 @@ void Manager::Init()
     light.FogEnd = 60.0f;
     Renderer::SetLight(light);
 
-    // カメラオブジェクトの生成
-    g_Camera = new Camera();
-    g_Camera->Init();
-
-    // 地面オブジェクトの生成
-    AddGameObject<Field>();
-
-    // プレイヤーオブジェクトの生成
-    Player* player = AddGameObject<Player>();
-    player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
-
-#if START_FROM_BOSS
-    // ─────────────────────────────────────────────
-    // 【ボス戦から開始】ボス部屋の壁とボス本体の生成
-    // ─────────────────────────────────────────────
-    float roomSize = 18.0f;
-    // 北の壁
-    Wall* wallN = AddGameObject<Wall>();
-    wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
-    wallN->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
-    // 南の壁
-    Wall* wallS = AddGameObject<Wall>();
-    wallS->SetPosition(XMFLOAT3(0.0f, 1.5f, -roomSize));
-    wallS->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
-    // 東の壁
-    Wall* wallE = AddGameObject<Wall>();
-    wallE->SetPosition(XMFLOAT3(roomSize, 1.5f, 0.0f));
-    wallE->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
-    // 西の壁
-    Wall* wallW = AddGameObject<Wall>();
-    wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
-    wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
-
-    // ボスエネミーの生成
-    BossEnemy* boss = AddGameObject<BossEnemy>();
-    boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f)); // プレイヤーの少し前方に配置
-
-    // ボス1体のみのため、敵総数を1にする
-    GameRule::SetTotalEnemies(1);
-    int totalEnemies = 1;
-#else
-    // ─────────────────────────────────────────────
-    // 【通常ステージから開始】通常壁オブジェクトと敵の生成
-    // ─────────────────────────────────────────────
-    Wall* wall = AddGameObject<Wall>();
-    wall->SetPosition(XMFLOAT3(3.0f, 1.5f, 3.0f));
-    wall->SetScale(XMFLOAT3(5.0f, 5.0f, 5.0f));
-
-    // 敵を多め（4x4の計16体）に生成
-    int totalEnemies = 0;
-    for (int x = -2; x <= 1; x++) {
-        for (int z = -2; z <= 1; z++) {
-            Enemy* enemy = nullptr;
-            // 碁盤の目状に、半数をサンドバック用の Enemy、残りを攻撃する AttackingEnemy として生成
-            if ((x + z) % 2 == 0) {
-                enemy = AddGameObject<AttackingEnemy>();
-            } else {
-                enemy = AddGameObject<Enemy>();
-            }
-            float posX = (float)x * 3.2f + 1.0f;
-            float posZ = (float)z * 3.2f - 7.0f;
-            enemy->SetPosition(XMFLOAT3(posX, -0.5f, posZ));
-            totalEnemies++;
-        }
-    }
-    GameRule::SetTotalEnemies(totalEnemies);
-#endif
-
-    // パワーアップアイテムを生成（吸引、巨大化、雷電をそれぞれ配置）
-    Item* itemVacuum = AddGameObject<Item>();
-    itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, 4.0f));
-    itemVacuum->SetItemType(ItemType::VACUUM);
-
-    Item* itemGigant = AddGameObject<Item>();
-    itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, 4.0f));
-    itemGigant->SetItemType(ItemType::GIGANT);
-
-    Item* itemLightning = AddGameObject<Item>();
-    itemLightning->SetPosition(XMFLOAT3(2.0f, 0.5f, 6.0f));
-    itemLightning->SetItemType(ItemType::LIGHTNING);
-
-    // デバッグ出力
-    OutputDebugStringA("[Manager] Init完了 - 敵の合計数: ");
-    OutputDebugStringA(std::to_string(totalEnemies).c_str());
-    OutputDebugStringA("\n");
+    // 最初はタイトルシーンへ
+    ChangeScene(Scene::TITLE);
 }
 
 // ─────────────────────────────────────────────
@@ -206,12 +121,40 @@ void Manager::Update()
 {
     Input::Update();
 
-    // スコアポップアップはヒットストップ中も含めて常に更新する
+    // スコアポップアップはシーンを問わず更新可能にする
     ScorePopupSystem::Update();
 
-    // スコアHUDも常に更新する
+    // スコアHUDもシーンを問わず更新
     ScoreHUD::Update();
 
+    // シーンごとの分岐処理
+    switch (m_CurrentScene)
+    {
+    case Scene::TITLE:
+        // スペースキーが押されたらゲーム開始
+        if (Input::GetKeyTrigger(VK_SPACE)) {
+            ChangeScene(Scene::GAMEPLAY);
+        }
+        break;
+
+    case Scene::GAMEPLAY:
+        UpdateGameplay();
+        break;
+
+    case Scene::CLEAR:
+    case Scene::GAMEOVER:
+        // エンターキーが押されたらタイトルに戻る
+        if (Input::GetKeyTrigger(VK_RETURN)) {
+            ChangeScene(Scene::TITLE);
+        }
+        break;
+    }
+
+    if (g_Camera) g_Camera->Update();
+}
+
+void Manager::UpdateGameplay()
+{
     // スローモーションタイマーの更新
     if (m_SlowMotionTimer > 0) {
         m_SlowMotionTimer--;
@@ -234,7 +177,6 @@ void Manager::Update()
     // ヒットストップ中はカメラのみ更新し、他の更新をスキップする
     if (m_HitStopFrames > 0) {
         m_HitStopFrames--;
-        if (g_Camera) g_Camera->Update();
         return;
     }
 
@@ -311,12 +253,11 @@ void Manager::Update()
 
             if (!bossExists) {
                 GameRule::SetGameClear(true);
+                ChangeScene(Scene::CLEAR);
                 OutputDebugStringA("[GameRule] *** ボス撃破！ゲームクリア! ***\n");
             }
         }
     }
-
-    if (g_Camera) g_Camera->Update();
 }
 
 // ─────────────────────────────────────────────
@@ -493,4 +434,122 @@ void Manager::TransitionToBossStage()
     // カメラをボスに向けて強めにシェイク
     if (g_Camera) g_Camera->Shake(0.6f, 20);
     OutputDebugStringA("[Manager] TransitionToBossStage - 正常終了\n");
+}
+
+// ─────────────────────────────────────────────
+// シーン遷移処理
+// ─────────────────────────────────────────────
+void Manager::ChangeScene(Scene nextScene)
+{
+    OutputDebugStringA(("[Manager] ChangeScene: " + std::to_string((int)m_CurrentScene) + " -> " + std::to_string((int)nextScene) + "\n").c_str());
+
+    // 既存オブジェクトのクリーンアップ（Uninitとdelete）
+    for (GameObject* gameObject : m_GameObjects) {
+        if (gameObject) {
+            gameObject->Uninit();
+            delete gameObject;
+        }
+    }
+    m_GameObjects.clear();
+
+    if (g_Camera) {
+        g_Camera->Uninit();
+        delete g_Camera;
+        g_Camera = nullptr;
+    }
+
+    // 現在のシーン状態を更新
+    m_CurrentScene = nextScene;
+
+    // カメラはどのシーンでも必要（UIの描画や投影変換行列の初期化に使用）なので、共通で生成する
+    g_Camera = new Camera();
+    g_Camera->Init();
+
+    // 各シーンの初期化
+    if (nextScene == Scene::TITLE) {
+        // タイトル画面用の初期化（カメラのみでHUDが描画する）
+    }
+    else if (nextScene == Scene::GAMEPLAY) {
+        // ゲームプレイ本編の初期化
+        GameRule::Init(); // スコアや敵数、ゲームクリア状態などのリセット
+        
+        m_HitStopFrames = 0;
+        m_SlowMotionTimer = 0;
+        m_SlowMotionDuration = 0;
+
+        // 地面オブジェクトの生成
+        AddGameObject<Field>();
+
+        // プレイヤーオブジェクトの生成
+        Player* player = AddGameObject<Player>();
+        player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
+
+#if START_FROM_BOSS
+        m_IsBossStage = true;
+        
+        // ボス部屋の壁
+        float roomSize = 18.0f;
+        Wall* wallN = AddGameObject<Wall>();
+        wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
+        wallN->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+        Wall* wallS = AddGameObject<Wall>();
+        wallS->SetPosition(XMFLOAT3(0.0f, 1.5f, -roomSize));
+        wallS->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+        Wall* wallE = AddGameObject<Wall>();
+        wallE->SetPosition(XMFLOAT3(roomSize, 1.5f, 0.0f));
+        wallE->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+        Wall* wallW = AddGameObject<Wall>();
+        wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
+        wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+
+        // ボスエネミーの生成
+        BossEnemy* boss = AddGameObject<BossEnemy>();
+        boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f));
+
+        GameRule::SetTotalEnemies(1);
+#else
+        m_IsBossStage = false;
+        
+        // 通常ステージ
+        Wall* wall = AddGameObject<Wall>();
+        wall->SetPosition(XMFLOAT3(3.0f, 1.5f, 3.0f));
+        wall->SetScale(XMFLOAT3(5.0f, 5.0f, 5.0f));
+
+        int totalEnemies = 0;
+        for (int x = -2; x <= 1; x++) {
+            for (int z = -2; z <= 1; z++) {
+                Enemy* enemy = nullptr;
+                if ((x + z) % 2 == 0) {
+                    enemy = AddGameObject<AttackingEnemy>();
+                } else {
+                    enemy = AddGameObject<Enemy>();
+                }
+                float posX = (float)x * 3.2f + 1.0f;
+                float posZ = (float)z * 3.2f - 7.0f;
+                enemy->SetPosition(XMFLOAT3(posX, -0.5f, posZ));
+                totalEnemies++;
+            }
+        }
+        GameRule::SetTotalEnemies(totalEnemies);
+#endif
+
+        // アイテム生成
+        Item* itemVacuum = AddGameObject<Item>();
+        itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, 4.0f));
+        itemVacuum->SetItemType(ItemType::VACUUM);
+
+        Item* itemGigant = AddGameObject<Item>();
+        itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, 4.0f));
+        itemGigant->SetItemType(ItemType::GIGANT);
+
+        Item* itemLightning = AddGameObject<Item>();
+        itemLightning->SetPosition(XMFLOAT3(2.0f, 0.5f, 6.0f));
+        itemLightning->SetItemType(ItemType::LIGHTNING);
+    }
+    else if (nextScene == Scene::CLEAR) {
+        // ゲームクリア画面用の初期化
+    }
+    else if (nextScene == Scene::GAMEOVER) {
+        // ゲームオーバー画面用の初期化
+    }
 }

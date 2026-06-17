@@ -23,4 +23,7 @@ public:
 
     // 自発光（Emissive）情報の取得（赤色に強く発光させる）
     XMFLOAT3 GetEmissive() const override { return XMFLOAT3(1.5f, 0.0f, 0.0f); }
+
+    // 攻撃エネミー判定用（dynamic_cast排除の最適化）
+    bool IsAttackingEnemy() const override { return true; }
 };

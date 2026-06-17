@@ -1,9 +1,11 @@
-﻿
+
 
 #include "main.h"
 #include "manager.h"
 #include <thread>
+#include <imm.h>
 
+#pragma comment(lib, "imm32.lib")
 
 const char* CLASS_NAME = "AppClass";
 const char* WINDOW_NAME = "DX11ゲーム";
@@ -22,7 +24,8 @@ HWND GetWindow()
 
 int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow)
 {
-
+	// ゲーム中にIME（日本語入力候補窓）が起動しないように完全に無効化する
+	ImmDisableIME(0);
 
 	WNDCLASSEX wcex;
 	{
