@@ -1,4 +1,4 @@
-﻿#include "enemy_bullet.h"
+#include "enemy_bullet.h"
 #include "renderer.h"
 #include "resource_manager.h"
 #include "player.h"
@@ -92,6 +92,42 @@ void EnemyBullet::Update()
                     shockPos.y = -0.95f; // 床面に完全クランプ
                     // 小規模な衝撃波を発生
                     ShockwaveSystem::AddShockwave(shockPos, 6.0f, 1.2f, 0.8f, 0.0f, 16, 0.6f, 0);
+                }
+                else if (player->IsJustDodgeActive())
+                {
+                    // ─── ジャスト回避（ダッシュ回避）成功 ───
+                    m_IsPlayerOwned = true; // 所有権をプレイヤー側に（味方弾へ）
+                    m_Speed *= 1.5f;        // 弾速をアップ
+                    m_EmissiveColor = XMFLOAT3(0.0f, 1.8f, 2.5f); // シアン色発光に変更
+                    
+                    // 軌道をプレイヤーの正面方向に反射する
+                    m_Direction = player->GetForwardVector();
+                    m_Life = BULLET_LIFE;
+
+                    // ウィッチタイム（周囲のスローモーション）を発動（120フレーム＝2秒）
+                    Manager::StartSlowMotion(120);
+
+                    // ヒットストップとカメラシェイク
+                    Manager::AddHitStop(12);
+                    if (g_Camera)
+                    {
+                        g_Camera->Shake(0.3f, 15);
+                    }
+
+                    // プレイヤーの周囲に大きな青白い衝撃波エフェクトを発生
+                    ShockwaveSystem::AddShockwave(player->GetPosition(), 8.0f, 0.0f, 3.5f, 5.0f, 30, 2.0f, 0);
+
+                    // スコア加算とシアン色のポップアップ
+                    GameRule::AddScore(150); // ジャスト回避は 150 点
+                    ScorePopupSystem::AddPopup(player->GetPosition().x, player->GetPosition().y + 1.0f, player->GetPosition().z, 150, 0.0f, 0.8f, 1.5f);
+
+                    return; // 弾は消滅させず反射して飛び続ける
+                }
+                else if (player->IsDashing())
+                {
+                    // ─── ダッシュ無敵によるすり抜け ───
+                    // 被弾ダメージを受けず、弾も消滅せずそのまま通り抜ける
+                    return;
                 }
                 else if (player->IsGuardActive())
                 {

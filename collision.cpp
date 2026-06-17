@@ -20,6 +20,15 @@ bool Collision::CheckAABB(const GameObject* a, const DirectX::XMFLOAT3& nextPosA
     DirectX::XMFLOAT3 sizeB = b->GetSize();
     DirectX::XMFLOAT3 scaleB = b->GetScale();
 
+    // プレイヤーのもちもち伸縮（アニメーションスケール）が衝突判定のバウンディングボックスを
+    // 変動させないよう、衝突判定時はプレイヤーのスケールを固定値 (1.0f, 1.0f, 1.0f) にリセットします。
+    if (a->GetObjectType() == ObjectType::Player) {
+        scaleA = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    }
+    if (b->GetObjectType() == ObjectType::Player) {
+        scaleB = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    }
+
     // X, Y, Z 各軸でお互いに重なっているかを判定
     bool collisionX = std::abs(nextPosA.x - posB.x) < (sizeA.x * scaleA.x + sizeB.x * scaleB.x) * 0.5f;
     bool collisionY = std::abs(nextPosA.y - posB.y) < (sizeA.y * scaleA.y + sizeB.y * scaleB.y) * 0.5f;

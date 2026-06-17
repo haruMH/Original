@@ -60,6 +60,20 @@ private:
     float       m_ScaleVelocityY   = 0.0f;      // スケールYの変形速度
     float       m_ScaleVelocityZ   = 0.0f;      // スケールZの変形速度
 
+    // ダッシュ・回避関連
+    struct DashGhost {
+        DirectX::XMFLOAT3 Position;
+        DirectX::XMFLOAT3 Rotation;
+        DirectX::XMFLOAT3 Scale;
+        float Alpha;
+    };
+    std::vector<DashGhost> m_DashGhosts;
+
+    int         m_DashTimer        = 0;         // ダッシュ中タイマー（>0でダッシュ中）
+    int         m_DashCooldown     = 0;         // ダッシュクールダウン
+    DirectX::XMFLOAT3 m_DashDirection = DirectX::XMFLOAT3(0, 0, 0); // ダッシュ方向
+    bool        m_IsDashing        = false;     // ダッシュ中フラグ
+
     void UpdateIdle();
     void UpdateGrabbed();
     void UpdateSpinning();
@@ -89,6 +103,8 @@ public:
     
     bool   HasLightningItem() const { return m_HasLightningItem; }
     void   SetHasLightningItem(bool enable) { m_HasLightningItem = enable; }
+    bool   IsDashing() const { return m_IsDashing; }
+    bool   IsJustDodgeActive() const { return m_IsDashing && (m_DashTimer >= 10); }
 
     // 稲妻エフェクトの追加
     void AddLightningEffect(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end);

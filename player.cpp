@@ -45,6 +45,12 @@ void Player::Init()
     m_ScaleVelocityY = 0.0f;
     m_ScaleVelocityZ = 0.0f;
 
+    m_DashTimer = 0;
+    m_DashCooldown = 0;
+    m_DashDirection = XMFLOAT3(0.0f, 0.0f, 0.0f);
+    m_IsDashing = false;
+    m_DashGhosts.clear();
+
     m_Texture = ResourceManager::GetTexture("player.png");
 
     // コンポーネント指向での描画パラメータ初期化
@@ -83,10 +89,126 @@ void Player::Update()
         return;
     }
 
+    // ─── ダッシュ・回避の更新とクールダウン ───
+    if (m_DashCooldown > 0) {
+        m_DashCooldown--;
+    }
+
+    // 残像（ゴースト）の寿命更新
+    for (auto it = m_DashGhosts.begin(); it != m_DashGhosts.end(); ) {
+        it->Alpha -= 0.08f; // 毎フレーム不透明度を減少
+        if (it->Alpha <= 0.0f) {
+            it = m_DashGhosts.erase(it);
+        } else {
+            it++;
+        }
+    }
+
+    // ダッシュ発動判定 (スタン中でない、かつダッシュ中でない、かつクールダウンでない)
+    if (m_DamageTimer <= 0 && m_DashTimer <= 0 && m_DashCooldown <= 0) {
+        // Shiftキー(0x10)が押されたか判定
+        if (Input::GetKeyTrigger(0x10)) {
+            float camYaw = g_Camera ? g_Camera->GetAngleY() : 0.0f;
+            XMFLOAT3 moveDir = PlayerController::GetMoveDirection(camYaw);
+            
+            // 移動キーが押されていればその方向へ、押されていなければ正面方向へダッシュ
+            if (MathHelper::LengthSq(moveDir) < 0.001f) {
+                moveDir = XMFLOAT3(sinf(m_Rotation.y), 0.0f, cosf(m_Rotation.y));
+            }
+            
+            // 正規化
+            float len = sqrtf(moveDir.x * moveDir.x + moveDir.y * moveDir.y + moveDir.z * moveDir.z);
+            if (len > 0.001f) {
+                moveDir.x /= len;
+                moveDir.y /= len;
+                moveDir.z /= len;
+            }
+
+            m_DashDirection = moveDir;
+            m_DashTimer = 15;        // ダッシュ時間は 15 フレーム
+            m_DashCooldown = 45;     // クールダウンは 45 フレーム (約0.75秒)
+            m_IsDashing = true;
+
+            // もちもち変形演出：ダッシュ進行方向（XZ面）に長く伸びるように
+            m_Scale.y = 0.5f;
+            m_Scale.x = 1.8f;
+            m_Scale.z = 1.8f;
+
+            m_ScaleVelocityY = -0.1f;
+            m_ScaleVelocityX = 0.08f;
+            m_ScaleVelocityZ = 0.08f;
+            
+            // ダッシュ中の無敵時間の設定（ダッシュ15フレーム + マージン5フレーム）
+            m_InvincibleTimer = 20; 
+        }
+    }
+
+    // ダッシュ中の移動処理
+    if (m_DashTimer > 0) {
+        m_DashTimer--;
+        
+        // 通常の重力や移動を無視して高速移動
+        float dashSpeed = 0.35f; // 通常移動(0.1f)の3.5倍の超高速！
+        XMFLOAT3 nextPos = m_Position;
+        nextPos.x += m_DashDirection.x * dashSpeed;
+        nextPos.z += m_DashDirection.z * dashSpeed;
+
+        // 壁や敵にぶつかる場合は衝突解決
+        if (!Collision::CheckAABBCollision(this, nextPos, Manager::GetGameObjectList())) {
+            m_Position = nextPos;
+        }
+
+        // 残像（ゴーストトレイル）の生成（3フレームおきに生成）
+        if (m_DashTimer % 3 == 0) {
+            DashGhost ghost;
+            ghost.Position = m_Position;
+            ghost.Rotation = m_Rotation;
+            ghost.Scale = m_Scale;
+            ghost.Alpha = 0.8f; // 初期不透明度
+            m_DashGhosts.push_back(ghost);
+        }
+
+        // ダッシュ終了時の挙動
+        if (m_DashTimer == 0) {
+            m_IsDashing = false;
+            // 終了時のもちもちバウンド
+            m_Scale.y = 1.5f;
+            m_Scale.x = 0.7f;
+            m_Scale.z = 0.7f;
+            m_ScaleVelocityY = 0.08f;
+            m_ScaleVelocityX = -0.04f;
+            m_ScaleVelocityZ = -0.04f;
+        }
+
+        // 掴んでいるエネミーの位置同期（ダッシュ中も敵を掴みながら移動できるため）
+        if ((m_State == PlayerState::GRABBED || m_State == PlayerState::SPINNING) && m_GrabbedEnemy) {
+            XMFLOAT3 grabbedPos = m_Position;
+            grabbedPos.y += 0.5f; // プレイヤーの少し上に持ち上げる
+            m_GrabbedEnemy->SetPosition(grabbedPos);
+        }
+
+        // もちもちの減衰振動（スプリング物理）をここでも回す
+        float springK = 0.18f;
+        float damping = 0.78f;
+        m_ScaleVelocityX += (1.0f - m_Scale.x) * springK;
+        m_ScaleVelocityX *= damping;
+        m_Scale.x += m_ScaleVelocityX;
+
+        m_ScaleVelocityY += (1.0f - m_Scale.y) * springK;
+        m_ScaleVelocityY *= damping;
+        m_Scale.y += m_ScaleVelocityY;
+
+        m_ScaleVelocityZ += (1.0f - m_Scale.z) * springK;
+        m_ScaleVelocityZ *= damping;
+        m_Scale.z += m_ScaleVelocityZ;
+
+        return; // 通常の移動・ジャンプ・入力更新をバイパス
+    }
+
     // ガード状態の更新（しびれスタン中でなく、かつ敵を掴んでいない通常状態のときのみ可能）
     if (m_DamageTimer <= 0 && m_State == PlayerState::IDLE && !m_GrabbedEnemy) {
-        // LSHIFTキー(0x10) または 右クリック(VK_RBUTTON = 0x02) が押されている間ガード
-        if (Input::GetKeyPress(0x10) || Input::GetKeyPress(0x02)) {
+        // 右クリック(VK_RBUTTON = 0x02) が押されている間ガード
+        if (Input::GetKeyPress(0x02)) {
             m_GuardTimer++;
         } else {
             m_GuardTimer = 0;
@@ -612,6 +734,32 @@ void Player::Draw()
 
     // ─── 通常パス時のみ UI や ガイドラインを描画 ───
     if (!Renderer::IsShadowMode() && !Renderer::IsOutlineMode()) {
+        // -2. ダッシュ残像（ゴーストトレイル）の描画
+        if (!m_DashGhosts.empty()) {
+            Renderer::SetupCubeDraw(); // キューブ共通アセットのバインド
+
+            for (const auto& ghost : m_DashGhosts) {
+                XMMATRIX world = XMMatrixScaling(ghost.Scale.x, ghost.Scale.y, ghost.Scale.z) * 
+                                 XMMatrixRotationRollPitchYaw(ghost.Rotation.x, ghost.Rotation.y, ghost.Rotation.z) * 
+                                 XMMatrixTranslation(ghost.Position.x, ghost.Position.y, ghost.Position.z);
+                Renderer::SetWorldMatrix(world);
+
+                // 青白く発光する半透明マテリアル
+                MATERIAL ghostMat;
+                ZeroMemory(&ghostMat, sizeof(ghostMat));
+                ghostMat.Diffuse        = XMFLOAT4(0.0f, 0.5f, 1.0f, ghost.Alpha);
+                ghostMat.Ambient        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+                ghostMat.Specular       = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+                ghostMat.Emission       = XMFLOAT4(0.0f, 0.6f * ghost.Alpha, 1.5f * ghost.Alpha, 1.0f);
+                ghostMat.Shininess      = 0.0f;
+                ghostMat.TextureEnable  = FALSE; // 単色発光
+                ghostMat.RimPower       = 0.0f;
+                Renderer::SetMaterial(ghostMat);
+
+                Renderer::GetDeviceContext()->Draw(36, 0);
+            }
+        }
+
         // -1. ガード/パリィ中のプラズマシールドエフェクト描画
         if (IsGuardActive()) {
             XMFLOAT3 center = m_Position;
