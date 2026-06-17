@@ -28,9 +28,11 @@ int                    Manager::m_SlowMotionDuration = 0;
 Scene                  Manager::m_CurrentScene = Scene::TITLE;
 
 // ★ デバッグ用切り替えマクロ: 1にすると最初からボス戦、0にすると通常の16体ステージから始まります
-#define START_FROM_BOSS 0
+#define START_FROM_BOSS 1
 
 bool                   Manager::m_IsBossStage = false;
+Scene                  Manager::m_NextScene = Scene::TITLE;
+bool                   Manager::m_SceneTransitionRequested = false;
 
 
 Camera*                g_Camera = nullptr;
@@ -74,8 +76,9 @@ void Manager::Init()
     light.FogEnd = 60.0f;
     Renderer::SetLight(light);
 
-    // 最初はタイトルシーンへ
-    ChangeScene(Scene::TITLE);
+    // 最初はタイトルシーンへ (即時実行)
+    m_SceneTransitionRequested = false;
+    ExecuteChangeScene(Scene::TITLE);
 }
 
 // ─────────────────────────────────────────────
@@ -151,6 +154,12 @@ void Manager::Update()
     }
 
     if (g_Camera) g_Camera->Update();
+
+    // 遅延シーン遷移のリクエストが来ている場合は実行する
+    if (m_SceneTransitionRequested) {
+        m_SceneTransitionRequested = false;
+        ExecuteChangeScene(m_NextScene);
+    }
 }
 
 void Manager::UpdateGameplay()
@@ -197,6 +206,9 @@ void Manager::UpdateGameplay()
         }
 
         if (obj->IsDestroy()) {
+            if (player) {
+                player->NotifyObjectDestroyed(obj);
+            }
             obj->Uninit();
             delete obj;
             it = m_GameObjects.erase(it);
@@ -320,14 +332,13 @@ void Manager::Draw()
     // 床描画で変更されたトポロジーをLISTに戻す
     Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    // 一括描画以外のオブジェクトを個別描画（プレイヤーはガイドライン描画のため呼ぶ）
+    // 一括描画以外のオブジェクトを個別描画（プレイヤー・ボスはガイドライン/バリア描画のため呼ぶ）
     Renderer::SetupCubeDraw();
     for (GameObject* obj : m_GameObjects) {
         ObjectType type = obj->GetObjectType();
         if (type != ObjectType::Field && 
             type != ObjectType::Enemy && 
-            type != ObjectType::Wall &&
-            type != ObjectType::Boss) {
+            type != ObjectType::Wall) {
             obj->Draw();
             Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
@@ -390,6 +401,9 @@ void Manager::TransitionToBossStage()
     for (auto it = m_GameObjects.begin(); it != m_GameObjects.end(); ) {
         GameObject* obj = *it;
         if (obj->GetObjectType() != ObjectType::Player && obj->GetObjectType() != ObjectType::Field) {
+            if (player) {
+                player->NotifyObjectDestroyed(obj);
+            }
             obj->Uninit();
             delete obj;
             it = m_GameObjects.erase(it);
@@ -439,9 +453,21 @@ void Manager::TransitionToBossStage()
 // ─────────────────────────────────────────────
 // シーン遷移処理
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// シーン遷移予約 (遅延遷移)
+// ─────────────────────────────────────────────
 void Manager::ChangeScene(Scene nextScene)
 {
-    OutputDebugStringA(("[Manager] ChangeScene: " + std::to_string((int)m_CurrentScene) + " -> " + std::to_string((int)nextScene) + "\n").c_str());
+    m_NextScene = nextScene;
+    m_SceneTransitionRequested = true;
+}
+
+// ─────────────────────────────────────────────
+// シーン遷移の実際の実行
+// ─────────────────────────────────────────────
+void Manager::ExecuteChangeScene(Scene nextScene)
+{
+    OutputDebugStringA(("[Manager] ExecuteChangeScene: " + std::to_string((int)m_CurrentScene) + " -> " + std::to_string((int)nextScene) + "\n").c_str());
 
     // 既存オブジェクトのクリーンアップ（Uninitとdelete）
     for (GameObject* gameObject : m_GameObjects) {

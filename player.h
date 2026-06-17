@@ -124,5 +124,6 @@ public:
     Enemy* GetLockOnTarget() const { return m_LockOnTarget; }
     int    GetLockOnFrame() const { return m_LockOnFrame; }
     ObjectType GetObjectType() const override { return ObjectType::Player; }
+    void NotifyObjectDestroyed(GameObject* obj);
 };
 

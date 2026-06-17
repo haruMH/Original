@@ -1394,3 +1394,19 @@ void Player::FindLockOnTarget()
         m_LockOnFrame++;
     }
 }
+
+// ─────────────────────────────────────────────
+// オブジェクト破棄時のクリーンアップ処理（ダングリングポインタ防止）
+// ─────────────────────────────────────────────
+void Player::NotifyObjectDestroyed(GameObject* obj)
+{
+    if (m_LockOnTarget == obj) {
+        m_LockOnTarget = nullptr;
+        m_LockOnFrame = 0;
+        m_WarpSlashCount = 0;
+    }
+    if (m_GrabbedEnemy == obj) {
+        m_GrabbedEnemy = nullptr;
+        m_State = PlayerState::IDLE;
+    }
+}

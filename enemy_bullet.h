@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "gameobject.h"
 
 // =================================================================
@@ -31,6 +31,9 @@ public:
     // 味方弾フラグの設定・取得
     void SetPlayerOwned(bool owned) { m_IsPlayerOwned = owned; }
     bool IsPlayerOwned() const { return m_IsPlayerOwned; }
+
+    // 寿命（ライフタイム）の設定
+    void SetLife(int life) { m_Life = life; }
 
     // 自己発光カラーの設定
     void SetEmissiveColor(XMFLOAT3 color) { m_EmissiveColor = color; }
