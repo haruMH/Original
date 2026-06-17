@@ -24,6 +24,10 @@ private:
     static int                    m_SlowMotionDuration;// スローモーションの総開始フレーム数
     static bool                   m_IsBossStage;      // ボスステージ中フラグ
     static Scene                  m_CurrentScene;     // 現在のシーン状態
+    static Scene                  m_NextScene;        // 遷移予定の次のシーン
+    static bool                   m_SceneTransitionRequested; // シーン遷移リクエストフラグ
+
+    static void ExecuteChangeScene(Scene nextScene); // 実際のシーン遷移実行
 
 public:
     // 初期化と終了処理
