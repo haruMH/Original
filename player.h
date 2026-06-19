@@ -48,6 +48,7 @@ private:
     Enemy*      m_LockOnTarget     = nullptr;   // ロックオンしている敵へのポインタ
     int         m_LockOnFrame      = 0;         // ロックオン対象が確定してからの経過フレーム数
     int         m_WarpSlashCount   = 0;         // スローモーション中のテレポートスラッシュ回数
+    bool        m_CanWarpSlash     = true;      // スロー中のテレポートスラッシュ可否フラグ
     float       m_MoveAnimation    = 0.0f;      // 移動アニメーション進捗フェーズ
 
     // ジャンプ・空中挙動
@@ -105,6 +106,7 @@ public:
     void   SetHasLightningItem(bool enable) { m_HasLightningItem = enable; }
     bool   IsDashing() const { return m_IsDashing; }
     bool   IsJustDodgeActive() const { return m_IsDashing && (m_DashTimer >= 10); }
+    void   ResetDashCooldown() { m_DashCooldown = 0; }
 
     // 稲妻エフェクトの追加
     void AddLightningEffect(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end);
@@ -125,5 +127,7 @@ public:
     int    GetLockOnFrame() const { return m_LockOnFrame; }
     ObjectType GetObjectType() const override { return ObjectType::Player; }
     void NotifyObjectDestroyed(GameObject* obj);
+    void ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos);
+    void DisableWarpSlash() { m_CanWarpSlash = false; }
 };
 

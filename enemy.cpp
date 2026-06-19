@@ -1,4 +1,4 @@
-﻿#include "enemy.h"
+#include "enemy.h"
 #include "renderer.h"
 #include "resource_manager.h"
 #include "math_helper.h"
@@ -20,10 +20,18 @@ void Enemy::Init()
     m_IsLightning  = false;
     m_IsDefeatedCounted = false;
 
+    // リリースビルド時は Assets/texture/ サブフォルダから読み込む
+#ifdef NDEBUG
+    m_Texture = ResourceManager::GetTexture("Assets/texture/enemy.png");
+    
+    // コンポーネント指向での描画パラメータ初期化
+    m_RenderComponent = RenderComponent("Assets/texture/enemy.png", MeshType::Cube, true);
+#else
     m_Texture = ResourceManager::GetTexture("enemy.png");
     
     // コンポーネント指向での描画パラメータ初期化
     m_RenderComponent = RenderComponent("enemy.png", MeshType::Cube, true);
+#endif
 }
 
 void Enemy::Uninit()
@@ -113,18 +121,26 @@ void Enemy::Update()
         }
     }
     else if (m_EnemyState == EnemyState::NORMAL) {
-        // 静止後、1秒間（60フレーム）待機してからゆっくり直立に戻す
-        if (m_UprightTimer > 0) {
-            m_UprightTimer--;
+        if (m_IsSandbag) {
+            m_Velocity = XMFLOAT3(0.0f, 0.0f, 0.0f);
+            m_SandbagLife--;
+            if (m_SandbagLife <= 0) {
+                Defeat();
+                m_EnemyState = EnemyState::DEFEATED;
+                return;
+            }
         }
         else {
-            // X軸とZ軸の回転を徐々に0（直立）に近づける（LERP）
-            m_Rotation.x = MathHelper::Lerp(m_Rotation.x, 0.0f, 0.1f);
-            m_Rotation.z = MathHelper::Lerp(m_Rotation.z, 0.0f, 0.1f);
+            if (m_UprightTimer > 0) {
+                m_UprightTimer--;
+            }
+            else {
+                m_Rotation.x = MathHelper::Lerp(m_Rotation.x, 0.0f, 0.1f);
+                m_Rotation.z = MathHelper::Lerp(m_Rotation.z, 0.0f, 0.1f);
 
-
-            MathHelper::ClearIfNearZero(m_Rotation.x);
-            MathHelper::ClearIfNearZero(m_Rotation.z);
+                MathHelper::ClearIfNearZero(m_Rotation.x);
+                MathHelper::ClearIfNearZero(m_Rotation.z);
+            }
         }
     }
     else if (m_EnemyState == EnemyState::VACUUMED) {
@@ -252,4 +268,12 @@ void Enemy::Defeat(float colorR, float colorG, float colorB)
 
     // スコアポップアップ表示
     ScorePopupSystem::AddPopup(m_Position.x, m_Position.y + 1.0f, m_Position.z, m_ScoreValue, colorR, colorG, colorB);
+}
+
+XMFLOAT3 Enemy::GetEmissive() const
+{
+    if (m_IsSandbag) {
+        return XMFLOAT3(3.0f, 2.0f, 0.0f);
+    }
+    return GameObject::GetEmissive();
 }

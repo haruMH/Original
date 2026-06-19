@@ -1,4 +1,4 @@
-﻿#include "field.h"
+#include "field.h"
 #include "renderer.h"
 #include "resource_manager.h"
 
@@ -26,11 +26,22 @@ void Field::Init()
     Renderer::GetDevice()->CreateBuffer(&bd, &sd, &m_VertexBuffer);
 
     // テクスチャの読み込み
+    // リリースビルド時は Assets/texture/ サブフォルダから読み込む
+#ifdef NDEBUG
+    m_Texture = ResourceManager::GetTexture("Assets/texture/grid.png");
+#else
     m_Texture = ResourceManager::GetTexture("grid.png");
+#endif
 
     // シェーダーの読み込み
+    // リリースビルド時は Assets/shader/ サブフォルダから読み込む
+#ifdef NDEBUG
+    Renderer::CreateVertexShader(&m_VertexShader, &m_VertexLayout, "Assets/shader/vertexShader.cso");
+    Renderer::CreatePixelShader(&m_PixelShader, "Assets/shader/pixelShader.cso");
+#else
     Renderer::CreateVertexShader(&m_VertexShader, &m_VertexLayout, "vertexShader.cso");
     Renderer::CreatePixelShader(&m_PixelShader, "pixelShader.cso");
+#endif
 }
 
 void Field::Uninit()

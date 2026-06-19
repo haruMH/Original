@@ -1,4 +1,4 @@
-﻿#include "item.h"
+#include "item.h"
 #include "renderer.h"
 #include "resource_manager.h"
 
@@ -10,7 +10,12 @@ void Item::Init()
     // 描画用のコンポーネント設定
     m_RenderComponent.visible = false; // インスタンス一括描画から除外（個別でマテリアルカラーを変更するため）
     m_RenderComponent.meshType = MeshType::Cube;
+    // リリースビルド時は Assets/texture/ サブフォルダのパスを使用する
+#ifdef NDEBUG
+    m_RenderComponent.textureKey = "Assets/texture/player.png"; // テクスチャはプレイヤー用のものを流用
+#else
     m_RenderComponent.textureKey = "player.png"; // テクスチャはプレイヤー用のものを流用
+#endif
     
     // アイテムらしいサイズに調整（一回り小さく）
     SetScale(DirectX::XMFLOAT3(0.5f, 0.5f, 0.5f));

@@ -29,7 +29,12 @@ void EnemyBullet::Init()
     m_EmissiveColor = XMFLOAT3(2.5f, 0.5f, 0.0f);
 
     // 描画には enemy.png を流用し、インスタンス描画で描く
+    // リリースビルド時は Assets/texture/ サブフォルダから読み込む
+#ifdef NDEBUG
+    m_RenderComponent = RenderComponent("Assets/texture/enemy.png", MeshType::Cube, true);
+#else
     m_RenderComponent = RenderComponent("enemy.png", MeshType::Cube, true);
+#endif
 }
 
 // ─────────────────────────────────────────────
@@ -66,62 +71,36 @@ void EnemyBullet::Update()
             {
                 if (player->IsParryActive())
                 {
-                    // ─── パリィ成功 ───
-                    m_IsPlayerOwned = true; // 所有権をプレイヤー側に
-                    m_Speed *= 1.8f;        // 速度アップ
-                    m_EmissiveColor = XMFLOAT3(4.0f, 3.0f, 0.0f); // 眩しいゴールド色に変更
-                    
-                    // 軌道をプレイヤーの正面方向に反射
-                    m_Direction = player->GetForwardVector();
-
-                    // 残り寿命リセット
-                    m_Life = BULLET_LIFE;
-
-                    // ウィッチタイム（周囲のスローモーション）を発動
-                    Manager::StartSlowMotion(120);
-
-                    // 強烈なフィードバック
-                    Manager::AddHitStop(12); // ヒットストップ
-                    if (g_Camera)
-                    {
-                        g_Camera->Shake(0.45f, 15); // カメラシェイク
-                    }
-
-                    // プレイヤーの周囲に衝撃波エフェクト（敵をひるませる）
-                    DirectX::XMFLOAT3 shockPos = player->GetPosition();
-                    shockPos.y = -0.95f; // 床面に完全クランプ
-                    // 小規模な衝撃波を発生
-                    ShockwaveSystem::AddShockwave(shockPos, 6.0f, 1.2f, 0.8f, 0.0f, 16, 0.6f, 0);
+                    player->ExecuteParryCounter(m_Position);
+                    SetDestroy();
+                    return;
                 }
                 else if (player->IsJustDodgeActive())
                 {
-                    // ─── ジャスト回避（ダッシュ回避）成功 ───
-                    m_IsPlayerOwned = true; // 所有権をプレイヤー側に（味方弾へ）
-                    m_Speed *= 1.5f;        // 弾速をアップ
-                    m_EmissiveColor = XMFLOAT3(0.0f, 1.8f, 2.5f); // シアン色発光に変更
-                    
-                    // 軌道をプレイヤーの正面方向に反射する
+                    m_IsPlayerOwned = true;
+                    m_Speed *= 1.2f;
+                    SetDamage(2);
+                    m_EmissiveColor = XMFLOAT3(0.0f, 1.8f, 2.5f);
                     m_Direction = player->GetForwardVector();
                     m_Life = BULLET_LIFE;
 
-                    // ウィッチタイム（周囲のスローモーション）を発動（120フレーム＝2秒）
-                    Manager::StartSlowMotion(120);
+                    Manager::StartSlowMotion(180);
 
-                    // ヒットストップとカメラシェイク
                     Manager::AddHitStop(12);
                     if (g_Camera)
                     {
                         g_Camera->Shake(0.3f, 15);
                     }
 
-                    // プレイヤーの周囲に大きな青白い衝撃波エフェクトを発生
-                    ShockwaveSystem::AddShockwave(player->GetPosition(), 8.0f, 0.0f, 3.5f, 5.0f, 30, 2.0f, 0);
+                    ShockwaveSystem::AddShockwave(player->GetPosition(), 10.0f, 0.0f, 3.5f, 5.0f, 30, 0.0f, 0);
 
-                    // スコア加算とシアン色のポップアップ
-                    GameRule::AddScore(150); // ジャスト回避は 150 点
+                    player->ResetDashCooldown();
+                    player->DisableWarpSlash();
+
+                    GameRule::AddScore(150);
                     ScorePopupSystem::AddPopup(player->GetPosition().x, player->GetPosition().y + 1.0f, player->GetPosition().z, 150, 0.0f, 0.8f, 1.5f);
 
-                    return; // 弾は消滅させず反射して飛び続ける
+                    return;
                 }
                 else if (player->IsDashing())
                 {
@@ -172,7 +151,7 @@ void EnemyBullet::Update()
                 if (enemy->GetObjectType() == ObjectType::Boss)
                 {
                     BossEnemy* boss = static_cast<BossEnemy*>(enemy);
-                    boss->ApplyBossDamage(2, m_Position); // 反射弾はボスに2ダメージ
+                    boss->ApplyBossDamage(GetDamage(), m_Position);
                 }
                 else
                 {
@@ -237,6 +216,10 @@ void EnemyBullet::Draw()
         XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
     Renderer::SetWorldMatrix(worldMatrix);
 
+#ifdef NDEBUG
+    ID3D11ShaderResourceView* tex = ResourceManager::GetTexture("Assets/texture/enemy.png");
+#else
     ID3D11ShaderResourceView* tex = ResourceManager::GetTexture("enemy.png");
+#endif
     Renderer::DrawCube(worldMatrix, tex);
 }

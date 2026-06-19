@@ -51,16 +51,28 @@ void Player::Init()
     m_IsDashing = false;
     m_DashGhosts.clear();
 
+    // リリースビルド時は Assets/texture/ サブフォルダから読み込む
+#ifdef NDEBUG
+    m_Texture = ResourceManager::GetTexture("Assets/texture/player.png");
+
+    // コンポーネント指向での描画パラメータ初期化
+    m_RenderComponent = RenderComponent("Assets/texture/player.png", MeshType::Cube, true);
+#else
     m_Texture = ResourceManager::GetTexture("player.png");
 
     // コンポーネント指向での描画パラメータ初期化
     m_RenderComponent = RenderComponent("player.png", MeshType::Cube, true);
+#endif
 }
 
 void Player::SetGrabbedEnemy(Enemy* enemy)
 {
     m_GrabbedEnemy = enemy;
     m_State = PlayerState::GRABBED;
+    
+    if (enemy) {
+        enemy->SetEnemyState(EnemyState::GRABBED);
+    }
     
     // 巨大化アイテムを持っている場合は、掴んだ敵を巨大化させる
     if (m_HasGigantItem && enemy) {
@@ -224,6 +236,7 @@ void Player::Update()
         m_LockOnTarget = nullptr;
         m_LockOnFrame = 0;
         m_WarpSlashCount = 0; // スローが終了したら回数をリセット
+        m_CanWarpSlash = true;
     }
 
     m_MarkerTimer++;
@@ -372,17 +385,38 @@ void Player::Update()
         m_Scale.x -= sinf(m_MoveAnimation * 3.0f) * 0.015f;
         m_Scale.z -= sinf(m_MoveAnimation * 3.0f) * 0.015f;
     }
+
+    // ─────────────────────────────────────────────
+    // 衝突物理：壁・敵・ボスとのめり込み解決（押し戻し）
+    // ─────────────────────────────────────────────
+    Collision::ResolveAABBCollision(this, Manager::GetGameObjectList());
 }
 
 void Player::UpdateIdle()
 {
     // スローモーション中かつロックオン対象が存在し、スラッシュ攻撃回数が3回未満の場合、左クリックで雷電テレポートスラッシュを発動
-    if (Manager::IsSlowMotionActive() && m_LockOnTarget && m_WarpSlashCount < 3) {
+    if (Manager::IsSlowMotionActive() && m_CanWarpSlash && m_LockOnTarget && m_WarpSlashCount < 3) {
         if (PlayerController::IsGrabOrThrowAction()) {
-            m_WarpSlashCount++; // 攻撃回数をインクリメント
-            Enemy* target = m_LockOnTarget;
-            XMFLOAT3 targetPos = target->GetPosition();
-            XMFLOAT3 startPos = m_Position;
+            bool hasGrabTarget = false;
+            float grabRange = 4.0f;
+            for (GameObject* obj : Manager::GetGameObjectList()) {
+                if (!obj || obj == this || obj->IsDestroy()) continue;
+                if (obj->GetObjectType() != ObjectType::Enemy) continue;
+                Enemy* e = static_cast<Enemy*>(obj);
+                if (e->GetEnemyState() != EnemyState::NORMAL) continue;
+
+                float dist = MathHelper::Length(e->GetPosition() - m_Position);
+                if (dist < grabRange) {
+                    hasGrabTarget = true;
+                    break;
+                }
+            }
+
+            if (!hasGrabTarget) {
+                m_WarpSlashCount++; // 攻撃回数をインクリメント
+                Enemy* target = m_LockOnTarget;
+                XMFLOAT3 targetPos = target->GetPosition();
+                XMFLOAT3 startPos = m_Position;
             
             // XZ平面での移動方向ベクトルを計算
             using namespace DirectX;
@@ -461,6 +495,7 @@ void Player::UpdateIdle()
             
             // テレポート攻撃成立後は、このフレームの通常の更新処理をバイパスする
             return;
+        }
         }
     }
 
@@ -1409,4 +1444,47 @@ void Player::NotifyObjectDestroyed(GameObject* obj)
         m_GrabbedEnemy = nullptr;
         m_State = PlayerState::IDLE;
     }
+}
+
+void Player::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
+{
+    // Spawn a new Sandbag Enemy object at the parried bullet's location
+    Enemy* sandbag = Manager::AddGameObject<Enemy>();
+    if (sandbag) {
+        XMFLOAT3 spawnPos = bulletPos;
+        spawnPos.y = -0.5f; // Clamp to ground level
+        sandbag->SetPosition(spawnPos);
+        sandbag->SetScale(XMFLOAT3(1.2f, 1.2f, 1.2f));
+        sandbag->SetSandbag(true);
+    }
+
+    // Reaction squash/stretch
+    m_Scale.y = 1.3f;
+    m_Scale.x = 0.8f;
+    m_Scale.z = 0.8f;
+    m_ScaleVelocityY = 0.08f;
+    m_ScaleVelocityX = -0.04f;
+    m_ScaleVelocityZ = -0.04f;
+
+    // Visual feedback: simple spark trail between player and sandbag
+    XMFLOAT3 boltStart = m_Position;
+    boltStart.y += 0.3f;
+    XMFLOAT3 boltEnd = bulletPos;
+    boltEnd.y += 0.3f;
+    AddLightningEffect(boltStart, boltEnd);
+
+    // Spawn shockwave at sandbag location (no knockback to avoid moving the sandbag)
+    XMFLOAT3 shockPos = bulletPos;
+    shockPos.y = -0.95f;
+    ShockwaveSystem::AddShockwave(shockPos, 3.0f, 1.5f, 0.8f, 0.0f, 16, 0.0f, 0);
+
+    // Hitstop and shake feedback
+    Manager::AddHitStop(8);
+    if (g_Camera) {
+        g_Camera->Shake(0.2f, 10);
+    }
+
+    // Start slow motion (90 frames = 1.5 seconds) to give time to grab
+    Manager::StartSlowMotion(90);
+    DisableWarpSlash();
 }

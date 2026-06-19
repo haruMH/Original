@@ -1,0 +1,188 @@
+﻿MSBuild 縺ｮ繝舌・繧ｸ繝ｧ繝ｳ 17.14.23+b0019275e (.NET Framework)
+2026/05/15 16:36:20 縺ｫ繝薙Ν繝峨ｒ髢句ｧ九＠縺ｾ縺励◆縲・
+
+     1>繝弱・繝・1 荳翫・繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.sln" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ)縲・
+     1>ValidateSolutionConfiguration:
+         繧ｽ繝ｪ繝･繝ｼ繧ｷ繝ｧ繝ｳ讒区・ "Debug|x64" 繧偵ン繝ｫ繝峨＠縺ｦ縺・∪縺吶・
+     1>繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.sln" (1) 縺ｯ縲√ヮ繝ｼ繝・1 荳翫↓ "C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj" (2) 繧偵ン繝ｫ繝峨＠縺ｦ縺・∪縺・(譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ)縲・
+     2>PrepareForBuild:
+         讒矩蛹門・蜉帙′譛牙柑縺ｫ縺ｪ縺｣縺ｦ縺・∪縺吶ゅさ繝ｳ繝代う繝ｩ險ｺ譁ｭ縺ｮ譖ｸ蠑剰ｨｭ螳壹↓縺ｯ繧ｨ繝ｩ繝ｼ髫主ｱ､縺悟渚譏縺輔ｌ縺ｾ縺吶りｩｳ邏ｰ縺ｫ縺､縺・※縺ｯ縲”ttps://aka.ms/cpp/structured-output 繧貞盾辣ｧ縺励※縺上□縺輔＞縲・
+       InitializeBuildStatus:
+         "GM31_0421\x64\Debug\GM31_0421.tlog\unsuccessfulbuild" 縺ｮ繧ｿ繝・メ 繧ｿ繧ｹ繧ｯ繧貞ｮ溯｡後＠縺ｦ縺・∪縺吶・
+       ClCompile:
+         C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\HostX86\x64\CL.exe /c /ZI /JMC /nologo /W3 /WX- /diagnostics:column /sdl /Od /D _DEBUG /D _WINDOWS /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /permissive- /Fo"GM31_0421\x64\Debug\\" /Fd"GM31_0421\x64\Debug\vc143.pdb" /external:W3 /Gd /TP /FC /errorReport:queue camera.cpp field.cpp input.cpp main.cpp manager.cpp enemy.cpp renderer.cpp player.cpp scene.cpp game_scene.cpp wall.cpp
+         camera.cpp
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\camera.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\camera.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'camera.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'camera.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'camera.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+         field.cpp
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\field.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'field.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'field.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+         input.cpp
+         main.cpp
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'main.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+         manager.cpp
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\manager.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'manager.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\camera.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'manager.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\player.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'manager.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'manager.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+         enemy.cpp
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'enemy.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'enemy.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+         renderer.cpp
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'renderer.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+         player.cpp
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\player.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\player.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'player.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'player.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'player.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+         scene.cpp
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'scene.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'scene.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+         game_scene.cpp
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'game_scene.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\camera.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'game_scene.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\player.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'game_scene.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'game_scene.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(28,5): error C2065: 'field': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(29,32): error C2065: 'field': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(32,5): error C2065: 'wall': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(33,5): error C2065: 'wall': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(34,5): error C2065: 'wall': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(35,32): error C2065: 'wall': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(40,45): error C2065: 'i': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(40,36): error C2440: '<function-style-cast>': 'initializer list' 縺九ｉ 'DirectX::XMFLOAT3' 縺ｫ螟画鋤縺ｧ縺阪∪縺帙ｓ縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+             C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(40,36):
+             'DirectX::XMFLOAT3::XMFLOAT3': 髢｢謨ｰ縺ｫ 2 蛟九・蠑墓焚繧呈欠螳壹〒縺阪∪縺帙ｓ縲・
+                 C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(40,36):
+                 蠑墓焚繝ｪ繧ｹ繝・'(float, float)' 繧剃ｸ閾ｴ縺輔○繧医≧縺ｨ縺励※縺・ｋ縺ｨ縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(62,76): warning C4834: [[nodiscard]] 螻樊ｧ繧呈戟縺､髢｢謨ｰ縺ｮ謌ｻ繧雁､繧堤ｴ譽・＠縺ｦ縺・∪縺・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(63,24): error C2065: 'msg': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(74,17): error C2601: 'GameScene::Update': 繝ｭ繝ｼ繧ｫ繝ｫ髢｢謨ｰ縺ｮ螳夂ｾｩ縺梧ｭ｣縺励￥縺ゅｊ縺ｾ縺帙ｓ縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+             C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(56,1):
+             縺薙・陦後↓蜷ｫ縺ｾ繧後ｋ '{' 縺ｫ蟇ｾ蠢懊☆繧九ｂ縺ｮ縺後≠繧翫∪縺帙ｓ
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(209,17): error C2601: 'GameScene::Draw': 繝ｭ繝ｼ繧ｫ繝ｫ髢｢謨ｰ縺ｮ螳夂ｾｩ縺梧ｭ｣縺励￥縺ゅｊ縺ｾ縺帙ｓ縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+             C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(56,1):
+             縺薙・陦後↓蜷ｫ縺ｾ繧後ｋ '{' 縺ｫ蟇ｾ蠢懊☆繧九ｂ縺ｮ縺後≠繧翫∪縺帙ｓ
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(56,1): error C1075: '{': 荳閾ｴ縺吶ｋ繝医・繧ｯ繝ｳ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縺ｧ縺励◆ [C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         wall.cpp
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'wall.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+     2>C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         (繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ 'wall.cpp' 繧偵さ繝ｳ繝代う繝ｫ縺励※縺・∪縺・
+         
+         繧ｳ繝ｼ繝峨ｒ逕滓・荳ｭ...
+     2>繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) 縺ｮ繝薙Ν繝峨′邨ゆｺ・＠縺ｾ縺励◆ -- 螟ｱ謨励・
+     1>繝励Ο繧ｸ繧ｧ繧ｯ繝・"C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.sln" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) 縺ｮ繝薙Ν繝峨′邨ゆｺ・＠縺ｾ縺励◆ -- 螟ｱ謨励・
+
+繝薙Ν繝峨↓螟ｱ謨励＠縺ｾ縺励◆縲・
+
+       "C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.sln" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) (1) ->
+       "C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) (2) ->
+       (ClCompile 繧ｿ繝ｼ繧ｲ繝・ヨ) -> 
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\camera.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\camera.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\field.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\manager.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\camera.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\player.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\player.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\player.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\camera.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\player.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(62,76): warning C4834: [[nodiscard]] 螻樊ｧ繧呈戟縺､髢｢謨ｰ縺ｮ謌ｻ繧雁､繧堤ｴ譽・＠縺ｦ縺・∪縺・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\gameobject.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\renderer.h(1,1): warning C4819: 繝輔ぃ繧､繝ｫ縺ｯ縲∫樟蝨ｨ縺ｮ繧ｳ繝ｼ繝・繝壹・繧ｸ (932) 縺ｧ陦ｨ遉ｺ縺ｧ縺阪↑縺・枚蟄励ｒ蜷ｫ繧薙〒縺・∪縺吶ゅョ繝ｼ繧ｿ縺ｮ謳榊､ｱ繧帝亟縺舌◆繧√↓縲√ヵ繧｡繧､繝ｫ繧・Unicode 蠖｢蠑上〒菫晏ｭ倥＠縺ｦ縺上□縺輔＞縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+
+
+       "C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.sln" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) (1) ->
+       "C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj" (譌｢螳壹・繧ｿ繝ｼ繧ｲ繝・ヨ) (2) ->
+       (ClCompile 繧ｿ繝ｼ繧ｲ繝・ヨ) -> 
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(28,5): error C2065: 'field': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(29,32): error C2065: 'field': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(32,5): error C2065: 'wall': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(33,5): error C2065: 'wall': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(34,5): error C2065: 'wall': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(35,32): error C2065: 'wall': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(40,45): error C2065: 'i': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(40,36): error C2440: '<function-style-cast>': 'initializer list' 縺九ｉ 'DirectX::XMFLOAT3' 縺ｫ螟画鋤縺ｧ縺阪∪縺帙ｓ縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(63,24): error C2065: 'msg': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(74,17): error C2601: 'GameScene::Update': 繝ｭ繝ｼ繧ｫ繝ｫ髢｢謨ｰ縺ｮ螳夂ｾｩ縺梧ｭ｣縺励￥縺ゅｊ縺ｾ縺帙ｓ縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(209,17): error C2601: 'GameScene::Draw': 繝ｭ繝ｼ繧ｫ繝ｫ髢｢謨ｰ縺ｮ螳夂ｾｩ縺梧ｭ｣縺励￥縺ゅｊ縺ｾ縺帙ｓ縲・[C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+         C:\Users\HARU17\Desktop\GM31\DX11_Original\game_scene.cpp(56,1): error C1075: '{': 荳閾ｴ縺吶ｋ繝医・繧ｯ繝ｳ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縺ｧ縺励◆ [C:\Users\HARU17\Desktop\GM31\DX11_Original\GM31_0421.vcxproj]
+
+    31 蛟九・隴ｦ蜻・
+    12 繧ｨ繝ｩ繝ｼ
+
+邨碁℃譎る俣 00:00:08.80

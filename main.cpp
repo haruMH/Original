@@ -27,6 +27,18 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 	// ゲーム中にIME（日本語入力候補窓）が起動しないように完全に無効化する
 	ImmDisableIME(0);
 
+#ifdef NDEBUG
+	// リリースビルド時は、カレントディレクトリを実行ファイルが存在するフォルダに移動します。
+	// これにより、Visual Studioからのデバッグ実行や直接実行に関わらず、Assetsフォルダから正しく読み込めるようになります。
+	char szPath[MAX_PATH];
+	GetModuleFileNameA(NULL, szPath, MAX_PATH);
+	char* pLastSlash = strrchr(szPath, '\\');
+	if (pLastSlash) {
+		*pLastSlash = '\0';
+		SetCurrentDirectoryA(szPath);
+	}
+#endif
+
 	WNDCLASSEX wcex;
 	{
 		wcex.cbSize = sizeof(WNDCLASSEX);

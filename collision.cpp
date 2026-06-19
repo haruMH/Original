@@ -110,3 +110,58 @@ void Collision::ResolveGrabPhysics(GameObject* parent, GameObject* child, float 
 
     child->SetPosition(grabbedPos);
 }
+
+void Collision::ResolveAABBCollision(GameObject* self, const std::list<GameObject*>& objList)
+{
+    if (!self || self->IsDestroy()) return;
+
+    DirectX::XMFLOAT3 posA = self->GetPosition();
+    DirectX::XMFLOAT3 sizeA = self->GetSize();
+    DirectX::XMFLOAT3 scaleA = self->GetScale();
+    if (self->GetObjectType() == ObjectType::Player) {
+        scaleA = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    }
+
+    float radiusA_X = sizeA.x * scaleA.x * 0.5f;
+    float radiusA_Z = sizeA.z * scaleA.z * 0.5f;
+
+    for (GameObject* obj : objList) {
+        if (!obj || obj == self || obj->IsDestroy()) continue;
+        if (obj->GetObjectType() == ObjectType::Field) continue;
+
+        if (obj->GetObjectType() == ObjectType::Enemy) {
+            Enemy* enemy = static_cast<Enemy*>(obj);
+            if (enemy->GetEnemyState() == EnemyState::GRABBED) continue;
+        }
+
+        if (CheckAABB(self, posA, obj)) {
+            DirectX::XMFLOAT3 posB = obj->GetPosition();
+            DirectX::XMFLOAT3 sizeB = obj->GetSize();
+            DirectX::XMFLOAT3 scaleB = obj->GetScale();
+            if (obj->GetObjectType() == ObjectType::Player) {
+                scaleB = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+            }
+
+            float radiusB_X = sizeB.x * scaleB.x * 0.5f;
+            float radiusB_Z = sizeB.z * scaleB.z * 0.5f;
+
+            float overlapX = (radiusA_X + radiusB_X) - std::abs(posA.x - posB.x);
+            float overlapZ = (radiusA_Z + radiusB_Z) - std::abs(posA.z - posB.z);
+
+            if (overlapX < overlapZ) {
+                if (posA.x > posB.x) {
+                    posA.x += overlapX;
+                } else {
+                    posA.x -= overlapX;
+                }
+            } else {
+                if (posA.z > posB.z) {
+                    posA.z += overlapZ;
+                } else {
+                    posA.z -= overlapZ;
+                }
+            }
+            self->SetPosition(posA);
+        }
+    }
+}

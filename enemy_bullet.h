@@ -15,6 +15,7 @@ private:
     int      m_Life      = BULLET_LIFE;                 // 残り寿命
     bool     m_IsPlayerOwned = false;                   // プレイヤーが反射した味方弾フラグ
     XMFLOAT3 m_EmissiveColor = XMFLOAT3(2.5f, 0.5f, 0.0f); // 自己発光カラー
+    int      m_Damage = 2;                              // 反射弾の攻撃力（デフォルト2）
 
 public:
     void Init()   override;
@@ -37,6 +38,10 @@ public:
 
     // 自己発光カラーの設定
     void SetEmissiveColor(XMFLOAT3 color) { m_EmissiveColor = color; }
+
+    // 反射弾の攻撃力設定・取得
+    void SetDamage(int damage) { m_Damage = damage; }
+    int  GetDamage() const { return m_Damage; }
 
     // 自発光（Emissive）情報の取得
     XMFLOAT3 GetEmissive() const override { return m_EmissiveColor; }

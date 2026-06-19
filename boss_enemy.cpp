@@ -9,6 +9,20 @@
 #include "score_popup.h"
 #include "game_rule.h"
 #include "shockwave.h"
+#include <algorithm> // std::remove_if 使用のため
+
+// =================================================================
+// ボス戦の落雷攻撃 調整用パラメータ
+// =================================================================
+namespace BossLightningConfig {
+    const float TARGET_STRIKE_DAMAGE_RADIUS = 4.0f;  // プレイヤー狙い落雷の当たり判定半径（減らすと避けやすくなります）
+    const int   TARGET_STRIKE_DAMAGE        = 1;     // プレイヤー狙い落雷のダメージ値
+    const float STAGE_HALF_WIDTH            = 17.0f; // ランダム落雷が発生するステージの半幅（部屋サイズ18.0fに合わせて調整）
+    const int   RANDOM_STRIKE_MIN_COUNT     = 3;     // ランダム落雷の最小発生箇所数（1回あたり）
+    const int   RANDOM_STRIKE_EXTRA_COUNT   = 3;     // ランダム落雷の追加発生箇所数（MIN_COUNT + 0〜(EXTRA_COUNT-1)）
+    const int   ATTACK_START_FRAME          = 350;   // 落雷攻撃が開始するフレーム数（フェーズ移行後）
+    const int   ATTACK_DURATION_FRAME       = 550;   // 落雷攻撃が持続するフレーム数（元の150fから550fに延長し、落雷時間を約9.2秒間に長くしました）
+}
 
 // ─────────────────────────────────────────────
 // 初期化
@@ -37,7 +51,12 @@ void BossEnemy::Init()
     m_PhaseTargetPos   = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_LightningVisualTimer = 0;
 
+    // リリースビルド時は Assets/texture/ サブフォルダから読み込む
+#ifdef NDEBUG
+    m_RenderComponent = RenderComponent("Assets/texture/enemy.png", MeshType::Cube, true);
+#else
     m_RenderComponent = RenderComponent("enemy.png", MeshType::Cube, true);
+#endif
 }
 
 // ─────────────────────────────────────────────
@@ -426,7 +445,7 @@ void BossEnemy::PerformPhase3Attack()
     if (m_PhaseAttackTimer >= 30 && m_PhaseAttackTimer <= 300) {
 
         // ── [層1] スパイラル弾幕（6fに1回・8方向） ──
-        if (m_PhaseAttackTimer % 6 == 0) {
+        if (m_PhaseAttackTimer % 10 == 0) {
             float bulletY = player->GetPosition().y + 0.3f;
             XMFLOAT3 bulletPos = m_Position;
             bulletPos.y = bulletY;
@@ -476,50 +495,88 @@ void BossEnemy::PerformPhase3Attack()
     }
 
 
+
+
     // ─────────────────────────────────────────────────────────────────────────
-    // 落雷ターゲット警告（後半: 320〜500f）
-    //   弾幕が落ち着いた後に落雷フェーズへ移行
-    //   90フレーム間隔（警告 → 落雷まで 50f 猶予）
+    // 落雷フェーズ（後半: 320〜550f） ─ 2種類の落雷を組み合わせ
+    //
+    // [落雷A] プレイヤー狙い撃ち: 90フレームに1回（猶予50f）
+    // [落雷B] マップランダム多発: 40フレームに1回、3〜5箇所に同時に落雷警告
     // ─────────────────────────────────────────────────────────────────────────
-    if (m_PhaseAttackTimer >= 320 && m_PhaseAttackTimer <= 500 &&
-        (m_PhaseAttackTimer - 320) % 90 == 0)
+
+    // ── [落雷A] プレイヤー狙い撃ち警告（90fに1回） ──
+    int start = BossLightningConfig::ATTACK_START_FRAME;
+    int end = start + BossLightningConfig::ATTACK_DURATION_FRAME;
+    if (m_PhaseAttackTimer >= start && m_PhaseAttackTimer <= end &&
+        (m_PhaseAttackTimer - start) % 90 == 0)
     {
         m_PhaseTargetPos = player->GetPosition();
-        m_PhaseTargetPos.y = -0.95f; // 地面
+        m_PhaseTargetPos.y = -0.95f;
 
         // 同心円の2重警告エフェクト（視認性強化）
         ShockwaveSystem::AddShockwave(m_PhaseTargetPos, 5.0f, 2.5f, 0.0f, 0.0f, 50, 0.0f, 0);
         ShockwaveSystem::AddShockwave(m_PhaseTargetPos, 3.5f, 2.5f, 0.0f, 0.0f, 35, 0.0f, 15);
     }
 
-    // 落雷発生（警告から50フレーム後）
-    if (m_PhaseAttackTimer >= 370 && m_PhaseAttackTimer <= 550 &&
-        (m_PhaseAttackTimer - 370) % 90 == 0)
+    // 落雷A 発生（警告の50f後）
+    if (m_PhaseAttackTimer >= start + 50 && m_PhaseAttackTimer <= end + 50 &&
+        (m_PhaseAttackTimer - (start + 50)) % 90 == 0)
     {
         ShockwaveSystem::AddShockwave(m_PhaseTargetPos, 4.0f, 3.0f, 0.0f, 0.0f, 20, 1.5f, 0);
-
         m_LightningVisualTimer = 15;
 
         XMFLOAT3 pPos = player->GetPosition();
-        float dx = pPos.x - m_PhaseTargetPos.x;
-        float dz = pPos.z - m_PhaseTargetPos.z;
-        float dist = sqrtf(dx * dx + dz * dz);
-        if (dist < 4.0f && !player->IsInvincible()) {
-            player->ApplyDamage(1, m_PhaseTargetPos);
+        float dx  = pPos.x - m_PhaseTargetPos.x;
+        float dz  = pPos.z - m_PhaseTargetPos.z;
+        float dst = sqrtf(dx * dx + dz * dz);
+        if (dst < BossLightningConfig::TARGET_STRIKE_DAMAGE_RADIUS && !player->IsInvincible()) {
+            player->ApplyDamage(BossLightningConfig::TARGET_STRIKE_DAMAGE, m_PhaseTargetPos);
         }
-
         if (g_Camera) g_Camera->Shake(0.3f, 8);
     }
 
+    // ── [落雷B] マップランダム多発警告（40fに1回・3〜5箇所） ──
+    //   ステージ範囲: 壁(roomSize=18.0f)の内側に雷が落ちるように調整
+    const float STAGE_HALF = BossLightningConfig::STAGE_HALF_WIDTH;
+    if (m_PhaseAttackTimer >= start + 10 && m_PhaseAttackTimer <= end &&
+        (m_PhaseAttackTimer - (start - 20)) % 35 == 0)
+    {
+        int strikeCount = BossLightningConfig::RANDOM_STRIKE_MIN_COUNT + (rand() % BossLightningConfig::RANDOM_STRIKE_EXTRA_COUNT);
+        for (int s = 0; s < strikeCount; s++) {
+            XMFLOAT3 randPos;
+            randPos.x = ((float)rand() / RAND_MAX) * STAGE_HALF * 2.0f - STAGE_HALF;
+            randPos.y = -0.95f;
+            randPos.z = ((float)rand() / RAND_MAX) * STAGE_HALF * 2.0f - STAGE_HALF;
+
+            // 警告エフェクト（40f猶予・やや小さい赤いリング）
+            ShockwaveSystem::AddShockwave(randPos, 3.0f, 2.0f, 0.0f, 0.0f, 40, 0.0f, 0);
+
+            // 落雷B 発生（40f後に展開する衝撃波 + ビジュアル登録）
+            ShockwaveSystem::AddShockwave(randPos, 3.0f, 2.0f, 0.0f, 0.0f, 15, 1.2f, 40);
+
+            // 40f後の着弾時に稲妻ビジュアルを登録（timer=40で展開）
+            m_RandomLightnings.push_back({ randPos, 40 });
+        }
+    }
+
+    // 落雷B の着弾と同タイミングでプレイヤーへのダメージ確認（40fごと）
+    if (m_PhaseAttackTimer >= start + 50 && m_PhaseAttackTimer <= end + 50 &&
+        (m_PhaseAttackTimer - (start + 50)) % 35 == 0)
+    {
+        // ランダム落雷の着弾フレームでカメラシェイク
+        if (g_Camera) g_Camera->Shake(0.2f, 5);
+        m_LightningVisualTimer = std::max(m_LightningVisualTimer, 8);
+    }
 
     if (m_LightningVisualTimer > 0) {
         m_LightningVisualTimer--;
     }
 
-    if (m_PhaseAttackTimer >= 500) {
+    if (m_PhaseAttackTimer >= end + 50) {
         m_BossState = BossState::NORMAL;
         m_IsInvincible = false;
         m_PhaseAttackTimer = 0;
+        m_RandomLightnings.clear(); // ランダム落雷リストをリセット
         OutputDebugStringA("[BossEnemy] Phase 3 Attack Finished.\n");
     }
 }
@@ -603,13 +660,39 @@ void BossEnemy::DrawBarrierEffect()
     }
 
     // 3. 落雷ビジュアル (フェーズ3)
-    if (m_BossState == BossState::PHASE_TRANSITION && m_PhaseIndex == 3 && m_LightningVisualTimer > 0) {
-        XMFLOAT3 strikeStart = m_PhaseTargetPos;
-        strikeStart.y = 25.0f;
-        XMFLOAT3 strikeEnd = m_PhaseTargetPos;
+    if (m_BossState == BossState::PHASE_TRANSITION && m_PhaseIndex == 3) {
 
-        player->DrawLightningBoltInternal(strikeStart, strikeEnd, 0.12f, XMFLOAT4(3.0f, 0.0f, 0.0f, 1.0f), true, m_LightningVisualTimer);
-        player->DrawLightningBoltInternal(strikeStart, strikeEnd, 0.06f, XMFLOAT4(3.0f, 2.0f, 2.0f, 1.0f), false, m_LightningVisualTimer + 5);
+        // ── [落雷A] プレイヤー狙い撃ち稲妻 ──
+        if (m_LightningVisualTimer > 0) {
+            XMFLOAT3 strikeStart = m_PhaseTargetPos;
+            strikeStart.y = 25.0f;
+            XMFLOAT3 strikeEnd = m_PhaseTargetPos;
+
+            player->DrawLightningBoltInternal(strikeStart, strikeEnd, 0.12f, XMFLOAT4(3.0f, 0.0f, 0.0f, 1.0f), true, m_LightningVisualTimer);
+            player->DrawLightningBoltInternal(strikeStart, strikeEnd, 0.06f, XMFLOAT4(3.0f, 2.0f, 2.0f, 1.0f), false, m_LightningVisualTimer + 5);
+        }
+
+        // ── [落雷B] ランダム多発稲妻（m_RandomLightningsリストを走査） ──
+        for (auto& rl : m_RandomLightnings) {
+            if (rl.timer <= 0) continue;
+
+            XMFLOAT3 rStart = rl.pos;
+            rStart.y = 25.0f;
+            XMFLOAT3 rEnd = rl.pos;
+
+            // 落雷Bは少し細め・黄色がかった白色で差別化
+            player->DrawLightningBoltInternal(rStart, rEnd, 0.08f, XMFLOAT4(2.5f, 2.0f, 0.0f, 1.0f), true,  rl.timer);
+            player->DrawLightningBoltInternal(rStart, rEnd, 0.04f, XMFLOAT4(3.0f, 3.0f, 1.5f, 1.0f), false, rl.timer + 3);
+        }
+
+        // ランダム落雷タイマーを毎フレーム減算し、期限切れを削除
+        for (auto& rl : m_RandomLightnings) {
+            if (rl.timer > 0) rl.timer--;
+        }
+        m_RandomLightnings.erase(
+            std::remove_if(m_RandomLightnings.begin(), m_RandomLightnings.end(),
+                [](const RandomLightning& r) { return r.timer <= 0; }),
+            m_RandomLightnings.end());
     }
 }
 

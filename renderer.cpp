@@ -1,4 +1,4 @@
-﻿#include "renderer.h"
+#include "renderer.h"
 #include "manager.h"
 #include "main.h"
 #include <stdio.h>
@@ -269,13 +269,22 @@ void Renderer::Init() {
     m_DeviceContext->RSSetState(m_RasterizerStateCullBack);
 
     // アウトライン用シェーダー読み込み
+    // リリースビルドは Assets/shader/ サブフォルダ、デバッグはルートから読み込む
+#ifdef NDEBUG
+    FILE* fov = fopen("Assets/shader/outline_vs.cso", "rb");
+#else
     FILE* fov = fopen("outline_vs.cso", "rb");
+#endif
     if (fov) {
         fseek(fov, 0, SEEK_END); long s = ftell(fov); fseek(fov, 0, SEEK_SET);
         unsigned char* b = new unsigned char[s]; fread(b, s, 1, fov); fclose(fov);
         m_Device->CreateVertexShader(b, s, NULL, &m_OutlineVS); delete[] b;
     }
+#ifdef NDEBUG
+    FILE* fop = fopen("Assets/shader/outline_ps.cso", "rb");
+#else
     FILE* fop = fopen("outline_ps.cso", "rb");
+#endif
     if (fop) {
         fseek(fop, 0, SEEK_END); long s = ftell(fop); fseek(fop, 0, SEEK_SET);
         unsigned char* b = new unsigned char[s]; fread(b, s, 1, fop); fclose(fop);
@@ -283,13 +292,21 @@ void Renderer::Init() {
     }
 
     // ポストエフェクト用シェーダー読み込み
+#ifdef NDEBUG
+    FILE* fvs = fopen("Assets/shader/postEffect_vs.cso", "rb");
+#else
     FILE* fvs = fopen("postEffect_vs.cso", "rb");
+#endif
     if (fvs) {
         fseek(fvs, 0, SEEK_END); long s = ftell(fvs); fseek(fvs, 0, SEEK_SET);
         unsigned char* b = new unsigned char[s]; fread(b, s, 1, fvs); fclose(fvs);
         m_Device->CreateVertexShader(b, s, NULL, &m_PostVS); delete[] b;
     }
+#ifdef NDEBUG
+    FILE* fps = fopen("Assets/shader/postEffect_ps.cso", "rb");
+#else
     FILE* fps = fopen("postEffect_ps.cso", "rb");
+#endif
     if (fps) {
         fseek(fps, 0, SEEK_END); long s = ftell(fps); fseek(fps, 0, SEEK_SET);
         unsigned char* b = new unsigned char[s]; fread(b, s, 1, fps); fclose(fps);
@@ -360,8 +377,14 @@ void Renderer::Init() {
         sdc.pSysMem = v;
         m_Device->CreateBuffer(&bdc, &sdc, &m_CubeVertexBuffer);
 
+        // リリースビルドは Assets/shader/ サブフォルダから、デバッグはルートから読み込む
+#ifdef NDEBUG
+        CreateVertexShader(&m_CubeVertexShader, &m_CubeInputLayout, "Assets/shader/vertexShader.cso");
+        CreatePixelShader(&m_CubePixelShader, "Assets/shader/pixelShader.cso");
+#else
         CreateVertexShader(&m_CubeVertexShader, &m_CubeInputLayout, "vertexShader.cso");
         CreatePixelShader(&m_CubePixelShader, "pixelShader.cso");
+#endif
     }
 
     // キャッシュ機構の初期化完了フラグを立てる

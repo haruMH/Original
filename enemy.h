@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "gameobject.h"
 
 enum class EnemyState {
@@ -43,10 +43,14 @@ public:
     bool       IsLightning() const           { return m_IsLightning; }
     void       SetLightning(bool lightning)  { m_IsLightning = lightning; }
 
+    bool       IsSandbag() const             { return m_IsSandbag; }
+    void       SetSandbag(bool enable)       { m_IsSandbag = enable; }
+
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }
     void       SetScoreValue(int v)          { m_ScoreValue = v; }
     ObjectType GetObjectType() const override { return ObjectType::Enemy; }
+    XMFLOAT3   GetEmissive() const override;
 
     // 撃破処理（二重カウント防止機能付き）
     void       Defeat(float colorR = 2.5f, float colorG = 1.8f, float colorB = 0.0f);
@@ -54,4 +58,8 @@ public:
 
     // 攻撃エネミー判定用（dynamic_cast排除の最適化）
     virtual bool IsAttackingEnemy() const    { return false; }
+
+protected:
+    bool       m_IsSandbag = false;
+    int        m_SandbagLife = 300;
 };

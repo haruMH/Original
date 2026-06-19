@@ -27,7 +27,7 @@ int                    Manager::m_SlowMotionTimer = 0;
 int                    Manager::m_SlowMotionDuration = 0;
 Scene                  Manager::m_CurrentScene = Scene::TITLE;
 
-// ★ デバッグ用切り替えマクロ: 1にすると最初からボス戦、0にすると通常の16体ステージから始まります
+//  デバッグ用切り替えマクロ: 1にすると最初からボス戦、0にすると通常の16体ステージから始まります
 #define START_FROM_BOSS 1
 
 bool                   Manager::m_IsBossStage = false;
@@ -441,6 +441,20 @@ void Manager::TransitionToBossStage()
     BossEnemy* boss = AddGameObject<BossEnemy>();
     boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f)); // プレイヤーの少し前方に配置
     OutputDebugStringA("[Manager] ボスエネミー生成完了\n");
+
+    // ボス部屋用のアイテム生成（ボスから一番遠い南の壁 Z=-18.0f 付近に配置）
+    OutputDebugStringA("[Manager] ボス部屋用のアイテムを生成します...\n");
+    Item* itemVacuum = AddGameObject<Item>();
+    itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, -15.0f));
+    itemVacuum->SetItemType(ItemType::VACUUM);
+
+    Item* itemGigant = AddGameObject<Item>();
+    itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, -15.0f));
+    itemGigant->SetItemType(ItemType::GIGANT);
+
+    Item* itemLightning = AddGameObject<Item>();
+    itemLightning->SetPosition(XMFLOAT3(4.0f, 0.5f, -15.0f));
+    itemLightning->SetItemType(ItemType::LIGHTNING);
     
     // ボス戦の演出：巨大な衝撃波をプレイヤーとボスの間に走らせる
     ShockwaveSystem::AddShockwave(XMFLOAT3(0.0f, -0.95f, 5.0f), 15.0f, 0.0f, 2.0f, 4.0f, 40, 0.0f, 0);
@@ -561,16 +575,25 @@ void Manager::ExecuteChangeScene(Scene nextScene)
 
         // アイテム生成
         Item* itemVacuum = AddGameObject<Item>();
-        itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, 4.0f));
         itemVacuum->SetItemType(ItemType::VACUUM);
 
         Item* itemGigant = AddGameObject<Item>();
-        itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, 4.0f));
         itemGigant->SetItemType(ItemType::GIGANT);
 
         Item* itemLightning = AddGameObject<Item>();
-        itemLightning->SetPosition(XMFLOAT3(2.0f, 0.5f, 6.0f));
         itemLightning->SetItemType(ItemType::LIGHTNING);
+
+        if (m_IsBossStage) {
+            // ボスステージ：ボス(Z=10.0f)から一番遠い南の壁（Z=-18.0f）の手前に並べて配置
+            itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, -15.0f));
+            itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, -15.0f));
+            itemLightning->SetPosition(XMFLOAT3(4.0f, 0.5f, -15.0f));
+        } else {
+            // 通常ステージ：これまでの通常位置に配置
+            itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, 4.0f));
+            itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, 4.0f));
+            itemLightning->SetPosition(XMFLOAT3(2.0f, 0.5f, 6.0f));
+        }
     }
     else if (nextScene == Scene::CLEAR) {
         // ゲームクリア画面用の初期化

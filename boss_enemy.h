@@ -38,8 +38,15 @@ private:
     bool  m_Phase2Triggered      = false; // フェーズ2実行フラグ
     bool  m_Phase3Triggered      = false; // フェーズ3実行フラグ
     DirectX::XMFLOAT3 m_PhaseTargetPos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f); // 特別攻撃ターゲット座標
-    int   m_LightningVisualTimer = 0;     // 落雷ビジュアルタイマー
+    int   m_LightningVisualTimer = 0;     // 落雷A（プレイヤー狙い）ビジュアルタイマー
     std::vector<BossShockwave> m_ActiveShockwaves; // アクティブな地響き衝撃波リスト
+
+    // ランダム落雷B の着弾座標と残り表示フレーム
+    struct RandomLightning {
+        DirectX::XMFLOAT3 pos;  // 着弾座標
+        int               timer; // 残り表示フレーム（0になったら削除）
+    };
+    std::vector<RandomLightning> m_RandomLightnings; // 描画用ランダム落雷リスト
 
     void UpdateBossAI();
     void Fire3WaySpread();

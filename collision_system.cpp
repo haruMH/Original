@@ -50,6 +50,16 @@ namespace {
     CollisionGrid g_CollisionGrid;
 }
 
+// =================================================================
+// 雷電（チェインライトニング）調整用パラメータ
+// =================================================================
+namespace LightningConfig {
+    const int   MAX_CHAIN     = 5;    // 雷電が敵から敵へと連鎖する最大回数（数値を増やすほど多くの敵に連鎖します）
+    const float CHAIN_RADIUS  = 8.0f; // 雷電が次に連鎖する敵を探す索敵半径（数値を増やすほど遠くの敵まで雷が届きます）
+    const float PUSH_FORCE_XZ = 0.8f; // 雷電に当たった敵が水平方向に吹き飛ぶ強さ（数値を増やすほど勢いよく吹き飛びます）
+    const float PUSH_FORCE_Y  = 0.4f; // 雷電に当たった敵が垂直（上空）方向に吹き飛ぶ強さ（数値を増やすほど高く浮き上がります）
+}
+
 // ─────────────────────────────────────────────
 // チェインライトニング（電撃連鎖）の処理
 // ─────────────────────────────────────────────
@@ -58,9 +68,9 @@ static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
     const std::list<GameObject*>& gameObjects = Manager::GetGameObjectList();
     XMFLOAT3 currentPos = startPos;
     
-    // 連鎖回数
-    const int maxChain = 5;
-    float chainRadius = 8.0f; // 連鎖する半径
+    // 連鎖回数と索敵半径の設定（LightningConfig から取得）
+    const int maxChain = LightningConfig::MAX_CHAIN;
+    float chainRadius = LightningConfig::CHAIN_RADIUS; // 連鎖する半径
 
     std::vector<Enemy*> chainedEnemies;
 
@@ -102,8 +112,12 @@ static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
 
             // 対象の敵を吹き飛ばす
             XMFLOAT3 dir = MathHelper::Normalize(nextPos - currentPos);
-            // 放射状かつ上空へ吹き飛ばす
-            XMFLOAT3 pushVel = XMFLOAT3(dir.x * 0.8f, 0.4f, dir.z * 0.8f);
+            // 放射状かつ上空へ吹き飛ばす（LightningConfig から取得した強さを適用）
+            XMFLOAT3 pushVel = XMFLOAT3(
+                dir.x * LightningConfig::PUSH_FORCE_XZ, 
+                LightningConfig::PUSH_FORCE_Y, 
+                dir.z * LightningConfig::PUSH_FORCE_XZ
+            );
             nearest->SetVelocity(pushVel);
             nearest->SetEnemyState(EnemyState::BLOWN_AWAY);
             nearest->SetLightning(true); // スパーク放電を有効化
@@ -380,10 +394,14 @@ void CollisionSystem::Update()
                         // ─── 通常の敵またはボスに衝突 ───
                         if (target->GetObjectType() == ObjectType::Boss) {
                             BossEnemy* boss = static_cast<BossEnemy*>(target);
-                            int dmg = (flying->GetScale().x > 2.0f) ? 3 : 1; // 巨大化飛行敵ぶつかりは3ダメージ、通常は1
+                            int dmg = 1;
+                            if (flying->IsSandbag()) {
+                                dmg = 6;
+                            } else if (flying->GetScale().x > 2.0f) {
+                                dmg = 3;
+                            }
                             boss->ApplyBossDamage(dmg, flying->GetPosition());
 
-                            // ぶつかった飛行敵自身は撃破消滅へ移行
                             flying->SetEnemyState(EnemyState::DEFEATED);
                             flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
 
