@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "enemy.h"
 #include <vector>
 
@@ -68,6 +68,7 @@ public:
     int  GetHP() const { return m_HP; }
     int  GetMaxHP() const { return m_MaxHP; }
     bool IsInvincible() const { return m_IsInvincible; }
-    ObjectType GetObjectType() const override { return ObjectType::Boss; }
+    static ObjectType GetStaticType() { return ObjectType::Boss; }
+    ObjectType GetObjectType() const override { return GetStaticType(); }
     DirectX::XMFLOAT3 GetEmissive() const override;
 };

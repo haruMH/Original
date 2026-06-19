@@ -1,4 +1,4 @@
-#include "enemy.h"
+﻿#include "enemy.h"
 #include "renderer.h"
 #include "resource_manager.h"
 #include "math_helper.h"

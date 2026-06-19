@@ -1,4 +1,4 @@
-#include "enemy_bullet.h"
+﻿#include "enemy_bullet.h"
 #include "renderer.h"
 #include "resource_manager.h"
 #include "player.h"
@@ -96,6 +96,8 @@ void EnemyBullet::Update()
 
                     player->ResetDashCooldown();
                     player->DisableWarpSlash();
+                    // ジャスト回避成功時にタックルを有効化（モブ弾・ボス弾問わず）
+                    player->EnableTackle(90);
 
                     GameRule::AddScore(150);
                     ScorePopupSystem::AddPopup(player->GetPosition().x, player->GetPosition().y + 1.0f, player->GetPosition().z, 150, 0.0f, 0.8f, 1.5f);
@@ -104,17 +106,40 @@ void EnemyBullet::Update()
                 }
                 else if (player->IsDashing())
                 {
-                    // ─── ダッシュ無敵によるすり抜け ───
-                    // 被弾ダメージを受けず、弾も消滅せずそのまま通り抜ける
+                    if (m_IsBossBullet)
+                    {
+                        // ボスの弾をダッシュ回避：タックル攻撃を有効化
+                        player->EnableTackle(90); // 1.5秒間タックル有効
+                        ShockwaveSystem::AddShockwave(player->GetPosition(), 5.0f, 0.0f, 2.0f, 3.0f, 20, 0.0f, 0);
+                        if (g_Camera) g_Camera->Shake(0.2f, 8);
+                    }
+                    // 通常敵の弾はそのまますり抜け（タックル無効）
                     return;
                 }
                 else if (player->IsGuardActive())
                 {
-                    // ─── 通常ガード成功 ───
-                    // ダメージを無効化し、弾は消滅
-                    Manager::AddHitStop(2);
-                    SetDestroy();
-                    return;
+                    if (m_IsBossBullet)
+                    {
+                        // ボスの弾を通常ガードで受けたら高ダメージで反射発射
+                        m_IsPlayerOwned = true;
+                        m_Speed *= 1.5f;
+                        SetDamage(4); // ジャストドッジの2より高い4ダメージ
+                        m_EmissiveColor = XMFLOAT3(1.5f, 0.0f, 2.5f); // 紫色で反射弾を識別しやすく
+                        m_Direction = player->GetForwardVector();
+                        m_Life = BULLET_LIFE;
+
+                        Manager::AddHitStop(3);
+                        if (g_Camera) g_Camera->Shake(0.2f, 8);
+                        ShockwaveSystem::AddShockwave(player->GetPosition(), 6.0f, 0.0f, 2.5f, 4.0f, 20, 0.0f, 0);
+                        return;
+                    }
+                    else
+                    {
+                        // 通常ガード：ダメージ無効、弾消滅
+                        Manager::AddHitStop(2);
+                        SetDestroy();
+                        return;
+                    }
                 }
                 else
                 {

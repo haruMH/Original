@@ -1,4 +1,4 @@
-#include "collision.h"
+﻿#include "collision.h"
 #include "field.h"
 #include "enemy.h"
 #include "math_helper.h"
@@ -48,7 +48,7 @@ bool Collision::CheckSphere(const GameObject* a, const GameObject* b)
     return distSq < (sumRad * sumRad);
 }
 
-bool Collision::CheckAABBCollision(const GameObject* self, const DirectX::XMFLOAT3& nextPos, const std::list<GameObject*>& objList, GameObject** ignoreObj)
+bool Collision::CheckAABBCollision(const GameObject* self, const DirectX::XMFLOAT3& nextPos, const std::vector<GameObject*>& objList, GameObject** ignoreObj)
 {
     if (!self) return false;
 
@@ -111,7 +111,7 @@ void Collision::ResolveGrabPhysics(GameObject* parent, GameObject* child, float 
     child->SetPosition(grabbedPos);
 }
 
-void Collision::ResolveAABBCollision(GameObject* self, const std::list<GameObject*>& objList)
+void Collision::ResolveAABBCollision(GameObject* self, const std::vector<GameObject*>& objList)
 {
     if (!self || self->IsDestroy()) return;
 

@@ -1,5 +1,5 @@
-#pragma once
-#include <list>
+﻿#pragma once
+#include <vector>
 #include "render_system.h"
 #include "gameobject.h"
 
@@ -17,8 +17,9 @@ enum class Scene {
 class Manager
 {
 private:
-    static std::list<GameObject*> m_GameObjects;     // シーン上の全オブジェクトリスト
-    static RenderSystem           m_RenderSystem;     // インスタンス一括描画システム
+    static std::vector<GameObject*> m_GameObjects;     // 全オブジェクトリスト（描画・一括走査用）
+    static std::vector<GameObject*> m_UpdateObjects;   // 更新対象（動的）オブジェクトのリスト（更新処理高速化用）
+    static RenderSystem           m_RenderSystem;     // インスタンスバッチ描画システム
     static int                    m_HitStopFrames;    // ヒットストップの残りフレーム数
     static int                    m_SlowMotionTimer;  // スローモーションの残りフレーム数
     static int                    m_SlowMotionDuration;// スローモーションの総開始フレーム数
@@ -40,46 +41,51 @@ public:
     static void Draw();
 
     // テンプレート関数によるオブジェクトの生成・追加.
-    template<typename ObjectType>
-    static ObjectType* AddGameObject()
+    template<typename ObjT>
+    static ObjT* AddGameObject()
     {
-        ObjectType* gameObject = new ObjectType();
+        ObjT* gameObject = new ObjT();
         gameObject->Init();
         m_GameObjects.push_back(gameObject);
+        // 静的オブジェクト（Wall, Field）は更新不要なため、更新リストから除外してパフォーマンスを向上
+        ::ObjectType t = gameObject->GetObjectType();
+        if (t != ::ObjectType::Wall && t != ::ObjectType::Field) {
+            m_UpdateObjects.push_back(gameObject);
+        }
         return gameObject;
     }
 
     // テンプレート関数による特定の型のオブジェクトの取得.
-    template<typename ObjectType>
-    static ObjectType* GetGameObject()
+    template<typename TargetType>
+    static TargetType* GetGameObject()
     {
+        ObjectType targetType = TargetType::GetStaticType();
         for (GameObject* gameObject : m_GameObjects)
         {
-            ObjectType* find = dynamic_cast<ObjectType*>(gameObject);
-            if (find != nullptr)
-                return find;
+            if (gameObject && gameObject->GetObjectType() == targetType)
+                return static_cast<TargetType*>(gameObject);
         }
         return nullptr;
     }
 
     // テンプレート関数による特定の型の全オブジェクトの一括取得.
-    template<typename ObjectType>
-    static std::list<ObjectType*> GetGameObjects()
+    template<typename TargetType>
+    static std::vector<TargetType*> GetGameObjects()
     {
-        std::list<ObjectType*> list;
+        std::vector<TargetType*> list;
+        ObjectType targetType = TargetType::GetStaticType();
         for (GameObject* gameObject : m_GameObjects)
         {
-            ObjectType* find = dynamic_cast<ObjectType*>(gameObject);
-            if (find != nullptr)
+            if (gameObject && gameObject->GetObjectType() == targetType)
             {
-                list.push_back(find);
+                list.push_back(static_cast<TargetType*>(gameObject));
             }
         }
         return list;
     }
 
     // オブジェクトリストの取得.
-    static const std::list<GameObject*>& GetGameObjectList() { return m_GameObjects; }
+    static const std::vector<GameObject*>& GetGameObjectList() { return m_GameObjects; }
 
     // ヒットストップのフレーム設定.
     static void AddHitStop(int frames) { m_HitStopFrames = frames; }

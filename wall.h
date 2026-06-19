@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "gameobject.h"
 
 class Wall : public GameObject
@@ -11,5 +11,6 @@ public:
     void Uninit() override;
     void Update() override;
     void Draw()   override;
-    ObjectType GetObjectType() const override { return ObjectType::Wall; }
+    static ObjectType GetStaticType() { return ObjectType::Wall; }
+    ObjectType GetObjectType() const override { return GetStaticType(); }
 };

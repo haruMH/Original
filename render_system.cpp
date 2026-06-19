@@ -1,4 +1,4 @@
-#include "render_system.h"
+﻿#include "render_system.h"
 #include "renderer.h"
 #include "gameobject.h"
 #include "resource_manager.h"
@@ -267,7 +267,7 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
 // =================================================================
 // インスタンス描画の実行
 // =================================================================
-void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::list<GameObject*>& objects, RenderPass pass)
+void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::vector<GameObject*>& objects, RenderPass pass)
 {
     // 1. 視錐台の構築（通常描画・アウトライン描画時のみカリングを行う。シャドウマップ描画時は画面外の影も落とすためスキップ）
     bool useCulling = (pass != RenderPass::Shadow);
@@ -328,7 +328,7 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
         context->VSSetShader(m_InstancedOutlineVertexShader, nullptr, 0);
         context->PSSetShader(Renderer::GetOutlinePixelShader(), nullptr, 0);
     }
-    else // Normal or Shadow
+    else // 通常パスまたはシャドウマップパス
     {
         context->IASetInputLayout(m_InstancedInputLayout);
         context->VSSetShader(m_InstancedVertexShader, nullptr, 0);

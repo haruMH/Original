@@ -1,4 +1,4 @@
-
+﻿
 
 #include "main.h"
 #include "manager.h"
@@ -8,7 +8,7 @@
 #pragma comment(lib, "imm32.lib")
 
 const char* CLASS_NAME = "AppClass";
-const char* WINDOW_NAME = "DX11ゲーム";
+const char* WINDOW_NAME = "TOON SLASHER";
 
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);

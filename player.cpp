@@ -1,4 +1,4 @@
-#include "player.h"
+﻿#include "player.h"
 #include "renderer.h"
 #include "input.h"
 #include "manager.h"
@@ -106,6 +106,11 @@ void Player::Update()
         m_DashCooldown--;
     }
 
+    // タックル有効タイマーの更新（ボス弾をダッシュ回避後にカウントダウン）
+    if (m_TackleTimer > 0) {
+        m_TackleTimer--;
+    }
+
     // 残像（ゴースト）の寿命更新
     for (auto it = m_DashGhosts.begin(); it != m_DashGhosts.end(); ) {
         it->Alpha -= 0.08f; // 毎フレーム不透明度を減少
@@ -164,6 +169,67 @@ void Player::Update()
         XMFLOAT3 nextPos = m_Position;
         nextPos.x += m_DashDirection.x * dashSpeed;
         nextPos.z += m_DashDirection.z * dashSpeed;
+
+        // タックル有効時はダッシュ中にロックオン対象または近接する敵へのタックル攻撃を行う
+        if (m_TackleTimer > 0) {
+            Enemy* hitTarget = nullptr;
+            
+            // 1. ロックオン対象がいれば、それを優先して当たり判定を行う
+            if (m_LockOnTarget && !m_LockOnTarget->IsDestroy()) {
+                XMFLOAT3 diff = m_Position - m_LockOnTarget->GetPosition();
+                diff.y = 0.0f;
+                float dist = MathHelper::Length(diff);
+                if (dist < 1.0f + m_LockOnTarget->GetRadius()) {
+                    hitTarget = m_LockOnTarget;
+                }
+            }
+            
+            // 2. ロックオン対象がいない、または届いていない場合、周囲のボスや敵を走査
+            if (!hitTarget) {
+                for (GameObject* obj : Manager::GetGameObjectList()) {
+                    if (!obj || obj->IsDestroy() || obj == this) continue;
+                    if (obj->GetObjectType() != ObjectType::Enemy && obj->GetObjectType() != ObjectType::Boss) continue;
+                    Enemy* e = static_cast<Enemy*>(obj);
+                    if (e->GetEnemyState() == EnemyState::DEFEATED) continue;
+                    
+                    XMFLOAT3 diff = m_Position - e->GetPosition();
+                    diff.y = 0.0f;
+                    float dist = MathHelper::Length(diff);
+                    if (dist < 1.0f + e->GetRadius()) {
+                        hitTarget = e;
+                        break;
+                    }
+                }
+            }
+            
+            // タックル対象にダメージを与える
+            if (hitTarget) {
+                if (hitTarget->GetObjectType() == ObjectType::Boss) {
+                    BossEnemy* bossE = static_cast<BossEnemy*>(hitTarget);
+                    bossE->ApplyBossDamage(3, m_Position); // ボスには3ダメージ
+                } else {
+                    // 通常エネミーには強ノックバックで吹き飛ばし、撃破（1ダメージ相当）
+                    XMFLOAT3 pushDir = hitTarget->GetPosition() - m_Position;
+                    pushDir.y = 0.0f;
+                    float len = MathHelper::Length(pushDir);
+                    if (len > 0.001f) { pushDir.x /= len; pushDir.z /= len; }
+                    else { pushDir = XMFLOAT3(0.0f, 0.0f, 1.0f); }
+                    
+                    XMFLOAT3 pushVel = XMFLOAT3(pushDir.x * 1.8f, 0.6f, pushDir.z * 1.8f);
+                    hitTarget->SetVelocity(pushVel);
+                    hitTarget->SetEnemyState(EnemyState::BLOWN_AWAY);
+                    hitTarget->Defeat(0.0f, 1.0f, 2.0f); // 吹き飛ばし撃破
+                }
+                
+                // ヒットインパクト演出 (ヒットストップとカメラシェイク)
+                Manager::AddHitStop(10);
+                if (g_Camera) {
+                    g_Camera->Shake(0.25f, 10);
+                }
+                
+                m_TackleTimer = 0; // タックルを消費
+            }
+        }
 
         // 壁や敵にぶつかる場合は衝突解決
         if (!Collision::CheckAABBCollision(this, nextPos, Manager::GetGameObjectList())) {
@@ -394,6 +460,99 @@ void Player::Update()
 
 void Player::UpdateIdle()
 {
+    // タックル有効中に左クリック → 敵の目の前にテレポートしてタックル！
+    if (m_TackleTimer > 0 && PlayerController::IsGrabOrThrowAction()) {
+        Enemy* target = nullptr;
+        
+        // 1. ロックオン対象がいれば、それを優先ターゲットとする
+        if (m_LockOnTarget && !m_LockOnTarget->IsDestroy()) {
+            target = m_LockOnTarget;
+        } else {
+            // 2. ロックオン対象がいない場合は、近くのボスまたはモブ敵を探索
+            float nearestDist = 15.0f; // 索敵範囲
+            for (GameObject* obj : Manager::GetGameObjectList()) {
+                if (!obj || obj == this || obj->IsDestroy()) continue;
+                if (obj->GetObjectType() != ObjectType::Enemy && obj->GetObjectType() != ObjectType::Boss) continue;
+                Enemy* e = static_cast<Enemy*>(obj);
+                if (e->GetEnemyState() == EnemyState::DEFEATED) continue;
+                
+                float dist = MathHelper::Length(e->GetPosition() - m_Position);
+                if (dist < nearestDist) {
+                    nearestDist = dist;
+                    target = e;
+                }
+            }
+        }
+        
+        // ターゲットが見つかった場合はテレポートタックルを実行
+        if (target) {
+            XMFLOAT3 targetPos = target->GetPosition();
+            XMFLOAT3 startPos = m_Position;
+            
+            // XZ平面での向きベクトルを計算
+            using namespace DirectX;
+            XMVECTOR vStart = XMLoadFloat3(&startPos);
+            XMVECTOR vTarget = XMLoadFloat3(&targetPos);
+            XMVECTOR vDiff = vTarget - vStart;
+            vDiff = XMVectorSetY(vDiff, 0.0f); // 高さ方向は無視
+            float dist = XMVectorGetX(XMVector3Length(vDiff));
+            
+            XMVECTOR vDir;
+            if (dist > 0.001f) {
+                vDir = vDiff / dist;
+            } else {
+                vDir = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+            }
+            
+            // ターゲットの半径＋マージン分だけ手前にテレポート
+            float targetRadius = target->GetRadius();
+            float warpDistance = targetRadius + 0.8f; // 手前に少しマージンを取る
+            
+            XMVECTOR vWarpPos = vTarget - vDir * warpDistance;
+            XMFLOAT3 warpPos;
+            XMStoreFloat3(&warpPos, vWarpPos);
+            warpPos.y = m_Position.y; // プレイヤーの接地高さを維持
+            
+            // テレポート位置と回転を更新
+            m_Position = warpPos;
+            XMFLOAT3 dir;
+            XMStoreFloat3(&dir, vDir);
+            m_Rotation.y = atan2f(dir.x, dir.z);
+            
+            // もちもち変形演出（潰れ）
+            m_Scale.y = 0.4f;
+            m_Scale.x = 1.8f;
+            m_Scale.z = 1.8f;
+            m_ScaleVelocityY = -0.1f;
+            m_ScaleVelocityX = 0.08f;
+            m_ScaleVelocityZ = 0.08f;
+            
+            // 足元にタックルの衝撃波を発生させる
+            ShockwaveSystem::AddShockwave(warpPos, 5.0f, 0.0f, 2.5f, 4.0f, 20, 1.5f, 0);
+            
+            // ターゲットにダメージを適用
+            if (target->GetObjectType() == ObjectType::Boss) {
+                BossEnemy* boss = static_cast<BossEnemy*>(target);
+                boss->ApplyBossDamage(3, m_Position); // ボスには3ダメージ
+            } else {
+                // 通常エネミーは吹き飛ばして撃破（1ダメージ相当）
+                XMFLOAT3 pushVel = XMFLOAT3(dir.x * 1.8f, 0.6f, dir.z * 1.8f);
+                target->SetVelocity(pushVel);
+                target->SetEnemyState(EnemyState::BLOWN_AWAY);
+                target->Defeat(0.0f, 1.0f, 2.0f);
+            }
+            
+            // ヒットインパクト演出 (強いヒットストップとカメラシェイク)
+            Manager::AddHitStop(12);
+            if (g_Camera) {
+                g_Camera->Shake(0.35f, 12);
+            }
+            
+            m_TackleTimer = 0; // タックル権利を消費
+            return; // 処理を終了
+        }
+    }
+
     // スローモーション中かつロックオン対象が存在し、スラッシュ攻撃回数が3回未満の場合、左クリックで雷電テレポートスラッシュを発動
     if (Manager::IsSlowMotionActive() && m_CanWarpSlash && m_LockOnTarget && m_WarpSlashCount < 3) {
         if (PlayerController::IsGrabOrThrowAction()) {
@@ -1445,20 +1604,19 @@ void Player::NotifyObjectDestroyed(GameObject* obj)
         m_State = PlayerState::IDLE;
     }
 }
-
 void Player::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
 {
-    // Spawn a new Sandbag Enemy object at the parried bullet's location
+    // パリィされた弾の位置に新しいサンドバッグ敵オブジェクトを生成する
     Enemy* sandbag = Manager::AddGameObject<Enemy>();
     if (sandbag) {
         XMFLOAT3 spawnPos = bulletPos;
-        spawnPos.y = -0.5f; // Clamp to ground level
+        spawnPos.y = -0.5f; // 地面レベルにクランプ
         sandbag->SetPosition(spawnPos);
         sandbag->SetScale(XMFLOAT3(1.2f, 1.2f, 1.2f));
         sandbag->SetSandbag(true);
     }
 
-    // Reaction squash/stretch
+    // もちもち（伸縮）アニメーション演出の適用
     m_Scale.y = 1.3f;
     m_Scale.x = 0.8f;
     m_Scale.z = 0.8f;
@@ -1466,25 +1624,25 @@ void Player::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
     m_ScaleVelocityX = -0.04f;
     m_ScaleVelocityZ = -0.04f;
 
-    // Visual feedback: simple spark trail between player and sandbag
+    // 視覚的フィードバック：プレイヤーとサンドバッグの間にシンプルな火花軌跡を生成
     XMFLOAT3 boltStart = m_Position;
     boltStart.y += 0.3f;
     XMFLOAT3 boltEnd = bulletPos;
     boltEnd.y += 0.3f;
     AddLightningEffect(boltStart, boltEnd);
 
-    // Spawn shockwave at sandbag location (no knockback to avoid moving the sandbag)
+    // サンドバッグの位置に衝撃波を発生（サンドバッグの移動を防ぐためノックバックはなし）
     XMFLOAT3 shockPos = bulletPos;
     shockPos.y = -0.95f;
     ShockwaveSystem::AddShockwave(shockPos, 3.0f, 1.5f, 0.8f, 0.0f, 16, 0.0f, 0);
 
-    // Hitstop and shake feedback
+    // ヒットストップとカメラシェイクによるフィードバック
     Manager::AddHitStop(8);
     if (g_Camera) {
         g_Camera->Shake(0.2f, 10);
     }
 
-    // Start slow motion (90 frames = 1.5 seconds) to give time to grab
+    // スローモーションを開始（90フレーム = 1.5秒）して、掴みの猶予時間を与える
     Manager::StartSlowMotion(90);
     DisableWarpSlash();
 }

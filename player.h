@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "gameobject.h"
 #include <vector>
 #include <list>
@@ -74,6 +74,7 @@ private:
     int         m_DashCooldown     = 0;         // ダッシュクールダウン
     DirectX::XMFLOAT3 m_DashDirection = DirectX::XMFLOAT3(0, 0, 0); // ダッシュ方向
     bool        m_IsDashing        = false;     // ダッシュ中フラグ
+    int         m_TackleTimer      = 0;         // タックル有効タイマー（ボス弾をダッシュ回避後に有効化）
 
     void UpdateIdle();
     void UpdateGrabbed();
@@ -108,6 +109,10 @@ public:
     bool   IsJustDodgeActive() const { return m_IsDashing && (m_DashTimer >= 10); }
     void   ResetDashCooldown() { m_DashCooldown = 0; }
 
+    // タックル攻撃関連（ボス弾ダッシュ回避後に有効化）
+    void   EnableTackle(int frames = 90) { m_TackleTimer = frames; } // 90F=1.5秒間有効
+    bool   IsInTackle() const { return m_TackleTimer > 0; }
+
     // 稲妻エフェクトの追加
     void AddLightningEffect(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end);
 
@@ -125,7 +130,8 @@ public:
     DirectX::XMFLOAT3 GetEmissive() const override;
     Enemy* GetLockOnTarget() const { return m_LockOnTarget; }
     int    GetLockOnFrame() const { return m_LockOnFrame; }
-    ObjectType GetObjectType() const override { return ObjectType::Player; }
+    static ObjectType GetStaticType() { return ObjectType::Player; }
+    ObjectType GetObjectType() const override { return GetStaticType(); }
     void NotifyObjectDestroyed(GameObject* obj);
     void ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos);
     void DisableWarpSlash() { m_CanWarpSlash = false; }

@@ -1,4 +1,4 @@
-#include "boss_enemy.h"
+﻿#include "boss_enemy.h"
 #include "renderer.h"
 #include "resource_manager.h"
 #include "math_helper.h"
@@ -176,7 +176,8 @@ void BossEnemy::Fire3WaySpread()
 
         bullet->SetDirection(XMFLOAT3(rotX, baseDir.y, rotZ));
         bullet->SetSpeed(0.18f);
-        bullet->SetScale(XMFLOAT3(1.5f, 1.5f, 1.5f)); // 巨大な弾
+        bullet->SetScale(XMFLOAT3(1.5f, 1.5f, 1.5f));
+        bullet->SetIsBossBullet(true); // ボスフラグを設定
     }
 
     if (g_Camera) g_Camera->Shake(0.15f, 8);
@@ -204,6 +205,7 @@ void BossEnemy::FireRapidShot()
         bullet->SetDirection(dir);
         bullet->SetSpeed(speeds[i]);
         bullet->SetScale(XMFLOAT3(1.2f, 1.2f, 1.2f));
+        bullet->SetIsBossBullet(true); // ボスフラグを設定
     }
 
     if (g_Camera) g_Camera->Shake(0.12f, 8);

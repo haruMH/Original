@@ -1,4 +1,4 @@
-#include "score_popup.h"
+﻿#include "score_popup.h"
 #include "renderer.h"
 #include "manager.h"
 #include <vector>

@@ -1,4 +1,4 @@
-#include "score_hud.h"
+﻿#include "score_hud.h"
 #include "renderer.h"
 #include "game_rule.h"
 #include "player.h"

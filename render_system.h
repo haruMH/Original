@@ -45,7 +45,7 @@ public:
     // context: デバイスコンテキスト
     // objects: シーン内の全 GameObject のリスト
     // pass: 描画パス（通常、シャドウ、アウトライン）
-    void RenderCubeInstances(ID3D11DeviceContext* context, const std::list<GameObject*>& objects, RenderPass pass = RenderPass::Normal);
+    void RenderCubeInstances(ID3D11DeviceContext* context, const std::vector<GameObject*>& objects, RenderPass pass = RenderPass::Normal);
 
 private:
     ID3D11Buffer*       m_InstanceBuffer = nullptr;       // 動的インスタンスバッファ（スロット1用）

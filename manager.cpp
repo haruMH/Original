@@ -1,4 +1,4 @@
-#include "manager.h"
+﻿#include "manager.h"
 #include <string>
 #include "camera.h"
 #include "input.h"
@@ -20,7 +20,8 @@
 #include "shockwave.h"
 
 // 静的メンバ変数の実体定義
-std::list<GameObject*> Manager::m_GameObjects;
+std::vector<GameObject*> Manager::m_GameObjects;
+std::vector<GameObject*> Manager::m_UpdateObjects;
 RenderSystem           Manager::m_RenderSystem;
 int                    Manager::m_HitStopFrames = 0;
 int                    Manager::m_SlowMotionTimer = 0;
@@ -28,7 +29,7 @@ int                    Manager::m_SlowMotionDuration = 0;
 Scene                  Manager::m_CurrentScene = Scene::TITLE;
 
 //  デバッグ用切り替えマクロ: 1にすると最初からボス戦、0にすると通常の16体ステージから始まります
-#define START_FROM_BOSS 1
+#define START_FROM_BOSS 0
 
 bool                   Manager::m_IsBossStage = false;
 Scene                  Manager::m_NextScene = Scene::TITLE;
@@ -105,6 +106,7 @@ void Manager::Uninit()
         }
     }
     m_GameObjects.clear();
+    m_UpdateObjects.clear();
 
     if (g_Camera) {
         g_Camera->Uninit();
@@ -191,12 +193,12 @@ void Manager::UpdateGameplay()
 
     Player* player = GetGameObject<Player>();
 
-    // 1. 各オブジェクトの更新と破棄処理
-    for (auto it = m_GameObjects.begin(); it != m_GameObjects.end(); ) {
-        GameObject* obj = *it;
+    // 動的オブジェクトの更新と破棄（WallとFieldは静的で更新不要なため除外）
+    for (size_t i = 0; i < m_UpdateObjects.size(); ) {
+        GameObject* obj = m_UpdateObjects[i];
         bool shouldUpdate = true;
 
-        // プレイヤー以外はスロー時は間引く
+        // プレイヤー以外のオブジェクトはスローモーション中に更新を間引く
         if (obj->GetObjectType() != ObjectType::Player) {
             shouldUpdate = updateOthers;
         }
@@ -211,9 +213,25 @@ void Manager::UpdateGameplay()
             }
             obj->Uninit();
             delete obj;
-            it = m_GameObjects.erase(it);
+
+            // O(1)スワップ＆ポップ消去法（swap-erase）を用いて更新リストから削除
+            if (i != m_UpdateObjects.size() - 1) {
+                m_UpdateObjects[i] = m_UpdateObjects.back();
+            }
+            m_UpdateObjects.pop_back();
+
+            // 保存しておいたポインタ値を使用して描画用オブジェクトリスト（m_GameObjects）からも削除
+            for (size_t j = 0; j < m_GameObjects.size(); j++) {
+                if (m_GameObjects[j] == obj) {
+                    if (j != m_GameObjects.size() - 1) {
+                        m_GameObjects[j] = m_GameObjects.back();
+                    }
+                    m_GameObjects.pop_back();
+                    break;
+                }
+            }
         } else {
-            it++;
+            i++;
         }
     }
 
@@ -237,9 +255,9 @@ void Manager::UpdateGameplay()
         // 通常ステージ：攻撃してくる敵が全て全滅したかを監視
         bool attackingEnemyExists = false; 
         for (GameObject* obj : m_GameObjects) {
-            if (dynamic_cast<AttackingEnemy*>(obj)) {
+            if (obj && obj->GetObjectType() == ObjectType::Enemy) {
                 Enemy* enemy = static_cast<Enemy*>(obj);
-                if (enemy->GetEnemyState() != EnemyState::DEFEATED) {
+                if (enemy->IsAttackingEnemy() && enemy->GetEnemyState() != EnemyState::DEFEATED) {
                     attackingEnemyExists = true;
                     break;
                 }
@@ -398,18 +416,27 @@ void Manager::TransitionToBossStage()
     // プレイヤー、フィールド以外のすべてのオブジェクトを破棄（リストから削除）
     OutputDebugStringA("[Manager] オブジェクト破棄処理を開始します...\n");
     int destroyedCount = 0;
-    for (auto it = m_GameObjects.begin(); it != m_GameObjects.end(); ) {
-        GameObject* obj = *it;
+    std::vector<GameObject*> nextObjects;
+    nextObjects.reserve(m_GameObjects.size());
+    for (GameObject* obj : m_GameObjects) {
         if (obj->GetObjectType() != ObjectType::Player && obj->GetObjectType() != ObjectType::Field) {
             if (player) {
                 player->NotifyObjectDestroyed(obj);
             }
             obj->Uninit();
             delete obj;
-            it = m_GameObjects.erase(it);
             destroyedCount++;
         } else {
-            it++;
+            nextObjects.push_back(obj);
+        }
+    }
+    m_GameObjects = std::move(nextObjects);
+    // 静的オブジェクトを除外して更新対象リスト（m_UpdateObjects）を再構築
+    m_UpdateObjects.clear();
+    for (GameObject* obj : m_GameObjects) {
+        ::ObjectType t = obj->GetObjectType();
+        if (t != ::ObjectType::Wall && t != ::ObjectType::Field) {
+            m_UpdateObjects.push_back(obj);
         }
     }
     std::string destroyMsg = "[Manager] オブジェクト破棄が完了しました (個数: " + std::to_string(destroyedCount) + ")\n";
@@ -491,6 +518,7 @@ void Manager::ExecuteChangeScene(Scene nextScene)
         }
     }
     m_GameObjects.clear();
+    m_UpdateObjects.clear();
 
     if (g_Camera) {
         g_Camera->Uninit();
@@ -550,10 +578,13 @@ void Manager::ExecuteChangeScene(Scene nextScene)
 #else
         m_IsBossStage = false;
         
-        // 通常ステージ
+        // 通常ステージ：壁を敵エリアの外側に配置（プレイヤーと干渉しない位置）
         Wall* wall = AddGameObject<Wall>();
-        wall->SetPosition(XMFLOAT3(3.0f, 1.5f, 3.0f));
+        wall->SetPosition(XMFLOAT3(-8.0f, 1.5f, -7.0f));
         wall->SetScale(XMFLOAT3(5.0f, 5.0f, 5.0f));
+
+        // プレイヤーを敵・壁から安全な距離（Z+8付近）にスポーン
+        player->SetPosition(XMFLOAT3(0.0f, -0.5f, 8.0f));
 
         int totalEnemies = 0;
         for (int x = -2; x <= 1; x++) {

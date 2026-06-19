@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "gameobject.h"
 
 enum class EnemyState {
@@ -49,7 +49,8 @@ public:
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }
     void       SetScoreValue(int v)          { m_ScoreValue = v; }
-    ObjectType GetObjectType() const override { return ObjectType::Enemy; }
+    static ObjectType GetStaticType() { return ObjectType::Enemy; }
+    ObjectType GetObjectType() const override { return GetStaticType(); }
     XMFLOAT3   GetEmissive() const override;
 
     // 撃破処理（二重カウント防止機能付き）

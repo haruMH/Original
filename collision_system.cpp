@@ -1,4 +1,4 @@
-#include "collision_system.h"
+﻿#include "collision_system.h"
 #include <list>
 #include <algorithm> // std::findを使うため
 #include "manager.h"
@@ -65,7 +65,7 @@ namespace LightningConfig {
 // ─────────────────────────────────────────────
 static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
 {
-    const std::list<GameObject*>& gameObjects = Manager::GetGameObjectList();
+    const std::vector<GameObject*>& gameObjects = Manager::GetGameObjectList();
     XMFLOAT3 currentPos = startPos;
     
     // 連鎖回数と索敵半径の設定（LightningConfig から取得）
@@ -78,25 +78,35 @@ static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
         Enemy* nearest = nullptr;
         float nearestDistSq = chainRadius * chainRadius;
 
-        for (GameObject* obj : gameObjects) {
-            if (!obj || obj->IsDestroy() || obj == player) continue;
-            if (obj->GetObjectType() != ObjectType::Enemy) continue;
-            Enemy* enemy = static_cast<Enemy*>(obj);
+        // グリッド座標を算出して近接セルのみを走査（半径8mに対しセルサイズ5mのため周囲2セル分を探索）
+        int centerCol = static_cast<int>(floorf((currentPos.x - CollisionGrid::GRID_MIN_X) / CollisionGrid::CELL_SIZE));
+        int centerRow = static_cast<int>(floorf((currentPos.z - CollisionGrid::GRID_MIN_Z) / CollisionGrid::CELL_SIZE));
 
-            // すでに撃破済み、または今回の連鎖リストに含まれている敵は除外
-            EnemyState eState = enemy->GetEnemyState();
-            if (eState == EnemyState::DEFEATED || eState == EnemyState::BLOWN_AWAY) continue;
-            if (std::find(chainedEnemies.begin(), chainedEnemies.end(), enemy) != chainedEnemies.end()) continue;
+        for (int dr = -2; dr <= 2; ++dr) {
+            for (int dc = -2; dc <= 2; ++dc) {
+                int r = centerRow + dr;
+                int c = centerCol + dc;
+                if (r >= 0 && r < CollisionGrid::GRID_ROWS && c >= 0 && c < CollisionGrid::GRID_COLS) {
+                    for (Enemy* enemy : g_CollisionGrid.cells[r][c]) {
+                        if (!enemy || enemy->IsDestroy()) continue;
 
-            XMFLOAT3 ePos = enemy->GetPosition();
-            float dx = ePos.x - currentPos.x;
-            float dy = ePos.y - currentPos.y;
-            float dz = ePos.z - currentPos.z;
-            float distSq = dx * dx + dy * dy + dz * dz;
+                        // すでに撃破済み、または今回の連鎖リストに含まれている敵は除外
+                        EnemyState eState = enemy->GetEnemyState();
+                        if (eState == EnemyState::DEFEATED || eState == EnemyState::BLOWN_AWAY) continue;
+                        if (std::find(chainedEnemies.begin(), chainedEnemies.end(), enemy) != chainedEnemies.end()) continue;
 
-            if (distSq < nearestDistSq) {
-                nearestDistSq = distSq;
-                nearest = enemy;
+                        XMFLOAT3 ePos = enemy->GetPosition();
+                        float dx = ePos.x - currentPos.x;
+                        float dy = ePos.y - currentPos.y;
+                        float dz = ePos.z - currentPos.z;
+                        float distSq = dx * dx + dy * dy + dz * dz;
+
+                        if (distSq < nearestDistSq) {
+                            nearestDistSq = distSq;
+                            nearest = enemy;
+                        }
+                    }
+                }
             }
         }
 
@@ -143,7 +153,7 @@ void CollisionSystem::Update()
     if (!player) return;
 
     XMFLOAT3 pPos = player->GetPosition();
-    const std::list<GameObject*>& gameObjects = Manager::GetGameObjectList();
+    const std::vector<GameObject*>& gameObjects = Manager::GetGameObjectList();
 
     // 1回の走査で判定対象ごとに事前分類およびグリッド登録を行い、高速化
     std::vector<Enemy*> enemies;
