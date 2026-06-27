@@ -11,6 +11,9 @@ private:
     static long m_MouseMoveX;
     static long m_MouseMoveY;
 
+    // 追加：マウスがロックされているかフラグ
+    static bool m_MouseLocked;
+
 public:
     static void Init();
     static void Uninit();
@@ -22,4 +25,8 @@ public:
     // 追加：マウス移動量取得用ゲッター
     static long GetMouseMoveX() { return m_MouseMoveX; }
     static long GetMouseMoveY() { return m_MouseMoveY; }
+
+    // 追加：マウスロック状態制御用
+    static bool IsMouseLocked() { return m_MouseLocked; }
+    static void SetMouseLocked(bool lock) { m_MouseLocked = lock; }
 };

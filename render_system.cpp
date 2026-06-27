@@ -2,6 +2,7 @@
 #include "renderer.h"
 #include "gameobject.h"
 #include "resource_manager.h"
+#include "wall.h"
 #include <vector>
 #include <fstream>
 #include <DirectXCollision.h>
@@ -285,6 +286,16 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
     for (GameObject* obj : objects)
     {
         if (!obj) continue;
+
+        // シェーダーテスト用の壁は個別で特殊描画するため、インスタンシング一括描画から除外する
+        if (obj->GetObjectType() == ObjectType::Wall)
+        {
+            Wall* wall = static_cast<Wall*>(obj);
+            if (wall->IsShaderTest())
+            {
+                continue;
+            }
+        }
 
         const RenderComponent& rc = obj->GetRenderComponent();
         if (!rc.visible || rc.meshType != MeshType::Cube || rc.textureKey.empty())

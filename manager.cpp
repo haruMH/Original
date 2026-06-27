@@ -1,4 +1,4 @@
-﻿#include "manager.h"
+#include "manager.h"
 #include <string>
 #include "camera.h"
 #include "input.h"
@@ -124,6 +124,9 @@ void Manager::Uninit()
 // ─────────────────────────────────────────────
 void Manager::Update()
 {
+    // ImGui の新規フレームを開始（Update内で各オブジェクトがImGui UIを構築するため、最初に行う必要があります）
+    Renderer::BeginNewFrame();
+
     Input::Update();
 
     // スコアポップアップはシーンを問わず更新可能にする
@@ -140,9 +143,25 @@ void Manager::Update()
         if (Input::GetKeyTrigger(VK_SPACE)) {
             ChangeScene(Scene::GAMEPLAY);
         }
+        // 'T'キーが押されたらシェーダーテストシーンへ
+        if (Input::GetKeyTrigger('T')) {
+            ChangeScene(Scene::SHADER_TEST);
+        }
         break;
 
     case Scene::GAMEPLAY:
+        // 'T'キーが押されたらシェーダーテストシーンへ（デバッグ用）
+        if (Input::GetKeyTrigger('T')) {
+            ChangeScene(Scene::SHADER_TEST);
+        }
+        UpdateGameplay();
+        break;
+
+    case Scene::SHADER_TEST:
+        // Escキーでタイトルに戻る
+        if (Input::GetKeyTrigger(VK_ESCAPE)) {
+            ChangeScene(Scene::TITLE);
+        }
         UpdateGameplay();
         break;
 
@@ -250,7 +269,9 @@ void Manager::UpdateGameplay()
         }
     }
 
-    // 4. ボスステージ遷移およびゲームクリア判定
+    // 4. ボスステージ遷移およびゲームクリア判定（シェーダーテストシーンでは行わない）
+    if (m_CurrentScene == Scene::SHADER_TEST) return;
+
     if (!m_IsBossStage) {
         // 通常ステージ：攻撃してくる敵が全て全滅したかを監視
         bool attackingEnemyExists = false; 
@@ -328,7 +349,8 @@ void Manager::Draw()
             type != ObjectType::Enemy && 
             type != ObjectType::Player && 
             type != ObjectType::Wall &&
-            type != ObjectType::Boss) {
+            type != ObjectType::Boss &&
+            type != ObjectType::Unknown) {
             obj->Draw();
             Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
@@ -342,6 +364,14 @@ void Manager::Draw()
     Renderer::SetProjectionMatrix(cameraProj);
     Renderer::Begin();
 
+    // まず空 (Skybox) を描画
+    for (GameObject* obj : m_GameObjects) {
+        if (obj->GetObjectType() == ObjectType::Unknown) { obj->Draw(); }
+    }
+
+    // 描画ステートの復元
+    Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
     // 床(Field)を描画
     for (GameObject* obj : m_GameObjects) {
         if (obj->GetObjectType() == ObjectType::Field) { obj->Draw(); }
@@ -354,12 +384,24 @@ void Manager::Draw()
     Renderer::SetupCubeDraw();
     for (GameObject* obj : m_GameObjects) {
         ObjectType type = obj->GetObjectType();
-        if (type != ObjectType::Field && 
-            type != ObjectType::Enemy && 
-            type != ObjectType::Wall) {
-            obj->Draw();
-            Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        if (type == ObjectType::Field || type == ObjectType::Enemy) {
+            continue;
         }
+        // 通常の壁は一括描画するため個別描画はスキップ。ただし、テスト壁（IsShaderTest()がtrue）は個別描画する。
+        if (type == ObjectType::Wall) {
+            Wall* wall = static_cast<Wall*>(obj);
+            if (!wall->IsShaderTest()) {
+                continue;
+            }
+        }
+
+        obj->Draw();
+        // テスト壁（Water/Dissolve/Refract等）がシェーダーを変更した場合、
+        // 次のオブジェクト描画前に通常キューブシェーダーへ戻す
+        if (type == ObjectType::Wall) {
+            Renderer::SetupCubeDraw();
+        }
+        Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
 
     // キューブオブジェクトの一括インスタンシング描画
@@ -375,7 +417,8 @@ void Manager::Draw()
             type != ObjectType::Enemy && 
             type != ObjectType::Player && 
             type != ObjectType::Wall &&
-            type != ObjectType::Boss) {
+            type != ObjectType::Boss &&
+            type != ObjectType::Unknown) {
             obj->Draw();
             Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
@@ -631,5 +674,42 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     }
     else if (nextScene == Scene::GAMEOVER) {
         // ゲームオーバー画面用の初期化
+    }
+    else if (nextScene == Scene::SHADER_TEST) {
+        // シェーダーテストシーンの初期化
+        GameRule::Init(); // スコアや敵数、ゲームクリア状態などのリセット
+        
+        m_HitStopFrames = 0;
+        m_SlowMotionTimer = 0;
+        m_SlowMotionDuration = 0;
+
+        // 1. スカイボックス（空）の生成
+        AddGameObject<Skybox>();
+
+        // 2. 鏡面反射（リフレクション）確認用のオブジェクト（アイテムなど）を生成
+        // 鏡ブロック（Z=5.0f）の手前（Z=3.0f）に配置することで、鏡の中にアイテムが映り込むようにする
+        Item* item1 = AddGameObject<Item>();
+        item1->SetPosition(XMFLOAT3(-0.6f, 0.0f, 3.0f));
+        item1->SetItemType(ItemType::VACUUM);
+
+        Item* item2 = AddGameObject<Item>();
+        item2->SetPosition(XMFLOAT3(0.0f, 0.0f, 3.0f));
+        item2->SetItemType(ItemType::GIGANT);
+
+        Item* item3 = AddGameObject<Item>();
+        item3->SetPosition(XMFLOAT3(0.6f, 0.0f, 3.0f));
+        item3->SetItemType(ItemType::LIGHTNING);
+
+        // 3. 地面オブジェクトの生成（反射が他のオブジェクト描画後にコピーされるように順序を調整）
+        AddGameObject<Field>();
+
+        // 4. 壁オブジェクトの生成（プレイヤーより少し大きく、目の前）
+        Wall* wall = AddGameObject<Wall>();
+        wall->SetPosition(XMFLOAT3(0.0f, 0.0f, 5.0f)); // Y=0.0fで底面が地面(Y=-1.0f)に接する
+        wall->SetScale(XMFLOAT3(2.0f, 2.0f, 2.0f));    // プレイヤー(1.0f, 1.0f, 1.0f)より大きめ
+        wall->SetShaderTest(true);                     // シェーダーテスト用フラグをONにする
+        m_UpdateObjects.push_back(wall);               // アップデート対象リストに追加
+
+        GameRule::SetTotalEnemies(0); // 敵は存在しない
     }
 }

@@ -8,7 +8,8 @@ enum class Scene {
     TITLE,
     GAMEPLAY,
     CLEAR,
-    GAMEOVER
+    GAMEOVER,
+    SHADER_TEST
 };
 
 // =================================================================
@@ -86,6 +87,7 @@ public:
 
     // オブジェクトリストの取得.
     static const std::vector<GameObject*>& GetGameObjectList() { return m_GameObjects; }
+    static const std::vector<GameObject*>& GetUpdateObjectList() { return m_UpdateObjects; }
 
     // ヒットストップのフレーム設定.
     static void AddHitStop(int frames) { m_HitStopFrames = frames; }
