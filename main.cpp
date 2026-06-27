@@ -3,10 +3,12 @@
 #include "main.h"
 #include "manager.h"
 #include <thread>
+#include <imm.h>
 
+#pragma comment(lib, "imm32.lib")
 
 const char* CLASS_NAME = "AppClass";
-const char* WINDOW_NAME = "DX11ゲーム";
+const char* WINDOW_NAME = "TOON SLASHER";
 
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -22,7 +24,20 @@ HWND GetWindow()
 
 int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow)
 {
+	// ゲーム中にIME（日本語入力候補窓）が起動しないように完全に無効化する
+	ImmDisableIME(0);
 
+#ifdef NDEBUG
+	// リリースビルド時は、カレントディレクトリを実行ファイルが存在するフォルダに移動します。
+	// これにより、Visual Studioからのデバッグ実行や直接実行に関わらず、Assetsフォルダから正しく読み込めるようになります。
+	char szPath[MAX_PATH];
+	GetModuleFileNameA(NULL, szPath, MAX_PATH);
+	char* pLastSlash = strrchr(szPath, '\\');
+	if (pLastSlash) {
+		*pLastSlash = '\0';
+		SetCurrentDirectoryA(szPath);
+	}
+#endif
 
 	WNDCLASSEX wcex;
 	{
@@ -116,8 +131,14 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 
 
+// ImGuiのメッセージハンドラの前方宣言
+extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    // ImGuiがメッセージを処理した場合は早期リターン
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam))
+        return true;
 
 	switch(uMsg)
 	{
@@ -129,7 +150,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		switch(wParam)
 		{
 		case VK_ESCAPE:
-			DestroyWindow(hWnd);
+			// Escキーによる強制終了を無効化（ゲーム内ポーズ/マウスロック解除用に使用）
 			break;
 		}
 		break;

@@ -5,15 +5,16 @@
 #include "player.h"
 #include <math.h>
 #include "input.h"
+#include <DirectXCollision.h>
 
 void Camera::Init()
 {
-    m_Position = XMFLOAT3(0.0f, 2.0f, -5.0f);
-    m_Target = XMFLOAT3(0.0f, 0.0f, 0.0f);
+    m_Position = XMFLOAT3(0.0f, 1.5f, -3.0f);  // 壁（Z=5）が見えるよう、前方に位置
+    m_Target = XMFLOAT3(0.0f, 0.0f, 5.0f);      // 壁の方向を初期注視点に設定
     m_Up = XMFLOAT3(0.0f, 1.0f, 0.0f);
 
-    m_AngleY = 0.0f;    // 左右回転初期値
-    m_AngleX = 0.3f;    // 少し上から見下ろす角度 (約17度)
+    m_AngleY = 0.0f;    // 左右回転初期値（正面向き）
+    m_AngleX = 0.2f;    // 少し下向き（壁全体が見えるように）
     m_Distance = 6.0f;    // プレイヤーとの距離
 
     m_ShakeIntensity = 0.0f;
@@ -34,7 +35,6 @@ void Camera::Update()
 {
     // 1. プレイヤーを取得
     GameObject* player = Manager::GetGameObject<Player>();
-    if (!player) return;
 
     // --- 回転速度の設定 ---
     float keyRotationSpeed = 0.03f; // キーボードでの回転速度
@@ -57,22 +57,99 @@ void Camera::Update()
     if (Input::GetKeyPress(VK_UP))   m_AngleX -= keyRotationSpeed; // 上を向く
     if (Input::GetKeyPress(VK_DOWN)) m_AngleX += keyRotationSpeed; // 下を向く
 
-    // 4. 上下回転の制限（反転防止）
-    if (m_AngleX > 1.4f) m_AngleX = 1.4f;
-    if (m_AngleX < -0.3f) m_AngleX = -0.3f;
+    if (!player)
+    {
+        // === プレイヤーがいない場合：フリーカメラモード ===
+        // 上下回転の制限（フリーカメラ時はほぼ真上・真下まで向けるように緩和）
+        if (m_AngleX > 1.4f) m_AngleX = 1.4f;
+        if (m_AngleX < -1.4f) m_AngleX = -1.4f;
 
-    // --- 座標計算 ---
-    XMFLOAT3 playerPos = player->GetPosition();
+        // カメラの向きベクトルを計算
+        float cosPitch = cosf(m_AngleX);
+        float sinPitch = sinf(m_AngleX);
+        float cosYaw = cosf(m_AngleY);
+        float sinYaw = sinf(m_AngleY);
 
-	float horizontalDistance = m_Distance * cosf(m_AngleX);//直角三角形の斜めの部分(m_Distance)にcosで水平距離を求める
-    float verticalDistance = m_Distance * sinf(m_AngleX);//直角三角形の斜めの部分(m_Distance)にsinで高さを求める
+        // 前方ベクトル
+        XMVECTOR fwd = XMVectorSet(sinYaw * cosPitch, sinPitch, cosYaw * cosPitch, 0.0f);
+        fwd = XMVector3Normalize(fwd);
+        // 上方向と右方向ベクトル
+        XMVECTOR upVec = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+        XMVECTOR rightVec = XMVector3Cross(upVec, fwd);
+        rightVec = XMVector3Normalize(rightVec);
 
-    m_Position.x = playerPos.x - horizontalDistance * sinf(m_AngleY);
-    m_Position.y = playerPos.y + verticalDistance + 1.5f;
-    m_Position.z = playerPos.z - horizontalDistance * cosf(m_AngleY);
+        // キー入力による座標更新 (W/S/A/D/R/F)
+        float moveSpeed = 0.15f;
+        XMVECTOR pos = XMLoadFloat3(&m_Position);
+        if (Input::GetKeyPress('W')) pos += fwd * moveSpeed;
+        if (Input::GetKeyPress('S')) pos -= fwd * moveSpeed;
+        if (Input::GetKeyPress('D')) pos += rightVec * moveSpeed;
+        if (Input::GetKeyPress('A')) pos -= rightVec * moveSpeed;
+        if (Input::GetKeyPress('R')) pos += upVec * moveSpeed;
+        if (Input::GetKeyPress('F')) pos -= upVec * moveSpeed;
+        XMStoreFloat3(&m_Position, pos);
 
-    m_Target = playerPos;
-    m_Target.y += 1.2f;//プレイヤーの地面ではなく背中のあたりを見るために＋1.2fしている
+        // 注視点の設定 (カメラの少し先)
+        XMVECTOR target = pos + fwd * 5.0f;
+        XMStoreFloat3(&m_Target, target);
+    }
+    else
+    {
+        // === プレイヤーがいる場合：追従カメラモード ===
+        // 上下回転の制限（反転防止）
+        if (m_AngleX > 1.4f) m_AngleX = 1.4f;
+        if (m_AngleX < -0.3f) m_AngleX = -0.3f;
+
+        XMFLOAT3 playerPos = player->GetPosition();
+
+        float horizontalDistance = m_Distance * cosf(m_AngleX);
+        float verticalDistance = m_Distance * sinf(m_AngleX);
+
+        m_Position.x = playerPos.x - horizontalDistance * sinf(m_AngleY);
+        m_Position.y = playerPos.y + verticalDistance + 1.5f;
+        m_Position.z = playerPos.z - horizontalDistance * cosf(m_AngleY);
+
+        m_Target = playerPos;
+        m_Target.y += 1.2f; // プレイヤーの胸元あたりを注視する
+
+        // --- 壁との衝突によるカメラの押し戻し処理 ---
+        using namespace DirectX;
+        XMVECTOR vTarget = XMLoadFloat3(&m_Target);
+        XMVECTOR vCamPos = XMLoadFloat3(&m_Position);
+        XMVECTOR vToCam = vCamPos - vTarget;
+        float currentDist = XMVectorGetX(XMVector3Length(vToCam));
+
+        if (currentDist > 0.001f) {
+            XMVECTOR vRayDir = XMVector3Normalize(vToCam);
+            float nearestDist = currentDist;
+            bool hit = false;
+
+            for (GameObject* obj : Manager::GetGameObjectList()) {
+                if (!obj || obj->IsDestroy()) continue;
+                if (obj->GetObjectType() == ObjectType::Wall) {
+                    XMFLOAT3 wPos = obj->GetPosition();
+                    XMFLOAT3 wScale = obj->GetScale();
+                    XMFLOAT3 wSize = obj->GetSize();
+                    
+                    BoundingBox box(wPos, XMFLOAT3(wSize.x * wScale.x * 0.5f, wSize.y * wScale.y * 0.5f, wSize.z * wScale.z * 0.5f));
+                    
+                    float dist = 0.0f;
+                    if (box.Intersects(vTarget, vRayDir, dist)) {
+                        if (dist < nearestDist) {
+                            nearestDist = dist;
+                            hit = true;
+                        }
+                    }
+                }
+            }
+            // 壁に衝突している場合、衝突位置より少し手前（マージン0.3m）にカメラを配置する
+            float finalDist = nearestDist - 0.3f;
+            if (finalDist < 0.5f) finalDist = 0.5f; // 最低でもプレイヤーから0.5mは離す
+            
+            XMVECTOR vNewCamPos = vTarget + vRayDir * finalDist;
+            XMStoreFloat3(&m_Position, vNewCamPos);
+        }
+    }
 
     // --- カメラシェイク（振動）の適用 ---
     XMFLOAT3 finalPosition = m_Position;
@@ -106,3 +183,12 @@ void Camera::Update()
 
 
 void Camera::Draw() {}
+
+XMFLOAT3 Camera::GetForward() const
+{
+    XMFLOAT3 fwd(0.0f, 0.0f, 1.0f);
+    XMVECTOR dir = XMLoadFloat3(&m_Target) - XMLoadFloat3(&m_Position);
+    dir = XMVector3Normalize(dir);
+    XMStoreFloat3(&fwd, dir);
+    return fwd;
+}

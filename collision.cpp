@@ -20,6 +20,15 @@ bool Collision::CheckAABB(const GameObject* a, const DirectX::XMFLOAT3& nextPosA
     DirectX::XMFLOAT3 sizeB = b->GetSize();
     DirectX::XMFLOAT3 scaleB = b->GetScale();
 
+    // プレイヤーのもちもち伸縮（アニメーションスケール）が衝突判定のバウンディングボックスを
+    // 変動させないよう、衝突判定時はプレイヤーのスケールを固定値 (1.0f, 1.0f, 1.0f) にリセットします。
+    if (a->GetObjectType() == ObjectType::Player) {
+        scaleA = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    }
+    if (b->GetObjectType() == ObjectType::Player) {
+        scaleB = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    }
+
     // X, Y, Z 各軸でお互いに重なっているかを判定
     bool collisionX = std::abs(nextPosA.x - posB.x) < (sizeA.x * scaleA.x + sizeB.x * scaleB.x) * 0.5f;
     bool collisionY = std::abs(nextPosA.y - posB.y) < (sizeA.y * scaleA.y + sizeB.y * scaleB.y) * 0.5f;
@@ -39,7 +48,7 @@ bool Collision::CheckSphere(const GameObject* a, const GameObject* b)
     return distSq < (sumRad * sumRad);
 }
 
-bool Collision::CheckAABBCollision(const GameObject* self, const DirectX::XMFLOAT3& nextPos, const std::list<GameObject*>& objList, GameObject** ignoreObj)
+bool Collision::CheckAABBCollision(const GameObject* self, const DirectX::XMFLOAT3& nextPos, const std::vector<GameObject*>& objList, GameObject** ignoreObj)
 {
     if (!self) return false;
 
@@ -95,9 +104,64 @@ void Collision::ResolveGrabPhysics(GameObject* parent, GameObject* child, float 
     // 算出した理想の距離で座標を設定
     DirectX::XMFLOAT3 grabbedPos;
     grabbedPos.x = parentPos.x + fwdF.x * finalDistance;
-    // 掴んでいる敵の大きさに応じて、地面（-0.5f）にぴったり接地する高さを計算してめり込みを防ぐ
-    grabbedPos.y = -0.5f + (sizeC.y * scaleC.y) * 0.5f;
+    // 掴んでいる敵の大きさに応じて、プレイヤーの高さを基準に設定してめり込みを防ぐ
+    grabbedPos.y = parentPos.y + (sizeC.y * scaleC.y) * 0.5f;
     grabbedPos.z = parentPos.z + fwdF.z * finalDistance;
 
     child->SetPosition(grabbedPos);
+}
+
+void Collision::ResolveAABBCollision(GameObject* self, const std::vector<GameObject*>& objList)
+{
+    if (!self || self->IsDestroy()) return;
+
+    DirectX::XMFLOAT3 posA = self->GetPosition();
+    DirectX::XMFLOAT3 sizeA = self->GetSize();
+    DirectX::XMFLOAT3 scaleA = self->GetScale();
+    if (self->GetObjectType() == ObjectType::Player) {
+        scaleA = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    }
+
+    float radiusA_X = sizeA.x * scaleA.x * 0.5f;
+    float radiusA_Z = sizeA.z * scaleA.z * 0.5f;
+
+    for (GameObject* obj : objList) {
+        if (!obj || obj == self || obj->IsDestroy()) continue;
+        if (obj->GetObjectType() == ObjectType::Field) continue;
+
+        if (obj->GetObjectType() == ObjectType::Enemy) {
+            Enemy* enemy = static_cast<Enemy*>(obj);
+            if (enemy->GetEnemyState() == EnemyState::GRABBED) continue;
+        }
+
+        if (CheckAABB(self, posA, obj)) {
+            DirectX::XMFLOAT3 posB = obj->GetPosition();
+            DirectX::XMFLOAT3 sizeB = obj->GetSize();
+            DirectX::XMFLOAT3 scaleB = obj->GetScale();
+            if (obj->GetObjectType() == ObjectType::Player) {
+                scaleB = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+            }
+
+            float radiusB_X = sizeB.x * scaleB.x * 0.5f;
+            float radiusB_Z = sizeB.z * scaleB.z * 0.5f;
+
+            float overlapX = (radiusA_X + radiusB_X) - std::abs(posA.x - posB.x);
+            float overlapZ = (radiusA_Z + radiusB_Z) - std::abs(posA.z - posB.z);
+
+            if (overlapX < overlapZ) {
+                if (posA.x > posB.x) {
+                    posA.x += overlapX;
+                } else {
+                    posA.x -= overlapX;
+                }
+            } else {
+                if (posA.z > posB.z) {
+                    posA.z += overlapZ;
+                } else {
+                    posA.z -= overlapZ;
+                }
+            }
+            self->SetPosition(posA);
+        }
+    }
 }

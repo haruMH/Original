@@ -26,8 +26,8 @@ XMFLOAT3 PlayerController::GetMoveDirection(float camYaw)
 
 bool PlayerController::IsGrabOrThrowAction()
 {
-    // 左クリック(VK_LBUTTON = 0x01) または スペースキー(VK_SPACE = 0x20)
-    return Input::GetKeyTrigger(KEY_GRAB_THROW) || Input::GetKeyTrigger(0x20);
+    // 左クリック(VK_LBUTTON = 0x01)
+    return Input::GetKeyTrigger(KEY_GRAB_THROW);
 }
 
 bool PlayerController::IsSpinToggleAction()

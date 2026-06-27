@@ -2,7 +2,7 @@ cbuffer PostEffectBuffer : register(b0) {
     int   Mode;
     float Threshold;
     float BlurIntensity;
-    float Dummy;
+    float SlowMotionIntensity;
 }
 
 Texture2D    g_Texture1 : register(t0);
@@ -35,6 +35,14 @@ float4 main(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD) : SV_TARG
         float4 baseColor = g_Texture1.Sample(g_Sampler, TexCoord);
         float4 bloomColor = g_Texture2.Sample(g_Sampler, TexCoord);
         color = baseColor + bloomColor * BlurIntensity;
+
+        // スローモーション時のカラー補正（彩度を落とし、青みを加える）
+        if (SlowMotionIntensity > 0.0)
+        {
+            float gray = dot(color.rgb, float3(0.2126, 0.7152, 0.0722));
+            float3 slowColor = float3(gray * 0.6, gray * 0.75, gray * 1.3); // 青みがかったシネマティックモノクロ
+            color.rgb = lerp(color.rgb, slowColor, SlowMotionIntensity);
+        }
     }
 
     return color;

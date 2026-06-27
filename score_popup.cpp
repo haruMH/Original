@@ -169,10 +169,18 @@ bool ScorePopupSystem::Init(ID3D11Device* device)
     if (FAILED(device->CreateBuffer(&bd, &sd, &m_QuadVB))) return false;
 
     // ─── シェーダーの読み込み ───
+    // リリースビルド時は Assets/shader/ サブフォルダから読み込む
+#ifdef NDEBUG
+    // 頂点シェーダーは vertexShader.cso を流用する
+    Renderer::CreateVertexShader(&m_VS, &m_IL, "Assets/shader/vertexShader.cso");
+    // ピクセルシェーダーは UI専用の ui_ps.cso を読み込む
+    Renderer::CreatePixelShader(&m_PS, "Assets/shader/ui_ps.cso");
+#else
     // 頂点シェーダーは vertexShader.cso を流用する
     Renderer::CreateVertexShader(&m_VS, &m_IL, "vertexShader.cso");
     // ピクセルシェーダーは UI専用の ui_ps.cso を読み込む
     Renderer::CreatePixelShader(&m_PS, "ui_ps.cso");
+#endif
 
     if (!m_VS || !m_PS || !m_IL) {
         OutputDebugStringA("[ScorePopupSystem] シェーダー読み込み失敗\n");

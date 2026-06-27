@@ -2,6 +2,7 @@
 #include "renderer.h"
 #include "gameobject.h"
 #include "resource_manager.h"
+#include "wall.h"
 #include <vector>
 #include <fstream>
 #include <DirectXCollision.h>
@@ -52,9 +53,16 @@ bool RenderSystem::Init(ID3D11Device* device)
     log << "[RenderSystem::Init] Instance Buffer created successfully" << std::endl;
 
     // テクスチャインデックスマップの初期化
-    m_TextureIndexMap["enemy.png"] = 0.0f;
+    // リリースビルド時は Assets/texture/ サブフォルダのパスを使用する
+#ifdef NDEBUG
+    m_TextureIndexMap["Assets/texture/enemy.png"]  = 0.0f;
+    m_TextureIndexMap["Assets/texture/player.png"] = 1.0f;
+    m_TextureIndexMap["Assets/texture/grid.png"]   = 2.0f;
+#else
+    m_TextureIndexMap["enemy.png"]  = 0.0f;
     m_TextureIndexMap["player.png"] = 1.0f;
-    m_TextureIndexMap["grid.png"] = 2.0f;
+    m_TextureIndexMap["grid.png"]   = 2.0f;
+#endif
 
     // シェーダーおよびインプットレイアウトの作成
     bool res = CreateResources(device);
@@ -122,8 +130,13 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
     
     // -------------------------------------------------------------
     // 1. 頂点シェーダー (instanced_vs.cso) の読み込みと生成
+    // リリースビルドは Assets/shader/ サブフォルダから読み込む
     // -------------------------------------------------------------
+#ifdef NDEBUG
+    fopen_s(&f, "Assets/shader/instanced_vs.cso", "rb");
+#else
     fopen_s(&f, "instanced_vs.cso", "rb");
+#endif
     if (!f)
     {
         log << "[RenderSystem::CreateResources] Failed to open instanced_vs.cso!" << std::endl;
@@ -176,8 +189,13 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
 
     // -------------------------------------------------------------
     // 3. ピクセルシェーダー (instanced_ps.cso) の読み込みと生成
+    // リリースビルドは Assets/shader/ サブフォルダから読み込む
     // -------------------------------------------------------------
+#ifdef NDEBUG
+    fopen_s(&f, "Assets/shader/instanced_ps.cso", "rb");
+#else
     fopen_s(&f, "instanced_ps.cso", "rb");
+#endif
     if (!f)
     {
         log << "[RenderSystem::CreateResources] Failed to open instanced_ps.cso!" << std::endl;
@@ -204,8 +222,13 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
 
     // -------------------------------------------------------------
     // 4. インスタンスアウトライン用頂点シェーダー (outline_instanced_vs.cso) の読み込みと生成
+    // リリースビルドは Assets/shader/ サブフォルダから読み込む
     // -------------------------------------------------------------
+#ifdef NDEBUG
+    fopen_s(&f, "Assets/shader/outline_instanced_vs.cso", "rb");
+#else
     fopen_s(&f, "outline_instanced_vs.cso", "rb");
+#endif
     if (!f)
     {
         log << "[RenderSystem::CreateResources] Failed to open outline_instanced_vs.cso!" << std::endl;
@@ -245,7 +268,7 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
 // =================================================================
 // インスタンス描画の実行
 // =================================================================
-void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::list<GameObject*>& objects, RenderPass pass)
+void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::vector<GameObject*>& objects, RenderPass pass)
 {
     // 1. 視錐台の構築（通常描画・アウトライン描画時のみカリングを行う。シャドウマップ描画時は画面外の影も落とすためスキップ）
     bool useCulling = (pass != RenderPass::Shadow);
@@ -263,6 +286,16 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
     for (GameObject* obj : objects)
     {
         if (!obj) continue;
+
+        // シェーダーテスト用の壁は個別で特殊描画するため、インスタンシング一括描画から除外する
+        if (obj->GetObjectType() == ObjectType::Wall)
+        {
+            Wall* wall = static_cast<Wall*>(obj);
+            if (wall->IsShaderTest())
+            {
+                continue;
+            }
+        }
 
         const RenderComponent& rc = obj->GetRenderComponent();
         if (!rc.visible || rc.meshType != MeshType::Cube || rc.textureKey.empty())
@@ -306,7 +339,7 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
         context->VSSetShader(m_InstancedOutlineVertexShader, nullptr, 0);
         context->PSSetShader(Renderer::GetOutlinePixelShader(), nullptr, 0);
     }
-    else // Normal or Shadow
+    else // 通常パスまたはシャドウマップパス
     {
         context->IASetInputLayout(m_InstancedInputLayout);
         context->VSSetShader(m_InstancedVertexShader, nullptr, 0);
@@ -423,10 +456,17 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
     if (!device) return false;
 
     // 配列にするテクスチャのキー一覧
+    // リリースビルド時は Assets/texture/ サブフォルダのパスを使用する
     std::vector<std::string> textureKeys = {
+#ifdef NDEBUG
+        "Assets/texture/enemy.png",
+        "Assets/texture/player.png",
+        "Assets/texture/grid.png"
+#else
         "enemy.png",
         "player.png",
         "grid.png"
+#endif
     };
 
     std::vector<ID3D11Texture2D*> textures;

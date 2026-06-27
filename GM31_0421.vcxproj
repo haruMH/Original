@@ -121,6 +121,18 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <!-- リリースビルド後にファイルを種類ごとにサブフォルダへ整理する -->
+      <Command>
+        rem --- Assets\texture フォルダを作成しPNGをコピー ---
+        if not exist "$(OutDir)Assets\texture" mkdir "$(OutDir)Assets\texture"
+        for %%f in ("$(ProjectDir)*.png") do xcopy /Y /Q "%%f" "$(OutDir)Assets\texture\"
+        rem --- Assets\shader フォルダを作成しCSOをコピー ---
+        if not exist "$(OutDir)Assets\shader" mkdir "$(OutDir)Assets\shader"
+        for %%f in ("$(ProjectDir)*.cso") do xcopy /Y /Q "%%f" "$(OutDir)Assets\shader\"
+      </Command>
+      <Message>リリースフォルダに Assets/texture と Assets/shader を整理中...</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="camera.cpp" />
@@ -145,6 +157,14 @@
     <ClCompile Include="shockwave.cpp" />
     <ClCompile Include="attacking_enemy.cpp" />
     <ClCompile Include="enemy_bullet.cpp" />
+    <ClCompile Include="boss_enemy.cpp" />
+    <ClCompile Include="imgui\imgui.cpp" />
+    <ClCompile Include="imgui\imgui_demo.cpp" />
+    <ClCompile Include="imgui\imgui_draw.cpp" />
+    <ClCompile Include="imgui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="imgui\imgui_impl_win32.cpp" />
+    <ClCompile Include="imgui\imgui_tables.cpp" />
+    <ClCompile Include="imgui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
@@ -172,6 +192,15 @@
     <ClInclude Include="shockwave.h" />
     <ClInclude Include="attacking_enemy.h" />
     <ClInclude Include="enemy_bullet.h" />
+    <ClInclude Include="boss_enemy.h" />
+    <ClInclude Include="imgui\imconfig.h" />
+    <ClInclude Include="imgui\imgui.h" />
+    <ClInclude Include="imgui\imgui_impl_dx11.h" />
+    <ClInclude Include="imgui\imgui_impl_win32.h" />
+    <ClInclude Include="imgui\imgui_internal.h" />
+    <ClInclude Include="imgui\imstb_rectpack.h" />
+    <ClInclude Include="imgui\imstb_textedit.h" />
+    <ClInclude Include="imgui\imstb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
     <FXCompile Include="outline_ps.hlsl">
@@ -220,6 +249,31 @@
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
     </FXCompile>
     <FXCompile Include="ui_ps.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+    </FXCompile>
+    <FXCompile Include="test_ps.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+    </FXCompile>
+    <FXCompile Include="WaterVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+    </FXCompile>
+    <FXCompile Include="WaterPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+    </FXCompile>
+    <FXCompile Include="DissolvePS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+    </FXCompile>
+    <FXCompile Include="RefractPS.hlsl">
       <ShaderType>Pixel</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>

@@ -13,6 +13,7 @@ enum class ObjectType
     Item,
     Field,
     Bullet,
+    Boss,
     Unknown
 };
 

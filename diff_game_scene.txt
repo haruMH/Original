@@ -1,0 +1,243 @@
+diff --git a/game_scene.cpp b/game_scene.cpp
+index 2bb0e80..4a236e9 100644
+--- a/game_scene.cpp
++++ b/game_scene.cpp
+@@ -1,6 +1,7 @@
+-#include "game_scene.h"
++﻿#include "game_scene.h"
+ #include <list>
+ #include <sstream>
++#include <fstream>
+ #include "camera.h"
+ #include "player.h"
+ #include "enemy.h"
+@@ -9,6 +10,9 @@
+ #include "renderer.h"
+ #include "input.h"
+ #include "manager.h"
++#include "collision.h"
++#include "player_controller.h"
++#include "math_helper.h"
+ // ─────────────────────────────────────────────
+ // 初期化
+ // ─────────────────────────────────────────────
+@@ -19,10 +23,16 @@ void GameScene::Init() {
+     m_IsGameClear   = false;
+     m_IsGameOver    = false;
+ 
++    // 描画システムの初期化
++    bool initRes = m_RenderSystem.Init(Renderer::GetDevice());
++    if (!initRes) {
++        MessageBoxA(nullptr, "RenderSystemの初期化に失敗しました。\nシェーダーファイル（instanced_vs.csoなど）が正しく出力されているか確認してください。", "エラー", MB_OK | MB_ICONERROR);
++    }
++
+     // プレイヤー生成
+     Player *player = new Player();
+     player->Init();
+-    player->SetPosition(XMFLOAT3(0.0f, 0.0f, 0.0f));
++    player->SetPosition(XMFLOAT3(0.0f, 0.5f, 6.0f));
+     m_GameObjectList.push_back(player);
+ 
+     // フィールド生成
+@@ -33,8 +43,8 @@ void GameScene::Init() {
+     // 壁（専用クラス）
+     Wall *wall = new Wall();
+     wall->Init();
+-    wall->SetPosition(XMFLOAT3(3.0f, 1.5f, 3.0f));
+-    wall->SetScale(XMFLOAT3(5.0f, 5.0f, 5.0f));
++    wall->SetPosition(XMFLOAT3(0.0f, 0.5f, 3.0f));
++    wall->SetScale(XMFLOAT3(5.0f, 3.0f, 1.0f));
+     m_GameObjectList.push_back(wall);
+ 
+     // 敵を多め（4x4の計16体）に生成して、ド派手な連鎖反応が起きるようにする！
+@@ -60,7 +70,10 @@ void GameScene::Init() {
+ // ─────────────────────────────────────────────
+ // 終了処理
+ // ─────────────────────────────────────────────
+-void GameScene::Uninit() { Scene::Uninit(); }
++void GameScene::Uninit() {
++    m_RenderSystem.Uninit();
++    Scene::Uninit();
++}
+ 
+ // ─────────────────────────────────────────────
+ // 撃破時の共通処理（スコア加算・クリア判定）
+@@ -115,8 +128,8 @@ void GameScene::Update() {
+ 
+     XMFLOAT3 pPos = player->GetPosition();
+ 
+-    // ─── マウス左クリック：つかみ / 投げ ──────────────────
+-    if (Input::GetKeyTrigger(VK_LBUTTON)) {
++    // ─── プレイヤーコントローラー：つかみ / 投げ ──────────────────
++    if (PlayerController::IsGrabOrThrowAction()) {
+         if (player->GetGrabbedEnemy()) {
+             // すでにつかんでいる → 投げる
+             player->Throw();
+@@ -156,20 +169,14 @@ void GameScene::Update() {
+             if (!target || target->IsDestroy() || target == grabbed) continue;
+             if (target->GetEnemyState() != EnemyState::NORMAL) continue;
+ 
+-            XMFLOAT3 tPos = target->GetPosition();
+-            float dx = gPos.x - tPos.x;
+-            float dy = gPos.y - tPos.y;
+-            float dz = gPos.z - tPos.z;
+-            float dist = sqrtf(dx*dx + dy*dy + dz*dz);
+-            if (dist < (grabbed->GetRadius() + target->GetRadius())) {
+-                XMVECTOR vToTarget = XMVector3Normalize(
+-                    XMLoadFloat3(&tPos) - XMLoadFloat3(&pPos));
+-                XMFLOAT3 dir;
+-                XMStoreFloat3(&dir, vToTarget);
++            if (Collision::CheckSphere(grabbed, target)) {
++                XMFLOAT3 tPos = target->GetPosition();
++                // MathHelper::Normalize で正規化（XMVECTOR 変換不要）
++                XMFLOAT3 dir = MathHelper::Normalize(tPos - pPos);
+ 
+                 // 遠心力ブースト：回転速度が速いほど威力が上がる
+                 float force = 0.5f + abs(player->GetAngularVelocity()) * 5.0f;
+-                target->SetVelocity(XMFLOAT3(dir.x * force, 0.0f, dir.z * force));
++                target->SetVelocity(dir * force);
+                 target->SetEnemyState(EnemyState::FLYING);
+                 Manager::AddHitStop(4); // 振り回し攻撃ヒット時のヒットストップ（少し短め）
+             }
+@@ -195,17 +202,7 @@ void GameScene::Update() {
+             Wall* wall = dynamic_cast<Wall*>(obj);
+             if (wall) {
+                 // 壁との当たり判定（球ではなく直方体 / AABB で正確に判定）
+-                XMFLOAT3 wPos = wall->GetPosition();
+-                XMFLOAT3 fSize = flying->GetSize();
+-                XMFLOAT3 fScale = flying->GetScale();
+-                XMFLOAT3 wSize = wall->GetSize();
+-                XMFLOAT3 wScale = wall->GetScale();
+-
+-                bool colX = abs(fPos.x - wPos.x) < (fSize.x * fScale.x + wSize.x * wScale.x) * 0.5f;
+-                bool colY = abs(fPos.y - wPos.y) < (fSize.y * fScale.y + wSize.y * wScale.y) * 0.5f;
+-                bool colZ = abs(fPos.z - wPos.z) < (fSize.z * fScale.z + wSize.z * wScale.z) * 0.5f;
+-
+-                if (colX && colY && colZ) {
++                if (Collision::CheckAABB(flying, wall)) {
+                     char dbgMsg[256];
+                     sprintf_s(dbgMsg, "[Debug] 敵が壁と衝突しました！（衝突済み） 位置: (%.2f, %.2f, %.2f)\n", fPos.x, fPos.y, fPos.z);
+                     OutputDebugStringA(dbgMsg);
+@@ -228,24 +225,18 @@ void GameScene::Update() {
+             Enemy* target = dynamic_cast<Enemy*>(obj);
+             if (!target) continue;
+ 
+-            XMFLOAT3 tPos  = target->GetPosition();
+-            float dx = fPos.x - tPos.x;
+-            float dy = fPos.y - tPos.y;
+-            float dz = fPos.z - tPos.z;
+-            float dist = sqrtf(dx*dx + dy*dy + dz*dz);
+-
+-            float collisionRadius = flying->GetRadius() + target->GetRadius();
+-            if (dist >= collisionRadius) continue;                   // 衝突なし
++            if (!Collision::CheckSphere(flying, target)) continue; // 衝突なし
++            XMFLOAT3 tPos = target->GetPosition();
+ 
+             // ─── 通常の敵に衝突 → 相手を吹き飛ばし、自分はそのまま貫通して飛び続ける ──────────
+             if (target->GetEnemyState() == EnemyState::NORMAL) {
+-                XMVECTOR vHitDir = XMVector3Normalize(
+-                    XMLoadFloat3(&tPos) - XMLoadFloat3(&fPos));
+-                XMFLOAT3 dir;
+-                XMStoreFloat3(&dir, vHitDir);
++                // MathHelper::Normalize で正規化（XMVECTOR 変換不要）
++                XMFLOAT3 dir = MathHelper::Normalize(tPos - fPos);
+                 
+                 // ぶつかられた敵（target）をさらに高く上に吹き飛ばす
+-                target->SetVelocity(XMFLOAT3(dir.x * 0.4f, 0.35f, dir.z * 0.4f));
++                XMFLOAT3 vel = dir * 0.4f;
++                vel.y = 0.35f;
++                target->SetVelocity(vel);
+                 target->SetEnemyState(EnemyState::FLYING);
+                 
+                 // ぶつかられた敵に、ぶつかってきた方向（飛んできた敵の方向）を向かせる
+@@ -263,15 +254,15 @@ void GameScene::Update() {
+ }
+ 
+ // ─────────────────────────────────────────────
+-// 描画処理
++// 描画処理（ステート・リーク修正版）
+ // ─────────────────────────────────────────────
+ void GameScene::Draw() {
+     XMMATRIX cameraView = Renderer::GetViewMatrix();
+     XMMATRIX cameraProj = Renderer::GetProjectionMatrix();
+ 
+     LIGHT currentLight = Renderer::GetLight();
+-    XMVECTOR lightDir  = XMLoadFloat4(&currentLight.Direction);
+-    XMVECTOR lightPos  = XMVector3Normalize(lightDir) * -20.0f;
++    XMVECTOR lightDir = XMLoadFloat4(&currentLight.Direction);
++    XMVECTOR lightPos = XMVector3Normalize(lightDir) * -20.0f;
+     XMMATRIX lightView = XMMatrixLookAtLH(lightPos,
+         XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f),
+         XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+@@ -280,26 +271,62 @@ void GameScene::Draw() {
+     Renderer::SetViewMatrix(lightView);
+     Renderer::SetProjectionMatrix(lightProj);
+ 
+-    // シャドウパス描画（フィールドを除く）
++    // === 1. シャドウパス描画（フィールドを除く） ===
+     Renderer::BeginShadowPass();
+-    for (GameObject *obj : m_GameObjectList) {
+-        if (!dynamic_cast<Field *>(obj)) obj->Draw();
++    Renderer::SetupCubeDraw(); // キューブ共通アセットをバインド
++    for (GameObject* obj : m_GameObjectList) {
++        if (!dynamic_cast<Field*>(obj)) {
++            obj->Draw();
++            // 各オブジェクトの内部でトポロジーが変更された場合を考慮してLISTに戻す
++            Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
++        }
+     }
+     Renderer::EndShadowPass();
+ 
+-    // 通常描画
++    // === 2. 通常描画パス ===
+     Renderer::SetViewMatrix(cameraView);
+     Renderer::SetProjectionMatrix(cameraProj);
+     Renderer::Begin();
+-    for (GameObject *obj : m_GameObjectList) { obj->Draw(); }
+ 
+-    // アウトライン描画（フィールドを除く）
++    // 先に床(Field)を描画（床は独自のバッファ・シェーダーで、内部でTRIANGLESTRIPに切り替わる）
++    for (GameObject* obj : m_GameObjectList) {
++        if (dynamic_cast<Field*>(obj)) { obj->Draw(); }
++    }
++
++    // 【重要】床がTRIANGLESTRIPに変更したステートを、ここで明示的に通常のLISTに戻す！
++    Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
++
++    // 再度キューブ共通アセットをバインドして、Enemy以外のオブジェクトを個別描画
++    Renderer::SetupCubeDraw();
++    for (GameObject* obj : m_GameObjectList) {
++        if (!dynamic_cast<Field*>(obj) && !dynamic_cast<Enemy*>(obj)) {
++            obj->Draw();
++            // プレイヤーや壁のDraw後にトポロジーをLISTへ安全に戻す
++            Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
++        }
++    }
++
++    // Enemyの一括インスタンシング描画
++    m_RenderSystem.RenderCubeInstances(Renderer::GetDeviceContext(), m_GameObjectList);
++    // インスタンシング描画関数から抜けた後のトポロジーをLISTに矯正
++    Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
++
++    // === 3. アウトライン描画（フィールドを除く） ===
+     Renderer::BeginOutlinePass();
+-    for (GameObject *obj : m_GameObjectList) {
+-        if (!dynamic_cast<Field*>(obj)) { obj->Draw(); }
++    // RenderCubeInstances() がスロット0/1の頂点バッファを nullptr にクリアするため、
++    // アウトラインパスの前に必ず SetupCubeDraw() でキューブ VB を再バインドする。
++    // これを呼ばないと Wall::Draw() などが null VB で Draw(36,0) を実行し、
++    // 黒いゴミポリゴンがオブジェクト上に描画されてしまう。
++    Renderer::SetupCubeDraw();
++    for (GameObject* obj : m_GameObjectList) {
++        if (!dynamic_cast<Field*>(obj)) {
++            obj->Draw();
++            Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
++        }
+     }
+     Renderer::EndOutlinePass();
+ 
+     if (g_Camera) g_Camera->Draw();
++
+     Renderer::End();
+ }
+\ No newline at end of file

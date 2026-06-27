@@ -13,6 +13,10 @@ private:
     XMFLOAT3 m_Direction = XMFLOAT3(0.0f, 0.0f, 1.0f); // 移動方向
     float    m_Speed     = BULLET_SPEED;                // 現在の速度
     int      m_Life      = BULLET_LIFE;                 // 残り寿命
+    bool     m_IsPlayerOwned = false;                   // プレイヤーが反射した味方弾フラグ
+    bool     m_IsBossBullet  = false;                   // ボスが発射した弾フラグ
+    XMFLOAT3 m_EmissiveColor = XMFLOAT3(2.5f, 0.5f, 0.0f); // 自己発光カラー
+    int      m_Damage = 2;                              // 反射弾の攻撃力（デフォルト2）
 
 public:
     void Init()   override;
@@ -23,7 +27,29 @@ public:
     // 移動方向の設定
     void SetDirection(XMFLOAT3 dir) { m_Direction = dir; }
 
-    // 自発光（Emissive）情報の取得（オレンジ色に強く発光させる）
-    XMFLOAT3 GetEmissive() const override { return XMFLOAT3(2.5f, 0.5f, 0.0f); }
-    ObjectType GetObjectType() const override { return ObjectType::Bullet; }
+    // 移動速度の設定
+    void SetSpeed(float speed) { m_Speed = speed; }
+
+    // 味方弾フラグの設定・取得
+    void SetPlayerOwned(bool owned) { m_IsPlayerOwned = owned; }
+    bool IsPlayerOwned() const { return m_IsPlayerOwned; }
+
+    // ボス弾フラグの設定・取得
+    void SetIsBossBullet(bool b) { m_IsBossBullet = b; }
+    bool IsBossBullet() const { return m_IsBossBullet; }
+
+    // 寿命（ライフタイム）の設定
+    void SetLife(int life) { m_Life = life; }
+
+    // 自己発光カラーの設定
+    void SetEmissiveColor(XMFLOAT3 color) { m_EmissiveColor = color; }
+
+    // 反射弾の攻撃力設定・取得
+    void SetDamage(int damage) { m_Damage = damage; }
+    int  GetDamage() const { return m_Damage; }
+
+    // 自発光（Emissive）情報の取得
+    XMFLOAT3 GetEmissive() const override { return m_EmissiveColor; }
+    static ObjectType GetStaticType() { return ObjectType::Bullet; }
+    ObjectType GetObjectType() const override { return GetStaticType(); }
 };

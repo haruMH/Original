@@ -13,7 +13,7 @@ enum class EnemyState {
 
 class Enemy : public GameObject
 {
-private:
+protected:
     ID3D11ShaderResourceView* m_Texture      = nullptr;
 
     EnemyState m_EnemyState = EnemyState::NORMAL;
@@ -24,6 +24,7 @@ private:
     int        m_UprightTimer = 0;   // 着地後、起き上がるまでのタイマー
     bool       m_IsExplosive = false; // 爆発属性フラグ
     bool       m_IsLightning = false; // 雷電属性フラグ
+    bool       m_IsDefeatedCounted = false; // 二重撃破ガード用フラグ
 
 public:
     void Init()   override;
@@ -42,8 +43,24 @@ public:
     bool       IsLightning() const           { return m_IsLightning; }
     void       SetLightning(bool lightning)  { m_IsLightning = lightning; }
 
+    bool       IsSandbag() const             { return m_IsSandbag; }
+    void       SetSandbag(bool enable)       { m_IsSandbag = enable; }
+
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }
     void       SetScoreValue(int v)          { m_ScoreValue = v; }
-    ObjectType GetObjectType() const override { return ObjectType::Enemy; }
+    static ObjectType GetStaticType() { return ObjectType::Enemy; }
+    ObjectType GetObjectType() const override { return GetStaticType(); }
+    XMFLOAT3   GetEmissive() const override;
+
+    // 撃破処理（二重カウント防止機能付き）
+    void       Defeat(float colorR = 2.5f, float colorG = 1.8f, float colorB = 0.0f);
+    bool       IsDefeatedCounted() const     { return m_IsDefeatedCounted; }
+
+    // 攻撃エネミー判定用（dynamic_cast排除の最適化）
+    virtual bool IsAttackingEnemy() const    { return false; }
+
+protected:
+    bool       m_IsSandbag = false;
+    int        m_SandbagLife = 300;
 };

@@ -165,8 +165,14 @@ bool ShockwaveSystem::Init(ID3D11Device* device)
     if (FAILED(device->CreateBuffer(&bd, &sd, &m_QuadVB))) return false;
 
     // --- シェーダー読み込み ---
+    // リリースビルド時は Assets/shader/ サブフォルダから読み込む
+#ifdef NDEBUG
+    Renderer::CreateVertexShader(&m_VS, &m_IL, "Assets/shader/vertexShader.cso");
+    Renderer::CreatePixelShader(&m_PS, "Assets/shader/ui_ps.cso");
+#else
     Renderer::CreateVertexShader(&m_VS, &m_IL, "vertexShader.cso");
     Renderer::CreatePixelShader(&m_PS, "ui_ps.cso");
+#endif
 
     if (!m_VS || !m_PS || !m_IL) {
         OutputDebugStringA("[ShockwaveSystem] VS/PS/IL Load Failed\n");
@@ -368,15 +374,8 @@ void ShockwaveSystem::ApplyShockwavePhysics(const XMFLOAT3& center, float radius
             vel.y = 0.35f * attenuation + 0.15f; // 上空へ軽く打ち上げる
             vel.z = dir.z * finalForce;
 
-            // スコア加算
-            GameRule::OnEnemyDefeated(enemy->GetScoreValue());
-
-            // 黄金〜オレンジのスコアポップアップを表示
-            ScorePopupSystem::AddPopup(
-                ePos.x, ePos.y + 1.0f, ePos.z,
-                enemy->GetScoreValue(),
-                2.5f, 0.8f, 0.0f
-            );
+            // 撃破処理（衝撃波・黄金オレンジポップアップ）
+            enemy->Defeat(2.5f, 0.8f, 0.0f);
 
             // 吹き飛ばし状態の設定
             enemy->SetVelocity(vel);
