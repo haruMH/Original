@@ -40,6 +40,47 @@ struct POSTEFFECT {
     float SlowMotionIntensity; // スローモーション中のカラー彩度・色調補正度
 };
 
+// 水面シェーダー用定数バッファ構造体 (VS)
+struct WaterParamCB {
+    float Time;
+    XMFLOAT3 WaveParams; // x: 振幅, y: 周波数, z: 移動速度
+};
+
+// 水面シェーダー用定数バッファ構造体 (PS)
+struct WaterLightCB {
+    XMFLOAT3 LightDirection;
+    float  Shininess;
+    XMFLOAT3 CameraPosition;
+    float  FresnelPower;
+    XMFLOAT4 WaterColorShallow;
+    XMFLOAT4 WaterColorDeep;
+    XMFLOAT2 ScrollSpeed1;
+    XMFLOAT2 ScrollSpeed2;
+    float  TimeVal;
+    XMFLOAT3 Dummy;
+};
+
+// ディゾルブシェーダー用定数バッファ構造体
+struct DissolveCB {
+    float  Threshold;
+    float  EdgeWidth;
+    XMFLOAT2 Dummy;
+    XMFLOAT4 EdgeColor;
+};
+
+// 屈折ガラスシェーダー用定数バッファ構造体
+struct GlassCB {
+    float    RefractionIndex;
+    float    FresnelPower;
+    XMFLOAT2 ScreenSize;
+    XMFLOAT4 HighlightColor;
+    float    Time;           // 波紋アニメーション用時間
+    float    WaveStrength;   // 波紋の強度
+    XMFLOAT2 Dummy;
+    XMFLOAT3 CameraWorldPos; // カメラのワールド座標
+    float    MirrorBlend;    // 鏡面ブレンド率（1.0=完全鏡面）
+};
+
 class Renderer {
 private:
     static D3D_FEATURE_LEVEL        m_FeatureLevel;
@@ -96,6 +137,19 @@ private:
     static ID3D11VertexShader*  m_CubeVertexShader;
     static ID3D11PixelShader*   m_CubePixelShader;
     static ID3D11InputLayout*   m_CubeInputLayout;
+    static ID3D11PixelShader*   m_TestPixelShader;
+
+    // 新規エフェクト用リソース
+    static ID3D11VertexShader*  m_WaterVS;
+    static ID3D11PixelShader*   m_WaterPS;
+    static ID3D11PixelShader*   m_DissolvePS;
+    static ID3D11PixelShader*   m_RefractPS;
+    static ID3D11Buffer*        m_WaterParamBuffer;
+    static ID3D11Buffer*        m_WaterLightBuffer;
+    static ID3D11Buffer*        m_DissolveBuffer;
+    static ID3D11Buffer*        m_GlassBuffer;
+    static ID3D11Texture2D*     m_BackgroundCopyTexture;
+    static ID3D11ShaderResourceView* m_BackgroundCopySRV;
 
     // コンスタントバッファ（CBuffer）キャッシュ（更新の最小化用）
     static MATERIAL             m_MaterialCache;
@@ -108,6 +162,7 @@ public:
     static void Init();
     static void Uninit();
     static void Begin();
+    static void BeginNewFrame();
     static void End();
     static void BeginShadowPass();
     static void EndShadowPass();
@@ -142,4 +197,23 @@ public:
     // キューブ描画の共通 GPU リソースをパイプラインにセットする
     static void SetupCubeDraw();
 	static void DrawCube(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* texture);
+	static void DrawCubeWithTestShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* texture);
+    static void CopySceneTexture();
+    static void DrawCubeWithWaterShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* normalMap1, ID3D11ShaderResourceView* normalMap2, float time, const XMFLOAT3& waveParams, float shininess, float fresnelPower, const XMFLOAT4& shallowColor, const XMFLOAT4& deepColor, const XMFLOAT2& scrollSpeed1, const XMFLOAT2& scrollSpeed2);
+    static void DrawCubeWithDissolveShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* mainTexture, ID3D11ShaderResourceView* noiseTexture, float threshold, float edgeWidth, const XMFLOAT4& edgeColor);
+    static void DrawCubeWithRefractShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* normalMap, float refractionIndex, float fresnelPower, const XMFLOAT4& highlightColor);
+    
+    // カリングモード切り替え関数
+    static void SetCullMode(bool cullBack)
+    {
+        if (cullBack)
+            m_DeviceContext->RSSetState(m_RasterizerStateCullBack);
+        else
+            m_DeviceContext->RSSetState(m_RasterizerStateCullFront);
+    }
+
+    // Field（平面）用の鏡面反射描画関数（スカイテクスチャフォールバック対応）
+    static void DrawFieldWithRefractShader(ID3D11Buffer* vertexBuffer, int vertexCount, ID3D11InputLayout* layout, ID3D11VertexShader* vs, ID3D11ShaderResourceView* normalMap, float refractionIndex, float fresnelPower, const XMFLOAT4& highlightColor, float time, const XMFLOAT3& cameraPos, ID3D11ShaderResourceView* skyTexture);
+    // Field（平面）用の水面描画関数
+    static void DrawFieldWithWaterShader(ID3D11Buffer* vertexBuffer, int vertexCount, ID3D11InputLayout* layout, ID3D11VertexShader* vs, ID3D11ShaderResourceView* normalMap1, ID3D11ShaderResourceView* normalMap2, float time, const XMFLOAT3& waveParams, float shininess, float fresnelPower, const XMFLOAT4& shallowColor, const XMFLOAT4& deepColor, const XMFLOAT2& scrollSpeed1, const XMFLOAT2& scrollSpeed2);
 };

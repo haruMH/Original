@@ -1,6 +1,10 @@
 ﻿#include "renderer.h"
 #include "manager.h"
 #include "main.h"
+#include "wall.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_win32.h"
+#include "imgui/imgui_impl_dx11.h"
 #include <stdio.h>
 #include <wincodec.h>
 
@@ -57,6 +61,18 @@ ID3D11Buffer*       Renderer::m_CubeVertexBuffer = NULL;
 ID3D11VertexShader* Renderer::m_CubeVertexShader = NULL;
 ID3D11PixelShader*  Renderer::m_CubePixelShader  = NULL;
 ID3D11InputLayout*  Renderer::m_CubeInputLayout  = NULL;
+ID3D11PixelShader*  Renderer::m_TestPixelShader  = NULL;
+
+ID3D11VertexShader*  Renderer::m_WaterVS = NULL;
+ID3D11PixelShader*   Renderer::m_WaterPS = NULL;
+ID3D11PixelShader*   Renderer::m_DissolvePS = NULL;
+ID3D11PixelShader*   Renderer::m_RefractPS = NULL;
+ID3D11Buffer*        Renderer::m_WaterParamBuffer = NULL;
+ID3D11Buffer*        Renderer::m_WaterLightBuffer = NULL;
+ID3D11Buffer*        Renderer::m_DissolveBuffer = NULL;
+ID3D11Buffer*        Renderer::m_GlassBuffer = NULL;
+ID3D11Texture2D*     Renderer::m_BackgroundCopyTexture = NULL;
+ID3D11ShaderResourceView* Renderer::m_BackgroundCopySRV = NULL;
 
 // コンスタントバッファ（CBuffer）キャッシュ（更新の最小化用）の実体定義
 MATERIAL             Renderer::m_MaterialCache = {};
@@ -381,11 +397,66 @@ void Renderer::Init() {
 #ifdef NDEBUG
         CreateVertexShader(&m_CubeVertexShader, &m_CubeInputLayout, "Assets/shader/vertexShader.cso");
         CreatePixelShader(&m_CubePixelShader, "Assets/shader/pixelShader.cso");
+        CreatePixelShader(&m_TestPixelShader, "Assets/shader/test_ps.cso");
+        CreateVertexShader(&m_WaterVS, nullptr, "Assets/shader/WaterVS.cso");
+        CreatePixelShader(&m_WaterPS, "Assets/shader/WaterPS.cso");
+        CreatePixelShader(&m_DissolvePS, "Assets/shader/DissolvePS.cso");
+        CreatePixelShader(&m_RefractPS, "Assets/shader/RefractPS.cso");
 #else
         CreateVertexShader(&m_CubeVertexShader, &m_CubeInputLayout, "vertexShader.cso");
         CreatePixelShader(&m_CubePixelShader, "pixelShader.cso");
+        CreatePixelShader(&m_TestPixelShader, "test_ps.cso");
+        CreateVertexShader(&m_WaterVS, nullptr, "WaterVS.cso");
+        CreatePixelShader(&m_WaterPS, "WaterPS.cso");
+        CreatePixelShader(&m_DissolvePS, "DissolvePS.cso");
+        CreatePixelShader(&m_RefractPS, "RefractPS.cso");
 #endif
+
+        // 新規エフェクト用定数バッファの生成
+        D3D11_BUFFER_DESC cbd = {};
+        cbd.Usage = D3D11_USAGE_DEFAULT;
+        cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+        // WaterParamCB (16 bytes)
+        cbd.ByteWidth = sizeof(WaterParamCB);
+        m_Device->CreateBuffer(&cbd, nullptr, &m_WaterParamBuffer);
+
+        // WaterLightCB (96 bytes)
+        cbd.ByteWidth = sizeof(WaterLightCB);
+        m_Device->CreateBuffer(&cbd, nullptr, &m_WaterLightBuffer);
+
+        // DissolveCB (32 bytes)
+        cbd.ByteWidth = sizeof(DissolveCB);
+        m_Device->CreateBuffer(&cbd, nullptr, &m_DissolveBuffer);
+
+        // GlassCB (32 bytes)
+        cbd.ByteWidth = sizeof(GlassCB);
+        m_Device->CreateBuffer(&cbd, nullptr, &m_GlassBuffer);
+
+        // 屈折エフェクト用背景コピーテクスチャの生成
+        D3D11_TEXTURE2D_DESC td = {};
+        td.Width = SCREEN_WIDTH;
+        td.Height = SCREEN_HEIGHT;
+        td.MipLevels = 1;
+        td.ArraySize = 1;
+        td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        td.SampleDesc.Count = 1;
+        td.Usage = D3D11_USAGE_DEFAULT;
+        td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        
+        m_Device->CreateTexture2D(&td, nullptr, &m_BackgroundCopyTexture);
+        m_Device->CreateShaderResourceView(m_BackgroundCopyTexture, nullptr, &m_BackgroundCopySRV);
     }
+
+    // ImGui の初期化
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+    ImGui_ImplWin32_Init(GetWindow());
+    ImGui_ImplDX11_Init(m_Device, m_DeviceContext);
+
+
 
     // キャッシュ機構の初期化完了フラグを立てる
     m_IsCacheInitialized = true;
@@ -402,10 +473,27 @@ void Renderer::Uninit() {
     if(m_DepthStateEnable)m_DepthStateEnable->Release(); if(m_DepthStateDisable)m_DepthStateDisable->Release(); if(m_DepthStateOutline)m_DepthStateOutline->Release(); if(m_BlendState)m_BlendState->Release();
     if(m_RenderTargetView)m_RenderTargetView->Release(); if(m_DepthStencilView)m_DepthStencilView->Release(); if(m_SwapChain)m_SwapChain->Release();
     if(m_DeviceContext)m_DeviceContext->Release(); if(m_Device)m_Device->Release();
+    // ImGui の終了処理
+    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+
     if(m_CubeVertexBuffer) m_CubeVertexBuffer->Release();
     if(m_CubeInputLayout)  m_CubeInputLayout->Release();
     if(m_CubePixelShader)  m_CubePixelShader->Release();
     if(m_CubeVertexShader) m_CubeVertexShader->Release();
+    if(m_TestPixelShader)  m_TestPixelShader->Release();
+
+    if(m_WaterVS) m_WaterVS->Release();
+    if(m_WaterPS) m_WaterPS->Release();
+    if(m_DissolvePS) m_DissolvePS->Release();
+    if(m_RefractPS) m_RefractPS->Release();
+    if(m_WaterParamBuffer) m_WaterParamBuffer->Release();
+    if(m_WaterLightBuffer) m_WaterLightBuffer->Release();
+    if(m_DissolveBuffer) m_DissolveBuffer->Release();
+    if(m_GlassBuffer) m_GlassBuffer->Release();
+    if(m_BackgroundCopyTexture) m_BackgroundCopyTexture->Release();
+    if(m_BackgroundCopySRV) m_BackgroundCopySRV->Release();
 }
 
 void Renderer::BeginShadowPass() {
@@ -446,6 +534,13 @@ void Renderer::Begin() {
     m_DeviceContext->OMSetRenderTargets(1, &m_SceneRTV, m_DepthStencilView);
     m_DeviceContext->ClearRenderTargetView(m_SceneRTV, c);
     m_DeviceContext->ClearDepthStencilView(m_DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+}
+
+void Renderer::BeginNewFrame() {
+    // ImGui のフレーム開始
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
 }
 
 void Renderer::End() {
@@ -504,6 +599,10 @@ void Renderer::End() {
     // SRV バインド解除（次フレームへの干渉を防ぐ）
     m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
     m_DeviceContext->OMSetDepthStencilState(m_DepthStateEnable, 0);
+
+    // ImGui のレンダリングと描画実行
+    ImGui::Render();
+    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
     m_SwapChain->Present(1, 0);
 }
@@ -696,4 +795,292 @@ void Renderer::DrawCube(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* t
 
     SetupCubeDraw();
     GetDeviceContext()->Draw(36, 0);
+}
+
+void Renderer::DrawCubeWithTestShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* texture)
+{
+    SetWorldMatrix(worldMatrix);
+    SetTexture(texture);
+
+    ID3D11ShaderResourceView* nullSRV = NULL;
+    m_DeviceContext->PSSetShaderResources(1, 1, &nullSRV);
+
+    // 共通のマテリアル設定
+    MATERIAL material;
+    ZeroMemory(&material, sizeof(material));
+    material.Diffuse = XMFLOAT4(1, 1, 1, 1);
+    material.Ambient = XMFLOAT4(1, 1, 1, 1);
+    material.Specular = XMFLOAT4(0.6f, 0.6f, 0.6f, 1);
+    material.Shininess = 20.0f;
+    material.TextureEnable = TRUE;
+    SetMaterial(material);
+
+    // SetupCubeDraw() と同様だが、ピクセルシェーダーだけ m_TestPixelShader を使う
+    UINT stride = sizeof(VERTEX_3D), offset = 0;
+    m_DeviceContext->IASetVertexBuffers(0, 1, &m_CubeVertexBuffer, &stride, &offset);
+    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_DeviceContext->IASetInputLayout(m_CubeInputLayout);
+    
+    if (m_IsOutlineMode) {
+        m_DeviceContext->VSSetShader(m_OutlineVS, NULL, 0);
+        m_DeviceContext->PSSetShader(m_OutlinePS, NULL, 0);
+    } else {
+        m_DeviceContext->VSSetShader(m_CubeVertexShader, NULL, 0);
+        m_DeviceContext->PSSetShader(m_TestPixelShader, NULL, 0);
+    }
+
+    GetDeviceContext()->Draw(36, 0);
+}
+
+void Renderer::CopySceneTexture()
+{
+    if (!m_DeviceContext || !m_BackgroundCopyTexture || !m_SceneRTV) return;
+
+    ID3D11Resource* pRtvResource = nullptr;
+    m_SceneRTV->GetResource(&pRtvResource);
+
+    if (pRtvResource)
+    {
+        ID3D11Texture2D* pSceneTex = nullptr;
+        HRESULT hr = pRtvResource->QueryInterface(__uuidof(ID3D11Texture2D), (void**)&pSceneTex);
+        if (SUCCEEDED(hr) && pSceneTex)
+        {
+            m_DeviceContext->CopyResource(m_BackgroundCopyTexture, pSceneTex);
+            pSceneTex->Release();
+        }
+        pRtvResource->Release();
+    }
+}
+
+void Renderer::DrawCubeWithWaterShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* normalMap1, ID3D11ShaderResourceView* normalMap2, float time, const XMFLOAT3& waveParams, float shininess, float fresnelPower, const XMFLOAT4& shallowColor, const XMFLOAT4& deepColor, const XMFLOAT2& scrollSpeed1, const XMFLOAT2& scrollSpeed2)
+{
+    SetWorldMatrix(worldMatrix);
+
+    WaterParamCB paramCB;
+    paramCB.Time = time;
+    paramCB.WaveParams = waveParams;
+    m_DeviceContext->UpdateSubresource(m_WaterParamBuffer, 0, nullptr, &paramCB, 0, 0);
+
+    WaterLightCB lightCB;
+    lightCB.LightDirection = XMFLOAT3(m_Light.Direction.x, m_Light.Direction.y, m_Light.Direction.z);
+    lightCB.Shininess = shininess;
+    lightCB.CameraPosition = XMFLOAT3(m_Light.CameraPosition.x, m_Light.CameraPosition.y, m_Light.CameraPosition.z);
+    lightCB.FresnelPower = fresnelPower;
+    lightCB.WaterColorShallow = shallowColor;
+    lightCB.WaterColorDeep = deepColor;
+    lightCB.ScrollSpeed1 = scrollSpeed1;
+    lightCB.ScrollSpeed2 = scrollSpeed2;
+    lightCB.TimeVal = time;
+    lightCB.Dummy = XMFLOAT3(0, 0, 0);
+    m_DeviceContext->UpdateSubresource(m_WaterLightBuffer, 0, nullptr, &lightCB, 0, 0);
+
+    m_DeviceContext->VSSetConstantBuffers(3, 1, &m_WaterParamBuffer);
+    m_DeviceContext->PSSetConstantBuffers(2, 1, &m_WaterLightBuffer);
+
+    ID3D11ShaderResourceView* srvs[2] = { normalMap1, normalMap2 };
+    m_DeviceContext->PSSetShaderResources(0, 2, srvs);
+
+    UINT stride = sizeof(VERTEX_3D), offset = 0;
+    m_DeviceContext->IASetVertexBuffers(0, 1, &m_CubeVertexBuffer, &stride, &offset);
+    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_DeviceContext->IASetInputLayout(m_CubeInputLayout);
+
+    if (m_IsOutlineMode) {
+        m_DeviceContext->VSSetShader(m_OutlineVS, NULL, 0);
+        m_DeviceContext->PSSetShader(m_OutlinePS, NULL, 0);
+    } else {
+        m_DeviceContext->VSSetShader(m_WaterVS, NULL, 0);
+        m_DeviceContext->PSSetShader(m_WaterPS, NULL, 0);
+    }
+
+    m_DeviceContext->Draw(36, 0);
+
+    ID3D11Buffer* nullBuffer = nullptr;
+    m_DeviceContext->VSSetConstantBuffers(3, 1, &nullBuffer);
+    m_DeviceContext->PSSetConstantBuffers(2, 1, &nullBuffer);
+
+    ID3D11ShaderResourceView* nullSRVs[2] = { nullptr, nullptr };
+    m_DeviceContext->PSSetShaderResources(0, 2, nullSRVs);
+}
+
+void Renderer::DrawCubeWithDissolveShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* mainTexture, ID3D11ShaderResourceView* noiseTexture, float threshold, float edgeWidth, const XMFLOAT4& edgeColor)
+{
+    SetWorldMatrix(worldMatrix);
+
+    DissolveCB cb;
+    cb.Threshold = threshold;
+    cb.EdgeWidth = edgeWidth;
+    cb.Dummy = XMFLOAT2(0, 0);
+    cb.EdgeColor = edgeColor;
+    m_DeviceContext->UpdateSubresource(m_DissolveBuffer, 0, nullptr, &cb, 0, 0);
+
+    m_DeviceContext->PSSetConstantBuffers(1, 1, &m_DissolveBuffer);
+
+    ID3D11ShaderResourceView* srvs[2] = { mainTexture, noiseTexture };
+    m_DeviceContext->PSSetShaderResources(0, 2, srvs);
+
+    UINT stride = sizeof(VERTEX_3D), offset = 0;
+    m_DeviceContext->IASetVertexBuffers(0, 1, &m_CubeVertexBuffer, &stride, &offset);
+    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_DeviceContext->IASetInputLayout(m_CubeInputLayout);
+
+    if (m_IsOutlineMode) {
+        m_DeviceContext->VSSetShader(m_OutlineVS, NULL, 0);
+        m_DeviceContext->PSSetShader(m_OutlinePS, NULL, 0);
+    } else {
+        m_DeviceContext->VSSetShader(m_CubeVertexShader, NULL, 0);
+        m_DeviceContext->PSSetShader(m_DissolvePS, NULL, 0);
+    }
+
+    m_DeviceContext->Draw(36, 0);
+
+    ID3D11ShaderResourceView* nullSRVs[2] = { nullptr, nullptr };
+    m_DeviceContext->PSSetShaderResources(0, 2, nullSRVs);
+}
+
+void Renderer::DrawCubeWithRefractShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* normalMap, float refractionIndex, float fresnelPower, const XMFLOAT4& highlightColor)
+{
+    SetWorldMatrix(worldMatrix);
+
+    GlassCB cb;
+    cb.RefractionIndex = refractionIndex;
+    cb.FresnelPower = fresnelPower;
+    cb.ScreenSize = XMFLOAT2((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
+    cb.HighlightColor = highlightColor;
+    m_DeviceContext->UpdateSubresource(m_GlassBuffer, 0, nullptr, &cb, 0, 0);
+
+    m_DeviceContext->PSSetConstantBuffers(1, 1, &m_GlassBuffer);
+
+    ID3D11ShaderResourceView* srvs[2] = { m_BackgroundCopySRV, normalMap };
+    m_DeviceContext->PSSetShaderResources(0, 2, srvs);
+
+    UINT stride = sizeof(VERTEX_3D), offset = 0;
+    m_DeviceContext->IASetVertexBuffers(0, 1, &m_CubeVertexBuffer, &stride, &offset);
+    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_DeviceContext->IASetInputLayout(m_CubeInputLayout);
+
+    if (m_IsOutlineMode) {
+        m_DeviceContext->VSSetShader(m_OutlineVS, NULL, 0);
+        m_DeviceContext->PSSetShader(m_OutlinePS, NULL, 0);
+    } else {
+        m_DeviceContext->VSSetShader(m_CubeVertexShader, NULL, 0);
+        m_DeviceContext->PSSetShader(m_RefractPS, NULL, 0);
+    }
+
+    m_DeviceContext->Draw(36, 0);
+
+    ID3D11ShaderResourceView* nullSRVs[2] = { nullptr, nullptr };
+    m_DeviceContext->PSSetShaderResources(0, 2, nullSRVs);
+}
+
+// Field（平面）用の鏡面反射描画関数
+void Renderer::DrawFieldWithRefractShader(ID3D11Buffer* vertexBuffer, int vertexCount, ID3D11InputLayout* layout, ID3D11VertexShader* vs, ID3D11ShaderResourceView* normalMap, float refractionIndex, float fresnelPower, const XMFLOAT4& highlightColor, float time, const XMFLOAT3& cameraPos, ID3D11ShaderResourceView* skyTexture)
+{
+    // 現在のバックバッファをコピー
+    CopySceneTexture();
+
+    // 鏡面反射ピクセルシェーダーを設定
+    m_DeviceContext->PSSetShader(m_RefractPS, NULL, 0);
+
+    // テクスチャとサンプラーを設定
+    // t0: バックバッファコピー, t1: 法線マップ, t2: スカイテクスチャ（フォールバック）
+    m_DeviceContext->PSSetShaderResources(0, 1, &m_BackgroundCopySRV);
+    m_DeviceContext->PSSetShaderResources(1, 1, &normalMap);
+    m_DeviceContext->PSSetShaderResources(2, 1, &skyTexture); // スカイテクスチャをフォールバックとしてバインド
+    m_DeviceContext->PSSetSamplers(0, 1, &m_SamplerState);
+
+    // 定数バッファの更新（波紋アニメーション・カメラ座標追加）
+    GlassCB cb;
+    cb.RefractionIndex = refractionIndex;
+    cb.FresnelPower    = fresnelPower;
+    cb.ScreenSize      = XMFLOAT2(1920.0f, 1080.0f);
+    cb.HighlightColor  = highlightColor;
+    cb.Time            = time;
+    cb.WaveStrength    = 1.0f;
+    cb.Dummy           = XMFLOAT2(0.0f, 0.0f);
+    cb.CameraWorldPos  = cameraPos;
+    cb.MirrorBlend     = 0.85f;
+    m_DeviceContext->UpdateSubresource(m_GlassBuffer, 0, nullptr, &cb, 0, 0);
+    m_DeviceContext->PSSetConstantBuffers(1, 1, &m_GlassBuffer);
+
+    // 頂点バッファの設定と入力レイアウト・頂点シェーダー設定
+    UINT stride = sizeof(VERTEX_3D), offset = 0;
+    m_DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_DeviceContext->IASetInputLayout(layout);
+    m_DeviceContext->VSSetShader(vs, NULL, 0);
+
+    // マテリアル設定
+    MATERIAL material;
+    ZeroMemory(&material, sizeof(material));
+    material.Diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.Ambient = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.TextureEnable = TRUE;
+    SetMaterial(material);
+
+    // 描画実行
+    m_DeviceContext->Draw(vertexCount, 0);
+
+    // バインド解除（t0, t1, t2 の 3 スロットを解放）
+    ID3D11ShaderResourceView* nullSRVs[3] = { nullptr, nullptr, nullptr };
+    m_DeviceContext->PSSetShaderResources(0, 3, nullSRVs);
+}
+
+void Renderer::DrawFieldWithWaterShader(ID3D11Buffer* vertexBuffer, int vertexCount, ID3D11InputLayout* layout, ID3D11VertexShader* vs, ID3D11ShaderResourceView* normalMap1, ID3D11ShaderResourceView* normalMap2, float time, const XMFLOAT3& waveParams, float shininess, float fresnelPower, const XMFLOAT4& shallowColor, const XMFLOAT4& deepColor, const XMFLOAT2& scrollSpeed1, const XMFLOAT2& scrollSpeed2)
+{
+    // 水面ピクセルシェーダーを設定
+    m_DeviceContext->PSSetShader(m_WaterPS, NULL, 0);
+
+    // 法線マップ 2 枚と頂点シェーダーを水面用に切り替え
+    m_DeviceContext->PSSetShaderResources(0, 1, &normalMap1);
+    m_DeviceContext->PSSetShaderResources(1, 1, &normalMap2);
+    m_DeviceContext->PSSetSamplers(0, 1, &m_SamplerState);
+
+    // WaterLightCB の更新
+    WaterLightCB wcb;
+    ZeroMemory(&wcb, sizeof(wcb));
+    wcb.LightDirection  = XMFLOAT3(m_Light.Direction.x, m_Light.Direction.y, m_Light.Direction.z);
+    wcb.Shininess       = shininess;
+    XMFLOAT3 camPos;
+    XMStoreFloat3(&camPos, XMVectorSet(m_Light.CameraPosition.x, m_Light.CameraPosition.y, m_Light.CameraPosition.z, 0));
+    wcb.CameraPosition  = camPos;
+    wcb.FresnelPower    = fresnelPower;
+    wcb.WaterColorShallow = shallowColor;
+    wcb.WaterColorDeep    = deepColor;
+    wcb.ScrollSpeed1    = scrollSpeed1;
+    wcb.ScrollSpeed2    = scrollSpeed2;
+    wcb.TimeVal         = time;
+    m_DeviceContext->UpdateSubresource(m_WaterLightBuffer, 0, nullptr, &wcb, 0, 0);
+    m_DeviceContext->PSSetConstantBuffers(2, 1, &m_WaterLightBuffer);
+
+    // 頂点バッファ・レイアウト・頂点シェーダーの設定
+    // 水面用頂点シェーダー（WaterVS）を使用して波を頂点レベルで変形する
+    UINT stride = sizeof(VERTEX_3D), offset = 0;
+    m_DeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 三角形リストで描画
+    m_DeviceContext->IASetInputLayout(layout);
+    m_DeviceContext->VSSetShader(m_WaterVS, NULL, 0);
+
+    // WaterParamCB の更新（頂点シェーダー側の波変形パラメータ）
+    // WaterVS.hlsl は register(b3) を使用しているため slot 3 にバインドする
+    WaterParamCB wpcb;
+    wpcb.Time       = time;
+    wpcb.WaveParams = waveParams;
+    m_DeviceContext->UpdateSubresource(m_WaterParamBuffer, 0, nullptr, &wpcb, 0, 0);
+    m_DeviceContext->VSSetConstantBuffers(3, 1, &m_WaterParamBuffer); // b3 に合わせる
+
+    // マテリアル設定
+    MATERIAL material;
+    ZeroMemory(&material, sizeof(material));
+    material.Diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.Ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
+    material.TextureEnable = FALSE; // WaterPS は法線マップを t0/t1 で使うためここでは無効
+    SetMaterial(material);
+
+    // ブレンドステートを半透明に切り替えて描画
+    m_DeviceContext->Draw(vertexCount, 0);
+
+    // バインド解除（後処理）
+    ID3D11ShaderResourceView* nullSRVs[2] = { nullptr, nullptr };
+    m_DeviceContext->PSSetShaderResources(0, 2, nullSRVs);
 }

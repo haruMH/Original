@@ -5518,3 +5518,725 @@ A86A0
 [RenderSystem::CreateResources] Start
 [RenderSystem::CreateResources] Failed to open instanced_vs.cso!
 [RenderSystem::Init] CreateResources result=0
+[RenderSystem::Init] Start. device=00000220BCBC7C00
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000002890FCF8E60
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=00000204C00C04F0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=0000015A547694E0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000002A2273FCB20
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001814163FB80
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001C34003C860
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=0000014F7D74F8E0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=0000017EE2BABB40
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001EEB495F500
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001D782E2AA80
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001183518F990
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=0000028AF54A8480
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=00000204A9B792C0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001ADDAF058D0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000002754145DBE0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001C72FC779A0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=0000017D84EC46E0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=00000265E37DFC80
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=0000025D5FE683E0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001356F47C830
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=00000298143E96F0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000002222EBDF500
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=0000021634763D20
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001F86103A8B0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000002B15299D6F0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=00000212ED7168C0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=0000024C7711ED30
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000002051A5E8FE0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001FE8DD6F500
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001CC3D9EA4A0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001836DF7A4D0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001FD3BE5F510
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=0000022CA5B9CEE0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=00000141040B9A80
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001E0A9E86750
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=00000237DBEA7000
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
+[RenderSystem::Init] Start. device=000001E6E27DA8B0
+[RenderSystem::Init] Instance Buffer created successfully
+[RenderSystem::CreateResources] Start
+[RenderSystem::CreateResources] Opened instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read instanced_vs.cso, size=25572
+[RenderSystem::CreateResources] Created Vertex Shader successfully
+[RenderSystem::CreateResources] Created Input Layout successfully
+[RenderSystem::CreateResources] Opened instanced_ps.cso successfully
+[RenderSystem::CreateResources] Read pixelShader.cso, size=36960
+[RenderSystem::CreateResources] Created Pixel Shader successfully
+[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully
+[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=20364
+[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully
+[RenderSystem::CreateResources] Created Instanced Outline Input Layout successfully
+[RenderSystem::Init] CreateResources result=1
+[RenderSystem::CreateTextureArray] Start
+[RenderSystem::CreateTextureArray] Base texture info: Width=1024, Height=1024, MipLevels=11, Format=28
+[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV.
+[RenderSystem::Init] CreateTextureArray result=1
