@@ -1,9 +1,19 @@
 ﻿#pragma once
 #include <vector>
+#include <type_traits>
 #include "render_system.h"
 #include "gameobject.h"
+#include "scene_interface.h"
 
-// シーン状態を定義する列挙型
+// 前方宣言
+class Player;
+class TitleScene;
+class GameplayScene;
+class ClearScene;
+class GameOverScene;
+class ShaderTestScene;
+
+// シーン状態を定義する列挙型（既存のコードとの互換性のために残します）
 enum class Scene {
     TITLE,
     GAMEPLAY,
@@ -15,19 +25,31 @@ enum class Scene {
 // =================================================================
 // ゲーム統括管理クラス (Manager)
 // =================================================================
+// ゲームのメインループ（Update, Draw）と、ポリモーフィズムを用いた
+// シーンオブジェクト（IScene）のライフサイクル管理を担当します。
 class Manager
 {
+    // 各シーンクラスから静的メンバ（オブジェクトリスト等）への直接アクセスを許可します
+    friend class TitleScene;
+    friend class GameplayScene;
+    friend class ClearScene;
+    friend class GameOverScene;
+    friend class ShaderTestScene;
+
 private:
     static std::vector<GameObject*> m_GameObjects;     // 全オブジェクトリスト（描画・一括走査用）
     static std::vector<GameObject*> m_UpdateObjects;   // 更新対象（動的）オブジェクトのリスト（更新処理高速化用）
+    static Player*                m_CachedPlayer;     // キャッシュされたプレイヤーへのポインタ (O(1)アクセス用)
     static RenderSystem           m_RenderSystem;     // インスタンスバッチ描画システム
     static int                    m_HitStopFrames;    // ヒットストップの残りフレーム数
     static int                    m_SlowMotionTimer;  // スローモーションの残りフレーム数
     static int                    m_SlowMotionDuration;// スローモーションの総開始フレーム数
     static bool                   m_IsBossStage;      // ボスステージ中フラグ
-    static Scene                  m_CurrentScene;     // 現在のシーン状態
+    static Scene                  m_CurrentScene;     // 現在のシーン（既存コード互換用）
     static Scene                  m_NextScene;        // 遷移予定の次のシーン
     static bool                   m_SceneTransitionRequested; // シーン遷移リクエストフラグ
+
+    static IScene*                m_ActiveScene;      // 現在アクティブなシーンオブジェクト
 
     static void ExecuteChangeScene(Scene nextScene); // 実際のシーン遷移実行
 
@@ -36,9 +58,8 @@ public:
     static void Init();
     static void Uninit();
     
-    // 更新と描画
+    // 更新と描画（アクティブなシーンオブジェクトに処理を委譲します）
     static void Update();
-    static void UpdateGameplay();
     static void Draw();
 
     // テンプレート関数によるオブジェクトの生成・追加.
@@ -53,6 +74,11 @@ public:
         if (t != ::ObjectType::Wall && t != ::ObjectType::Field) {
             m_UpdateObjects.push_back(gameObject);
         }
+
+        // プレイヤーが生成された場合はキャッシュポインタに保存
+        if constexpr (std::is_same_v<ObjT, Player>) {
+            m_CachedPlayer = reinterpret_cast<Player*>(gameObject);
+        }
         return gameObject;
     }
 
@@ -60,6 +86,11 @@ public:
     template<typename TargetType>
     static TargetType* GetGameObject()
     {
+        // Playerの場合は全探索せずキャッシュを即時返却して O(1) に最適化
+        if constexpr (std::is_same_v<TargetType, Player>) {
+            return reinterpret_cast<TargetType*>(m_CachedPlayer);
+        }
+
         ObjectType targetType = TargetType::GetStaticType();
         for (GameObject* gameObject : m_GameObjects)
         {

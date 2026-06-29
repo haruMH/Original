@@ -8,6 +8,7 @@
 #include "shockwave.h"
 #include "game_rule.h"
 #include "score_popup.h"
+#include "game_constants.h"
 
 void Enemy::Init()
 {
@@ -19,6 +20,7 @@ void Enemy::Init()
     m_IsExplosive  = false;
     m_IsLightning  = false;
     m_IsDefeatedCounted = false;
+    m_ScoreValue   = Constants::Enemy::DEFAULT_SCORE;
 
     // リリースビルド時は Assets/texture/ サブフォルダから読み込む
 #ifdef NDEBUG
@@ -42,9 +44,9 @@ void Enemy::Update()
 {
     if (m_EnemyState == EnemyState::FLYING) {
         // 摩擦（空気抵抗）で徐々に減速させる（摩擦を強くして飛びすぎを防止）
-        MathHelper::ScaleXZ(m_Velocity, 0.94f);
+        MathHelper::ScaleXZ(m_Velocity, Constants::Enemy::FLYING_AIR_RESISTANCE);
         // 重力の適用（Y軸の落下）
-        m_VelocityY -= 0.015f; 
+        m_VelocityY -= Constants::Enemy::FLYING_GRAVITY; 
 
         m_Position.x += m_Velocity.x;
         m_Position.z += m_Velocity.z;

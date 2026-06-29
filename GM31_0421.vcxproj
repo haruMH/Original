@@ -143,6 +143,9 @@
     <ClCompile Include="enemy.cpp" />
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="player.cpp" />
+    <ClCompile Include="player_movement.cpp" />
+    <ClCompile Include="player_combat.cpp" />
+    <ClCompile Include="player_visual.cpp" />
     <ClCompile Include="game_rule.cpp" />
     <ClCompile Include="collision_system.cpp" />
     <ClCompile Include="explosion_system.cpp" />
@@ -158,6 +161,11 @@
     <ClCompile Include="attacking_enemy.cpp" />
     <ClCompile Include="enemy_bullet.cpp" />
     <ClCompile Include="boss_enemy.cpp" />
+    <ClCompile Include="title_scene.cpp" />
+    <ClCompile Include="gameplay_scene.cpp" />
+    <ClCompile Include="clear_scene.cpp" />
+    <ClCompile Include="gameover_scene.cpp" />
+    <ClCompile Include="shadertest_scene.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -176,6 +184,10 @@
     <ClInclude Include="enemy.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="player.h" />
+    <ClInclude Include="game_constants.h" />
+    <ClInclude Include="player_movement.h" />
+    <ClInclude Include="player_combat.h" />
+    <ClInclude Include="player_visual.h" />
     <ClInclude Include="game_rule.h" />
     <ClInclude Include="collision_system.h" />
     <ClInclude Include="explosion_system.h" />
@@ -193,6 +205,12 @@
     <ClInclude Include="attacking_enemy.h" />
     <ClInclude Include="enemy_bullet.h" />
     <ClInclude Include="boss_enemy.h" />
+    <ClInclude Include="scene_interface.h" />
+    <ClInclude Include="title_scene.h" />
+    <ClInclude Include="gameplay_scene.h" />
+    <ClInclude Include="clear_scene.h" />
+    <ClInclude Include="gameover_scene.h" />
+    <ClInclude Include="shadertest_scene.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />

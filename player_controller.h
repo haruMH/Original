@@ -13,6 +13,8 @@ private:
     static const int KEY_MOVE_RIGHT    = 'D';
     static const int KEY_GRAB_THROW    = 0x01; // VK_LBUTTON
     static const int KEY_SPIN_TOGGLE   = 0x02; // VK_RBUTTON
+    static const int KEY_DASH          = 0x10; // VK_SHIFT
+    static const int KEY_GUARD         = 0x02; // VK_RBUTTON
 
 public:
     // WASD + カメラのヨー角を考慮した移動ベクトルを返す（正規化済み）
@@ -23,4 +25,10 @@ public:
 
     // 「スピン切り替え」アクション（右クリック）が押されたか
     static bool IsSpinToggleAction();
+
+    // 「ダッシュ」アクション（Shiftキー）が押されたか（トリガー）
+    static bool IsDashAction();
+
+    // 「ガード」アクション（右クリック）が押されているか（ホールド）
+    static bool IsGuardAction();
 };

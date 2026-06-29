@@ -1,4 +1,4 @@
-#include "manager.h"
+﻿#include "manager.h"
 #include <string>
 #include "camera.h"
 #include "input.h"
@@ -19,22 +19,28 @@
 #include "score_hud.h"
 #include "shockwave.h"
 
+// シーンオブジェクト定義のインクルード
+#include "title_scene.h"
+#include "gameplay_scene.h"
+#include "clear_scene.h"
+#include "gameover_scene.h"
+#include "shadertest_scene.h"
+
 // 静的メンバ変数の実体定義
 std::vector<GameObject*> Manager::m_GameObjects;
 std::vector<GameObject*> Manager::m_UpdateObjects;
+Player*                Manager::m_CachedPlayer = nullptr;
 RenderSystem           Manager::m_RenderSystem;
 int                    Manager::m_HitStopFrames = 0;
 int                    Manager::m_SlowMotionTimer = 0;
 int                    Manager::m_SlowMotionDuration = 0;
 Scene                  Manager::m_CurrentScene = Scene::TITLE;
 
-//  デバッグ用切り替えマクロ: 1にすると最初からボス戦、0にすると通常の16体ステージから始まります
-#define START_FROM_BOSS 0
-
 bool                   Manager::m_IsBossStage = false;
 Scene                  Manager::m_NextScene = Scene::TITLE;
 bool                   Manager::m_SceneTransitionRequested = false;
 
+IScene*                Manager::m_ActiveScene = nullptr;
 
 Camera*                g_Camera = nullptr;
 
@@ -49,6 +55,8 @@ void Manager::Init()
     m_HitStopFrames = 0;
     m_SlowMotionTimer = 0;
     m_SlowMotionDuration = 0;
+    m_CachedPlayer = nullptr;
+    m_ActiveScene = nullptr;
 
     // 描画システムの初期化
     bool initRes = m_RenderSystem.Init(Renderer::GetDevice());
@@ -87,6 +95,13 @@ void Manager::Init()
 // ─────────────────────────────────────────────
 void Manager::Uninit()
 {
+    // アクティブなシーンオブジェクトの終了処理と解放
+    if (m_ActiveScene) {
+        m_ActiveScene->Uninit();
+        delete m_ActiveScene;
+        m_ActiveScene = nullptr;
+    }
+
     // スコアポップアップシステムの終了処理
     ScorePopupSystem::Uninit();
 
@@ -107,6 +122,7 @@ void Manager::Uninit()
     }
     m_GameObjects.clear();
     m_UpdateObjects.clear();
+    m_CachedPlayer = nullptr;
 
     if (g_Camera) {
         g_Camera->Uninit();
@@ -124,7 +140,7 @@ void Manager::Uninit()
 // ─────────────────────────────────────────────
 void Manager::Update()
 {
-    // ImGui の新規フレームを開始（Update内で各オブジェクトがImGui UIを構築するため、最初に行う必要があります）
+    // ImGui の新規フレームを開始
     Renderer::BeginNewFrame();
 
     Input::Update();
@@ -135,43 +151,9 @@ void Manager::Update()
     // スコアHUDもシーンを問わず更新
     ScoreHUD::Update();
 
-    // シーンごとの分岐処理
-    switch (m_CurrentScene)
-    {
-    case Scene::TITLE:
-        // スペースキーが押されたらゲーム開始
-        if (Input::GetKeyTrigger(VK_SPACE)) {
-            ChangeScene(Scene::GAMEPLAY);
-        }
-        // 'T'キーが押されたらシェーダーテストシーンへ
-        if (Input::GetKeyTrigger('T')) {
-            ChangeScene(Scene::SHADER_TEST);
-        }
-        break;
-
-    case Scene::GAMEPLAY:
-        // 'T'キーが押されたらシェーダーテストシーンへ（デバッグ用）
-        if (Input::GetKeyTrigger('T')) {
-            ChangeScene(Scene::SHADER_TEST);
-        }
-        UpdateGameplay();
-        break;
-
-    case Scene::SHADER_TEST:
-        // Escキーでタイトルに戻る
-        if (Input::GetKeyTrigger(VK_ESCAPE)) {
-            ChangeScene(Scene::TITLE);
-        }
-        UpdateGameplay();
-        break;
-
-    case Scene::CLEAR:
-    case Scene::GAMEOVER:
-        // エンターキーが押されたらタイトルに戻る
-        if (Input::GetKeyTrigger(VK_RETURN)) {
-            ChangeScene(Scene::TITLE);
-        }
-        break;
+    // 現在アクティブなシーンオブジェクトの更新処理を実行 (ポリモーフィズムによる委譲)
+    if (m_ActiveScene) {
+        m_ActiveScene->Update();
     }
 
     if (g_Camera) g_Camera->Update();
@@ -181,144 +163,6 @@ void Manager::Update()
         m_SceneTransitionRequested = false;
         ExecuteChangeScene(m_NextScene);
     }
-}
-
-void Manager::UpdateGameplay()
-{
-    // スローモーションタイマーの更新
-    if (m_SlowMotionTimer > 0) {
-        m_SlowMotionTimer--;
-    }
-
-    // スローモーション中はプレイヤー以外の更新頻度を1/5にする
-    bool updateOthers = true;
-    if (m_SlowMotionTimer > 0) {
-        updateOthers = (m_SlowMotionTimer % 5 == 0);
-    }
-
-    // 衝撃波システムも更新（スロー時は間引く）
-    if (updateOthers) {
-        ShockwaveSystem::Update();
-    }
-
-    // クリア後はゲームオブジェクトの更新を行わない
-    if (GameRule::IsGameClear()) return;
-
-    // ヒットストップ中はカメラのみ更新し、他の更新をスキップする
-    if (m_HitStopFrames > 0) {
-        m_HitStopFrames--;
-        return;
-    }
-
-    Player* player = GetGameObject<Player>();
-
-    // 動的オブジェクトの更新と破棄（WallとFieldは静的で更新不要なため除外）
-    for (size_t i = 0; i < m_UpdateObjects.size(); ) {
-        GameObject* obj = m_UpdateObjects[i];
-        bool shouldUpdate = true;
-
-        // プレイヤー以外のオブジェクトはスローモーション中に更新を間引く
-        if (obj->GetObjectType() != ObjectType::Player) {
-            shouldUpdate = updateOthers;
-        }
-
-        if (shouldUpdate) {
-            obj->Update();
-        }
-
-        if (obj->IsDestroy()) {
-            if (player) {
-                player->NotifyObjectDestroyed(obj);
-            }
-            obj->Uninit();
-            delete obj;
-
-            // O(1)スワップ＆ポップ消去法（swap-erase）を用いて更新リストから削除
-            if (i != m_UpdateObjects.size() - 1) {
-                m_UpdateObjects[i] = m_UpdateObjects.back();
-            }
-            m_UpdateObjects.pop_back();
-
-            // 保存しておいたポインタ値を使用して描画用オブジェクトリスト（m_GameObjects）からも削除
-            for (size_t j = 0; j < m_GameObjects.size(); j++) {
-                if (m_GameObjects[j] == obj) {
-                    if (j != m_GameObjects.size() - 1) {
-                        m_GameObjects[j] = m_GameObjects.back();
-                    }
-                    m_GameObjects.pop_back();
-                    break;
-                }
-            }
-        } else {
-            i++;
-        }
-    }
-
-    // 2. 衝突判定システムによる判定・物理連鎖の更新（スロー時は間引く）
-    if (updateOthers) {
-        CollisionSystem::Update();
-    }
-
-    // 3. 掴んでいるエネミーの位置確定後処理 (LateUpdate)（スロー時は間引く）
-    if (updateOthers && player) {
-        if (player->GetState() == PlayerState::GRABBED || player->GetState() == PlayerState::SPINNING) {
-            Enemy* grabbedEnemy = player->GetGrabbedEnemy();
-            if (grabbedEnemy) {
-                Collision::ResolveGrabPhysics(player, grabbedEnemy, 0.8f);
-            }
-        }
-    }
-
-    // 4. ボスステージ遷移およびゲームクリア判定（シェーダーテストシーンでは行わない）
-    if (m_CurrentScene == Scene::SHADER_TEST) return;
-
-    if (!m_IsBossStage) {
-        // 通常ステージ：攻撃してくる敵が全て全滅したかを監視
-        bool attackingEnemyExists = false; 
-        for (GameObject* obj : m_GameObjects) {
-            if (obj && obj->GetObjectType() == ObjectType::Enemy) {
-                Enemy* enemy = static_cast<Enemy*>(obj);
-                if (enemy->IsAttackingEnemy() && enemy->GetEnemyState() != EnemyState::DEFEATED) {
-                    attackingEnemyExists = true;
-                    break;
-                }
-            }
-        }
-
-        if (!attackingEnemyExists) {
-            TransitionToBossStage();
-        }
-    } else {
-        // ボスステージ：ボスが倒されたかを監視
-        if (!GameRule::IsGameClear()) {
-            bool bossExists = false;
-            for (GameObject* obj : m_GameObjects) {
-                if (obj->GetObjectType() == ObjectType::Boss) {
-                    Enemy* boss = static_cast<Enemy*>(obj);
-                    if (boss->GetEnemyState() != EnemyState::DEFEATED) {
-                        bossExists = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!bossExists) {
-                GameRule::SetGameClear(true);
-                ChangeScene(Scene::CLEAR);
-                OutputDebugStringA("[GameRule] *** ボス撃破！ゲームクリア! ***\n");
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────
-// スローモーション強度の取得（フェードアウト用）
-// ─────────────────────────────────────────────
-float Manager::GetSlowMotionIntensity()
-{
-    if (m_SlowMotionTimer <= 0) return 0.0f;
-    if (m_SlowMotionTimer > 30) return 1.0f;
-    return (float)m_SlowMotionTimer / 30.0f;
 }
 
 // ─────────────────────────────────────────────
@@ -340,7 +184,7 @@ void Manager::Draw()
     Renderer::SetViewMatrix(lightView);
     Renderer::SetProjectionMatrix(lightProj);
 
-    // === 1. シャドウパス描画（フィールドを除く） ===
+    // === 1. シャドウパス描画 ===
     Renderer::BeginShadowPass();
     Renderer::SetupCubeDraw(); // キューブ共通アセットをバインド
     for (GameObject* obj : m_GameObjects) {
@@ -396,8 +240,6 @@ void Manager::Draw()
         }
 
         obj->Draw();
-        // テスト壁（Water/Dissolve/Refract等）がシェーダーを変更した場合、
-        // 次のオブジェクト描画前に通常キューブシェーダーへ戻す
         if (type == ObjectType::Wall) {
             Renderer::SetupCubeDraw();
         }
@@ -429,14 +271,15 @@ void Manager::Draw()
 
     if (g_Camera) g_Camera->Draw();
 
-    // スコアポップアップをSceneRTVに描画する（End()の前でブルームにも乗る）
+    // 各種ポップアップ・HUD・エフェクト描画
     ScorePopupSystem::Draw();
-
-    // 衝撃波を描画（3D空間・ブルーム適用）
     ShockwaveSystem::Draw();
-
-    // スコアHUDを描画（最前面・ブルーム適用）
     ScoreHUD::Draw();
+
+    // 現在アクティブなシーン独自の3D/2D描画があれば追加で実行
+    if (m_ActiveScene) {
+        m_ActiveScene->Draw();
+    }
 
     Renderer::End();
 }
@@ -535,9 +378,6 @@ void Manager::TransitionToBossStage()
 }
 
 // ─────────────────────────────────────────────
-// シーン遷移処理
-// ─────────────────────────────────────────────
-// ─────────────────────────────────────────────
 // シーン遷移予約 (遅延遷移)
 // ─────────────────────────────────────────────
 void Manager::ChangeScene(Scene nextScene)
@@ -553,7 +393,14 @@ void Manager::ExecuteChangeScene(Scene nextScene)
 {
     OutputDebugStringA(("[Manager] ExecuteChangeScene: " + std::to_string((int)m_CurrentScene) + " -> " + std::to_string((int)nextScene) + "\n").c_str());
 
-    // 既存オブジェクトのクリーンアップ（Uninitとdelete）
+    // 現在アクティブなシーンオブジェクトのUninitと破棄
+    if (m_ActiveScene) {
+        m_ActiveScene->Uninit();
+        delete m_ActiveScene;
+        m_ActiveScene = nullptr;
+    }
+
+    // 既存登録オブジェクトのクリーンアップ（Uninitとdelete）
     for (GameObject* gameObject : m_GameObjects) {
         if (gameObject) {
             gameObject->Uninit();
@@ -562,6 +409,7 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     }
     m_GameObjects.clear();
     m_UpdateObjects.clear();
+    m_CachedPlayer = nullptr;
 
     if (g_Camera) {
         g_Camera->Uninit();
@@ -572,144 +420,42 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     // 現在のシーン状態を更新
     m_CurrentScene = nextScene;
 
-    // カメラはどのシーンでも必要（UIの描画や投影変換行列の初期化に使用）なので、共通で生成する
+    // カメラはどのシーンでも必要なので、共通で生成する
     g_Camera = new Camera();
     g_Camera->Init();
 
-    // 各シーンの初期化
-    if (nextScene == Scene::TITLE) {
-        // タイトル画面用の初期化（カメラのみでHUDが描画する）
+    // 新しいシーンに対応するシーンオブジェクトを生成
+    switch (nextScene)
+    {
+    case Scene::TITLE:
+        m_ActiveScene = new TitleScene();
+        break;
+    case Scene::GAMEPLAY:
+        m_ActiveScene = new GameplayScene();
+        break;
+    case Scene::CLEAR:
+        m_ActiveScene = new ClearScene();
+        break;
+    case Scene::GAMEOVER:
+        m_ActiveScene = new GameOverScene();
+        break;
+    case Scene::SHADER_TEST:
+        m_ActiveScene = new ShaderTestScene();
+        break;
     }
-    else if (nextScene == Scene::GAMEPLAY) {
-        // ゲームプレイ本編の初期化
-        GameRule::Init(); // スコアや敵数、ゲームクリア状態などのリセット
-        
-        m_HitStopFrames = 0;
-        m_SlowMotionTimer = 0;
-        m_SlowMotionDuration = 0;
 
-        // 地面オブジェクトの生成
-        AddGameObject<Field>();
-
-        // プレイヤーオブジェクトの生成
-        Player* player = AddGameObject<Player>();
-        player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
-
-#if START_FROM_BOSS
-        m_IsBossStage = true;
-        
-        // ボス部屋の壁
-        float roomSize = 18.0f;
-        Wall* wallN = AddGameObject<Wall>();
-        wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
-        wallN->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
-        Wall* wallS = AddGameObject<Wall>();
-        wallS->SetPosition(XMFLOAT3(0.0f, 1.5f, -roomSize));
-        wallS->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
-        Wall* wallE = AddGameObject<Wall>();
-        wallE->SetPosition(XMFLOAT3(roomSize, 1.5f, 0.0f));
-        wallE->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
-        Wall* wallW = AddGameObject<Wall>();
-        wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
-        wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
-
-        // ボスエネミーの生成
-        BossEnemy* boss = AddGameObject<BossEnemy>();
-        boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f));
-
-        GameRule::SetTotalEnemies(1);
-#else
-        m_IsBossStage = false;
-        
-        // 通常ステージ：壁を敵エリアの外側に配置（プレイヤーと干渉しない位置）
-        Wall* wall = AddGameObject<Wall>();
-        wall->SetPosition(XMFLOAT3(-8.0f, 1.5f, -7.0f));
-        wall->SetScale(XMFLOAT3(5.0f, 5.0f, 5.0f));
-
-        // プレイヤーを敵・壁から安全な距離（Z+8付近）にスポーン
-        player->SetPosition(XMFLOAT3(0.0f, -0.5f, 8.0f));
-
-        int totalEnemies = 0;
-        for (int x = -2; x <= 1; x++) {
-            for (int z = -2; z <= 1; z++) {
-                Enemy* enemy = nullptr;
-                if ((x + z) % 2 == 0) {
-                    enemy = AddGameObject<AttackingEnemy>();
-                } else {
-                    enemy = AddGameObject<Enemy>();
-                }
-                float posX = (float)x * 3.2f + 1.0f;
-                float posZ = (float)z * 3.2f - 7.0f;
-                enemy->SetPosition(XMFLOAT3(posX, -0.5f, posZ));
-                totalEnemies++;
-            }
-        }
-        GameRule::SetTotalEnemies(totalEnemies);
-#endif
-
-        // アイテム生成
-        Item* itemVacuum = AddGameObject<Item>();
-        itemVacuum->SetItemType(ItemType::VACUUM);
-
-        Item* itemGigant = AddGameObject<Item>();
-        itemGigant->SetItemType(ItemType::GIGANT);
-
-        Item* itemLightning = AddGameObject<Item>();
-        itemLightning->SetItemType(ItemType::LIGHTNING);
-
-        if (m_IsBossStage) {
-            // ボスステージ：ボス(Z=10.0f)から一番遠い南の壁（Z=-18.0f）の手前に並べて配置
-            itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, -15.0f));
-            itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, -15.0f));
-            itemLightning->SetPosition(XMFLOAT3(4.0f, 0.5f, -15.0f));
-        } else {
-            // 通常ステージ：これまでの通常位置に配置
-            itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, 4.0f));
-            itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, 4.0f));
-            itemLightning->SetPosition(XMFLOAT3(2.0f, 0.5f, 6.0f));
-        }
+    // 新しいシーンオブジェクトの初期化を実行
+    if (m_ActiveScene) {
+        m_ActiveScene->Init();
     }
-    else if (nextScene == Scene::CLEAR) {
-        // ゲームクリア画面用の初期化
-    }
-    else if (nextScene == Scene::GAMEOVER) {
-        // ゲームオーバー画面用の初期化
-    }
-    else if (nextScene == Scene::SHADER_TEST) {
-        // シェーダーテストシーンの初期化
-        GameRule::Init(); // スコアや敵数、ゲームクリア状態などのリセット
-        
-        m_HitStopFrames = 0;
-        m_SlowMotionTimer = 0;
-        m_SlowMotionDuration = 0;
+}
 
-        // 1. スカイボックス（空）の生成
-        AddGameObject<Skybox>();
-
-        // 2. 鏡面反射（リフレクション）確認用のオブジェクト（アイテムなど）を生成
-        // 鏡ブロック（Z=5.0f）の手前（Z=3.0f）に配置することで、鏡の中にアイテムが映り込むようにする
-        Item* item1 = AddGameObject<Item>();
-        item1->SetPosition(XMFLOAT3(-0.6f, 0.0f, 3.0f));
-        item1->SetItemType(ItemType::VACUUM);
-
-        Item* item2 = AddGameObject<Item>();
-        item2->SetPosition(XMFLOAT3(0.0f, 0.0f, 3.0f));
-        item2->SetItemType(ItemType::GIGANT);
-
-        Item* item3 = AddGameObject<Item>();
-        item3->SetPosition(XMFLOAT3(0.6f, 0.0f, 3.0f));
-        item3->SetItemType(ItemType::LIGHTNING);
-
-        // 3. 地面オブジェクトの生成（反射が他のオブジェクト描画後にコピーされるように順序を調整）
-        AddGameObject<Field>();
-
-        // 4. 壁オブジェクトの生成（プレイヤーより少し大きく、目の前）
-        Wall* wall = AddGameObject<Wall>();
-        wall->SetPosition(XMFLOAT3(0.0f, 0.0f, 5.0f)); // Y=0.0fで底面が地面(Y=-1.0f)に接する
-        wall->SetScale(XMFLOAT3(2.0f, 2.0f, 2.0f));    // プレイヤー(1.0f, 1.0f, 1.0f)より大きめ
-        wall->SetShaderTest(true);                     // シェーダーテスト用フラグをONにする
-        m_UpdateObjects.push_back(wall);               // アップデート対象リストに追加
-
-        GameRule::SetTotalEnemies(0); // 敵は存在しない
-    }
+// ─────────────────────────────────────────────
+// スローモーション強度の取得（フェードアウト用）
+// ─────────────────────────────────────────────
+float Manager::GetSlowMotionIntensity()
+{
+    if (m_SlowMotionTimer <= 0) return 0.0f;
+    if (m_SlowMotionTimer > 30) return 1.0f;
+    return (float)m_SlowMotionTimer / 30.0f;
 }

@@ -32,6 +32,18 @@ bool PlayerController::IsGrabOrThrowAction()
 
 bool PlayerController::IsSpinToggleAction()
 {
-    // 右クリック(VK_RBUTTON = 0x02) または シフトキー(VK_SHIFT = 0x10)
-    return Input::GetKeyTrigger(KEY_SPIN_TOGGLE) || Input::GetKeyTrigger(0x10);
+    // 右クリック または シフトキー
+    return Input::GetKeyTrigger(KEY_SPIN_TOGGLE) || Input::GetKeyTrigger(KEY_DASH);
+}
+
+bool PlayerController::IsDashAction()
+{
+    // シフトキーが押されたか判定（トリガー）
+    return Input::GetKeyTrigger(KEY_DASH);
+}
+
+bool PlayerController::IsGuardAction()
+{
+    // 右クリックが押されているか判定（ホールド）
+    return Input::GetKeyPress(KEY_GUARD);
 }

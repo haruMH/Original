@@ -58,6 +58,14 @@ namespace MathHelper {
         return DirectX::XMFLOAT3(Lerp(a.x, b.x, t), Lerp(a.y, b.y, t), Lerp(a.z, b.z, t));
     }
 
+    // 角度補間用 LerpAngle（最短ルートで角度を補間します）
+    inline float LerpAngle(float current, float target, float t) {
+        float diff = target - current;
+        while (diff < -DirectX::XM_PI) diff += DirectX::XM_2PI;
+        while (diff > DirectX::XM_PI)  diff -= DirectX::XM_2PI;
+        return current + diff * t;
+    }
+
     // ベクトルの長さ（ノルム）
     inline float Length(const DirectX::XMFLOAT3& v) {
         return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);

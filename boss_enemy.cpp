@@ -9,6 +9,7 @@
 #include "score_popup.h"
 #include "game_rule.h"
 #include "shockwave.h"
+#include "game_constants.h"
 #include <algorithm> // std::remove_if 使用のため
 
 // =================================================================
@@ -34,9 +35,9 @@ void BossEnemy::Init()
     m_EnemyState = EnemyState::NORMAL;
     m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f); // 壁と同じ大きさ (5x5x5)
     m_Size  = XMFLOAT3(1.0f, 1.0f, 1.0f);
-    m_HP    = 60;
-    m_MaxHP = 60;
-    SetScoreValue(1500); // 巨大ボスは15倍スコア (1500点)
+    m_HP    = Constants::Enemy::BOSS_HP;
+    m_MaxHP = Constants::Enemy::BOSS_HP;
+    SetScoreValue(Constants::Enemy::BOSS_SCORE); // 巨大ボスは15倍スコア 
     m_DamageFlashTimer = 0;
     m_AttackTimer      = 0;
     m_AttackPattern    = 0;
