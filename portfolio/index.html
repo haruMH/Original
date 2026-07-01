@@ -1,0 +1,324 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Game Programmer Portfolio</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- グロー効果付きの背景装飾 -->
+    <div class="bg-glow-container">
+        <div class="bg-glow-1"></div>
+        <div class="bg-glow-2"></div>
+    </div>
+    <div class="grid-overlay"></div>
+
+    <!-- ヘッダー / ナビゲーション -->
+    <header>
+        <div class="nav-container">
+            <a href="#" class="logo">
+                &lt;<span>portfolio</span> /&gt;
+            </a>
+            <ul class="nav-links">
+                <li><a href="#hero">HOME</a></li>
+                <li><a href="#projects">PROJECTS</a></li>
+                <li><a href="#skills">SKILLS</a></li>
+                <li><a href="#about">ABOUT</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- ヒーローセクション -->
+    <section id="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-tag">Active Programmer</div>
+                <h1 class="hero-title">
+                    きれいな設計で、<br>
+                    最高の手触りを。
+                </h1>
+                <p class="hero-desc">
+                    専門学校で3Dゲームプログラミングを学んでいる学生です。
+                    C++とDirectX11を用い、「動くことはもちろん、拡張しやすく保守性の高いコード設計」を第一に考えて開発しています。
+                </p>
+                <div class="hero-buttons">
+                    <a href="#projects" class="btn btn-primary">作品を見る</a>
+                    <a href="#about" class="btn btn-secondary">自己紹介</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 作品実績 / 設計アピールセクション -->
+    <section id="projects">
+        <div class="container">
+            <h2 class="section-title">PROJECTS</h2>
+            
+            <div class="project-showcase">
+                <!-- タブヘッダー -->
+                <div class="project-header">
+                    <button class="project-tab active" data-tab="overview">
+                        <span>01 /</span> 作品概要
+                    </button>
+                    <button class="project-tab" data-tab="architecture">
+                        <span>02 /</span> 設計のこだわり (モジュール化)
+                    </button>
+                    <button class="project-tab" data-tab="optimization">
+                        <span>03 /</span> パフォーマンス最適化
+                    </button>
+                </div>
+
+                <!-- タブボディ -->
+                <div class="project-body">
+                    <!-- タブ1: 作品概要 -->
+                    <div class="project-content active" id="overview">
+                        <div class="project-grid">
+                            <!-- 左: メディアプレースホルダー -->
+                            <div class="media-container">
+                                <div class="media-placeholder">
+                                    <!-- ビデオ風アイコン -->
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <polygon points="23 7 16 12 23 17 23 7" />
+                                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                                    </svg>
+                                    <p style="font-weight: 600; margin-bottom: 4px;">3D Action Game - プレイ動画</p>
+                                    <p style="font-size: 0.8rem; color: var(--text-dark);">
+                                        ※現在開発中 (ここにGIFや動画を配置)<br>
+                                        ダッシュ、ノックバック、パリィ、雷電連鎖スキル
+                                    </p>
+                                </div>
+                            </div>
+                            <!-- 右: プロジェクト情報 -->
+                            <div class="project-info">
+                                <h3>3D Lightning Action Game</h3>
+                                <p>C++ & DirectX11 (自社製/独自フレームワーク)</p>
+                                <div class="tech-tags">
+                                    <span class="tag">C++17</span>
+                                    <span class="tag">DirectX 11</span>
+                                    <span class="tag">HLSL</span>
+                                    <span class="tag">Visual Studio</span>
+                                </div>
+                                <p style="margin-top: 16px;">
+                                    高速なアクションと派手なエフェクトが特徴の3Dアクションゲームです。
+                                    敵を掴んで振り回すスピン攻撃、直前のガードによるパリィ、敵から敵へと電撃が連鎖する「チェインライトニング」などのアクションを実装しています。
+                                </p>
+                                <ul class="project-features">
+                                    <li>
+                                        <!-- チェックマーク -->
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="20 6 9 17 4 12" />
+                                        </svg>
+                                        <span><strong>スプリング物理によるもちもち変形演出</strong>：入力や衝突に合わせてモデルのスケールをリアルタイムに伸縮させ、柔らかい手触りを実現。</span>
+                                    </li>
+                                    <li>
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="20 6 9 17 4 12" />
+                                        </svg>
+                                        <span><strong>インスタンスバッチ描画の導入</strong>：障害物のキューブを一括で描画（描画呼び出しの削減）し、エネミー多数の状況でも高フレームレートを維持。</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- タブ2: 設計のこだわり -->
+                    <div class="project-content" id="architecture">
+                        <div class="architecture-container">
+                            <div class="arch-text">
+                                <h3 style="font-size: 1.5rem; margin-bottom: 12px;">ゴッドクラスの排除と疎結合設計</h3>
+                                <p style="color: var(--text-muted); margin-bottom: 16px;">
+                                    当初、プレイヤーの移動・ジャンプ・つかみアクション・敵の投げ・雷エフェクトの描画処理などが全て `Player` クラス（1600行以上）に詰め込まれていました。
+                                    これに対して、<strong>単一責任の原則</strong>に従って設計を再構成し、各責任をサブモジュールへ完全移譲しました。
+                                </p>
+                            </div>
+                            <div class="project-grid">
+                                <div class="arch-card">
+                                    <h4>Player <span>Core</span></h4>
+                                    <p style="font-size: 0.9rem; color: var(--text-muted);">
+                                        HP管理や無敵タイマー、ステータス遷移（通常・つかみ・スピン）の制御に専念します。
+                                    </p>
+                                </div>
+                                <div class="arch-card">
+                                    <h4>PlayerMovement <span>Physics</span></h4>
+                                    <p style="font-size: 0.9rem; color: var(--text-muted);">
+                                        歩行、ジャンプ、空中制御、ダッシュ残像、および衝撃を受けた際のもちもち伸縮（スプリング物理）計算を管理。
+                                    </p>
+                                </div>
+                                <div class="arch-card">
+                                    <h4>PlayerCombat <span>Skill / Action</span></h4>
+                                    <p style="font-size: 0.9rem; color: var(--text-muted);">
+                                        つかみ、スピン、敵の投げつけ、パリィシールド、テレポートスラッシュなどの戦闘スキル判定と処理。
+                                    </p>
+                                </div>
+                                <div class="arch-card">
+                                    <h4>PlayerVisual <span>Graphics / FX</span></h4>
+                                    <p style="font-size: 0.9rem; color: var(--text-muted);">
+                                        DirectX 11の描画APIを呼び出し、パリィのバリア、マーカー、およびチェインライトニングの再帰的雷電のライン描画を担当。
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="arch-card">
+                                <h4>コードでの関係性表現 (委譲とfriendクラス)</h4>
+                                <p style="font-size: 0.9rem; color: var(--text-muted);">
+                                    ポインタ同士で無駄な密結合を生まないよう、Playerオブジェクトへの「friend class」登録と「役割の明確な委譲」を行っています。
+                                </p>
+                                <div class="code-snippet">
+<span class="code-comment">// player.h (スリム化された定義)</span>
+<span class="code-keyword">class</span> <span class="code-type">Player</span> : <span class="code-keyword">public</span> <span class="code-type">GameObject</span> {
+    <span class="code-keyword">friend class</span> <span class="code-type">PlayerMovement</span>;
+    <span class="code-keyword">friend class</span> <span class="code-type">PlayerCombat</span>;
+    <span class="code-keyword">friend class</span> <span class="code-type">PlayerVisual</span>;
+<span class="code-keyword">private</span>:
+    <span class="code-type">PlayerMovement</span>* m_Movement; <span class="code-comment">// 移動・物理担当</span>
+    <span class="code-type">PlayerCombat</span>*   m_Combat;   <span class="code-comment">// 戦闘・アクション担当</span>
+    <span class="code-type">PlayerVisual</span>*   m_Visual;   <span class="code-comment">// 描画・エフェクト担当</span>
+<span class="code-keyword">public</span>:
+    <span class="code-type">void</span> Update() <span class="code-keyword">override</span> {
+        <span class="code-keyword">if</span> (m_Movement) m_Movement-&gt;Update();
+        <span class="code-keyword">if</span> (m_Combat) m_Combat-&gt;Update();
+        <span class="code-keyword">if</span> (m_Visual) m_Visual-&gt;Update();
+    }
+};
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- タブ3: パフォーマンス最適化 -->
+                    <div class="project-content" id="optimization">
+                        <div class="architecture-container">
+                            <div class="arch-text">
+                                <h3 style="font-size: 1.5rem; margin-bottom: 12px;">ゲームループにおける $O(N)$ から $O(1)$ への最適化</h3>
+                                <p style="color: var(--text-muted); margin-bottom: 16px;">
+                                    エネミーや弾が「現在のプレイヤーの位置」を参照する際、以前は全登録オブジェクト（数百件）から毎フレームプレイヤーを探し出す `GetGameObject<Player>()` が実行されていました。
+                                    これは計算量が $O(N)$ となり、オブジェクトの増加に合わせてCPU負荷が上昇します。
+                                </p>
+                                <p style="color: var(--text-muted); margin-bottom: 16px;">
+                                    <strong>対策</strong>として、オブジェクトを集中管理する `Manager` クラスに「プレイヤーポインタのキャッシュ」機構を組み込み、生成時にキャッシュを更新。
+                                    プレイヤー検索時の計算量を <strong>完全な $O(1)$ （定数時間）</strong> に引き上げ、ゲームループを高速化しました。
+                                </p>
+                            </div>
+                            <div class="arch-card">
+                                <h4>ポインタキャッシュと constexpr による型分岐</h4>
+                                <div class="code-snippet">
+<span class="code-comment">// manager.h 内のオブジェクト取得関数</span>
+<span class="code-keyword">template</span>&lt;<span class="code-keyword">typename</span> <span class="code-type">TargetType</span>&gt;
+<span class="code-keyword">static</span> <span class="code-type">TargetType</span>* <span class="code-type">GetGameObject</span>() {
+    <span class="code-comment">// C++17の if constexpr を使用し、Player型の場合は探索をせずキャッシュを即時返却</span>
+    <span class="code-keyword">if constexpr</span> (std::is_same_v&lt;<span class="code-type">TargetType</span>, <span class="code-type">Player</span>&gt;) {
+        <span class="code-keyword">return</span> <span class="code-keyword">reinterpret_cast</span>&lt;<span class="code-type">TargetType</span>*&gt;(m_CachedPlayer);
+    }
+    
+    <span class="code-comment">// それ以外のオブジェクトのみリストから全走査 (O(N))</span>
+    <span class="code-type">ObjectType</span> targetType = TargetType::GetStaticType();
+    <span class="code-keyword">for</span> (<span class="code-type">GameObject</span>* gameObject : m_GameObjects) {
+        <span class="code-keyword">if</span> (gameObject && gameObject-&gt;GetObjectType() == targetType)
+            <span class="code-keyword">return</span> <span class="code-keyword">static_cast</span>&lt;<span class="code-type">TargetType</span>*&gt;(gameObject);
+    }
+    <span class="code-keyword">return nullptr</span>;
+}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 技術スキルセクション -->
+    <section id="skills">
+        <div class="container">
+            <h2 class="section-title">TECHNICAL SKILLS</h2>
+            <div class="skills-grid">
+                <!-- C++ -->
+                <div class="skill-card">
+                    <div class="skill-header">
+                        <span class="skill-name">C++ / C</span>
+                        <span class="skill-level">85%</span>
+                    </div>
+                    <div class="skill-bar"><div class="skill-bar-fill" style="width: 85%;"></div></div>
+                    <p class="skill-comment">ポインタの管理、テンプレート関数、C++17の新機能を用いた効率的な共通化コードを記述できます。</p>
+                </div>
+                <!-- DirectX11 -->
+                <div class="skill-card">
+                    <div class="skill-header">
+                        <span class="skill-name">DirectX 11</span>
+                        <span class="skill-level">75%</span>
+                    </div>
+                    <div class="skill-bar"><div class="skill-bar-fill" style="width: 75%;"></div></div>
+                    <p class="skill-comment">頂点/ピクセルシェーダー、定数バッファ、インスタンシング描画を用いた複数モデルの描画制御が可能です。</p>
+                </div>
+                <!-- HLSL -->
+                <div class="skill-card">
+                    <div class="skill-header">
+                        <span class="skill-name">HLSL (Shader)</span>
+                        <span class="skill-level">70%</span>
+                    </div>
+                    <div class="skill-bar"><div class="skill-bar-fill" style="width: 70%;"></div></div>
+                    <p class="skill-comment">ディゾルブ（消滅）、水面屈折、影行列の生成（シャドウマップパス）などの演出用シェーダーを構築できます。</p>
+                </div>
+                <!-- Git -->
+                <div class="skill-card">
+                    <div class="skill-header">
+                        <span class="skill-name">Git / GitHub</span>
+                        <span class="skill-level">80%</span>
+                    </div>
+                    <div class="skill-bar"><div class="skill-bar-fill" style="width: 80%;"></div></div>
+                    <p class="skill-comment">ブランチを用いた並行開発、リファクタリング作業時の安全なマージや履歴管理を実践しています。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 自己紹介セクション -->
+    <section id="about">
+        <div class="container">
+            <h2 class="section-title">ABOUT ME</h2>
+            <div class="about-layout">
+                <!-- 左: プロフィールカード -->
+                <div class="profile-card">
+                    <div class="profile-image-placeholder">💻</div>
+                    <h3 class="profile-name">専門学校生</h3>
+                    <p class="profile-title">Game Programmer Course</p>
+                    <div class="profile-meta">
+                        <span><strong>活動拠点:</strong> 日本</span>
+                        <span><strong>志望職種:</strong> ゲームプログラマー</span>
+                    </div>
+                </div>
+                <!-- 右: 自己紹介文 -->
+                <div class="about-text">
+                    <h4>設計にこだわり、ゲームの手触りを極める</h4>
+                    <p>
+                        ゲームプログラミングの学習を始めてから、「いかにプレイヤーの操作に対してキャラクターが心地よく反応するか（手触り）」にこだわって開発を続けています。
+                    </p>
+                    <p>
+                        機能を作るだけでなく、コードの「可読性」や「拡張性」を強く意識しています。
+                        ゲーム開発の後半になってもバグが起きにくく、メンバー全員が安心して新しい機能を追加できるような、クラス間の結びつきが綺麗で整理されたコードを書くことを得意としています。
+                    </p>
+                    <p>
+                        「動けばいい」だけのプログラムから一歩踏み出し、プロとして通用する高品質なソフトウェア開発を目指して日々挑戦しています。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- フッター -->
+    <footer>
+        <div class="container footer-container">
+            <p>&copy; 2026 Game Programmer Portfolio. All Rights Reserved.</p>
+            <div class="footer-links">
+                <a href="#hero">HOME</a>
+                <a href="#projects">PROJECTS</a>
+                <a href="#skills">SKILLS</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- インタラクティブな制御用JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>

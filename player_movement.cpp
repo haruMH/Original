@@ -200,11 +200,9 @@ void PlayerMovement::Update()
             m_ScaleVelocityZ = -0.04f;
         }
 
-        // 掴んでいる敵の位置同期
+        // 掴んでいる敵の位置同期（ダッシュ中も正面位置を正しく維持し、バウンドを防止する）
         if ((m_Owner->m_State == PlayerState::GRABBED || m_Owner->m_State == PlayerState::SPINNING) && m_Owner->m_GrabbedEnemy) {
-            XMFLOAT3 grabbedPos = m_Owner->m_Position;
-            grabbedPos.y += 0.5f;
-            m_Owner->m_GrabbedEnemy->SetPosition(grabbedPos);
+            Collision::ResolveGrabPhysics(m_Owner, m_Owner->m_GrabbedEnemy, 0.0f);
         }
 
         // ダッシュ中ももちもちの減衰振動を更新

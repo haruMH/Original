@@ -31,13 +31,20 @@ struct PS_INPUT {
 
 float4 main(PS_INPUT input) : SV_TARGET
 {
-    // テクスチャのアルファチャンネルをテキスト形状マスクとして取得する
-    float mask = g_Texture.Sample(g_Sampler, input.TexCoord).a;
+    float4 texColor = g_Texture.Sample(g_Sampler, input.TexCoord);
 
-    // マスク × Material.Diffuse.a でフェードアルファを計算する
-    float finalAlpha = mask * Material.Diffuse.a;
+    if (Material.TextureEnable) {
+        // テクスチャのカラーをそのまま使用する（マテリアルカラーでフェード）
+        return float4(texColor.rgb, texColor.a * Material.Diffuse.a);
+    } else {
+        // テクスチャのアルファチャンネルをテキスト形状マスクとして取得する
+        float mask = texColor.a;
 
-    // Emissionカラーをテキストカラーとして使用する
-    // 高輝度値（>0.85）を設定することでブルームが発動する
-    return float4(Material.Emission.rgb, finalAlpha);
+        // マスク × Material.Diffuse.a でフェードアルファを計算する
+        float finalAlpha = mask * Material.Diffuse.a;
+
+        // Emissionカラーをテキストカラーとして使用する
+        // 高輝度値（>0.85）を設定することでブルームが発動する
+        return float4(Material.Emission.rgb, finalAlpha);
+    }
 }

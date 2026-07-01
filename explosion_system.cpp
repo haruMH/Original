@@ -1,5 +1,6 @@
 ﻿#include "explosion_system.h"
 #include "enemy.h"
+#include "boss_enemy.h"
 #include "camera.h"
 #include "game_rule.h"
 #include "manager.h"
@@ -61,12 +62,19 @@ void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
             float force = baseForce * attenuation;
             XMFLOAT3 vel = XMFLOAT3(dir.x * force, 1.0f * attenuation + 0.4f, dir.z * force);
 
-            // 撃破処理（爆発・赤色ポップアップ）
-            enemy->Defeat(2.5f, 0.2f, 0.0f);
+            // ボスは Defeat() を直接呼ばず、フェーズ保護を経由した ApplyBossDamage でダメージを与える
+            if (enemy->GetObjectType() == ObjectType::Boss) {
+                BossEnemy* boss = static_cast<BossEnemy*>(enemy);
+                boss->ApplyBossDamage(4, center); // 爆発ダメージは4
+                // ボスは吹き飛ばさない
+            } else {
+                // 撃破処理（爆発・赤色ポップアップ）
+                enemy->Defeat(2.5f, 0.2f, 0.0f);
 
-            // 敵に爆風の速度と吹き飛び状態を設定
-            enemy->SetVelocity(vel);
-            enemy->SetEnemyState(EnemyState::BLOWN_AWAY);
+                // 敵に爆風の速度と吹き飛び状態を設定
+                enemy->SetVelocity(vel);
+                enemy->SetEnemyState(EnemyState::BLOWN_AWAY);
+            }
         }
     }
 }

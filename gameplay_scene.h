@@ -20,4 +20,6 @@ public:
 private:
     // ゲームプレイ本編の毎フレーム更新処理（旧 Manager::UpdateGameplay）
     void UpdateGameplay();
+
+    int m_ClearDelayTimer = 0; // ボス撃破後のクリア移行遅延タイマー（フレーム数）
 };

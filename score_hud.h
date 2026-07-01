@@ -15,9 +15,12 @@ private:
     static ID3D11ShaderResourceView* m_TitleTexture;    // タイトル描画テクスチャ
     static ID3D11ShaderResourceView* m_ClearTexture;    // クリア画面描画テクスチャ
     static ID3D11ShaderResourceView* m_GameOverTexture; // ゲームオーバー描画テクスチャ
+    static ID3D11ShaderResourceView* m_BossHPTexture;    // ボスHPバーテクスチャ
 
     static int   m_LastScore;                       // 前回のスコア値
     static int   m_LastHP;                          // 前回のプレイヤーHP値
+    static int   m_LastBossHP;                      // 前回のボスHP値
+    static int   m_LastBossMaxHP;                   // 前回のボス最大HP値
     static float m_ScaleEffect;                     // スコア増加時のスケール演出値
 
     // GDI でスコアHUDのテクスチャを作成する
@@ -37,6 +40,13 @@ private:
         ID3D11Device* device,
         bool isClear,
         int score
+    );
+
+    // GDI でボスHPバーテクスチャを作成する
+    static ID3D11ShaderResourceView* CreateBossHPTexture(
+        ID3D11Device* device,
+        int hp,
+        int maxHp
     );
 
 public:

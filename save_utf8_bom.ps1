@@ -2,6 +2,9 @@
 # すべての新規追加ファイルをBOM付きUTF-8に変換して、MSVCのコンパイルエラー（C4819、C2065等）を解消します。
 
 $files = @(
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\portfolio\index.html",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\portfolio\style.css",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\portfolio\script.js",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\scene_interface.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\title_scene.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\title_scene.cpp",

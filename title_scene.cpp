@@ -35,13 +35,8 @@ void TitleScene::Uninit()
 void TitleScene::Update()
 {
     // スペースキーが押されたらゲーム本編へ
-    if (Input::GetKeyTrigger(VK_SPACE)) {
+    if (Input::GetKeyTrigger(VK_RETURN)) {
         Manager::ChangeScene(Scene::GAMEPLAY);
-    }
-    
-    // 'T'キーが押されたらシェーダーテストシーンへ
-    if (Input::GetKeyTrigger('T')) {
-        Manager::ChangeScene(Scene::SHADER_TEST);
     }
 }
 

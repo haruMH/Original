@@ -3,6 +3,7 @@
 #include "game_rule.h"
 #include "player.h"
 #include "manager.h"
+#include "boss_enemy.h"
 #include <vector>
 
 // =================================================================
@@ -17,9 +18,12 @@ ID3D11ShaderResourceView* ScoreHUD::m_Texture    = nullptr;
 ID3D11ShaderResourceView* ScoreHUD::m_TitleTexture    = nullptr;
 ID3D11ShaderResourceView* ScoreHUD::m_ClearTexture    = nullptr;
 ID3D11ShaderResourceView* ScoreHUD::m_GameOverTexture = nullptr;
+ID3D11ShaderResourceView* ScoreHUD::m_BossHPTexture   = nullptr;
 
 int   ScoreHUD::m_LastScore   = 0;
 int   ScoreHUD::m_LastHP      = 5;
+int   ScoreHUD::m_LastBossHP    = -1;
+int   ScoreHUD::m_LastBossMaxHP = -1;
 float ScoreHUD::m_ScaleEffect = 1.0f;
 
 // ─────────────────────────────────────────────────────────────────
@@ -117,6 +121,194 @@ ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
     SelectObject(hdc, oldFont);
     SelectObject(hdc, oldBmp);
     DeleteObject(hFont);
+    DeleteObject(hBmp);
+    DeleteDC(hdc);
+
+    return srv;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// GDI を使用してボスHPバー用のテクスチャを生成する
+// 画面下部に魔王名 + カラーゲージを描画
+// ─────────────────────────────────────────────────────────────────
+ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
+    ID3D11Device* device,
+    int hp,
+    int maxHp
+)
+{
+    const int W = 640, H = 80;
+
+    // ─── GDI DIB セクションの作成 ───
+    BITMAPINFO bmi = {};
+    bmi.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth       = W;
+    bmi.bmiHeader.biHeight      = -H;   // トップダウン
+    bmi.bmiHeader.biPlanes      = 1;
+    bmi.bmiHeader.biBitCount    = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    BYTE* bits = nullptr;
+    HDC hdc     = CreateCompatibleDC(nullptr);
+    HBITMAP hBmp = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, (void**)&bits, nullptr, 0);
+    HGDIOBJ oldBmp = SelectObject(hdc, hBmp);
+    memset(bits, 0, W * H * 4);
+
+    // ─────────────────────────────────────────────────────────────
+    // 【ボスHPバー カラーカスタマイズ用パラメータ】
+    // ここでお好みの色（RGB）に直接変更できます！コメントアウトに従って調整してください。
+    // ─────────────────────────────────────────────────────────────
+    const COLORREF COLOR_HP_HIGH        = RGB(0, 255, 100);    // 高HP時（満タン）のカラー（明るい緑）
+    const COLORREF COLOR_HP_MID         = RGB(255, 220, 0);    // 中HP時のカラー（黄色）
+    const COLORREF COLOR_HP_LOW         = RGB(255, 40, 40);    // 低HP時（瀕死）のカラー（赤）
+    
+    const COLORREF COLOR_BAR_BG         = RGB(40, 25, 25);     // HPゲージの空部分（背景）のカラー（暗い赤）
+    const COLORREF COLOR_BAR_BORDER     = RGB(160, 50, 50);    // HPゲージの枠線のカラー（赤サビ色）
+    
+    const COLORREF COLOR_TEXT_HP        = RGB(220, 220, 220);  // HP数値テキスト（60/60など）のカラー（淡いグレー）
+    const COLORREF COLOR_TEXT_LABEL     = RGB(255, 80, 80);    // "BOSS"ラベルテキストのカラー（薄赤）
+    
+    const COLORREF COLOR_PANEL_BG       = RGB(20, 10, 30);     // ボスHPバーパネル全体の背景カラー（深紫色）
+    // ─────────────────────────────────────────────────────────────
+
+    // ─── 輝度バックグラウンド（半透明の深灰） ───
+    HBRUSH bgBrush = CreateSolidBrush(COLOR_PANEL_BG);
+    RECT bgRect = { 0, 0, W, H };
+    FillRect(hdc, &bgRect, bgBrush);
+    DeleteObject(bgBrush);
+
+    // ─── "BOSS" ラベルテキスト ───
+    HFONT hFontLabel = CreateFontW(
+        28, 0, 0, 0, FW_HEAVY,
+        FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Impact"
+    );
+    HGDIOBJ oldFont = SelectObject(hdc, hFontLabel);
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, COLOR_TEXT_LABEL);
+    RECT rcLabel = { 10, 8, 100, 38 };
+    DrawTextW(hdc, L"BOSS", -1, &rcLabel, DT_LEFT | DT_SINGLELINE);
+
+    // ─── HP 数値テキスト ───
+    HFONT hFontHP = CreateFontW(
+        22, 0, 0, 0, FW_NORMAL,
+        FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Arial"
+    );
+    SelectObject(hdc, hFontHP);
+    SetTextColor(hdc, COLOR_TEXT_HP);
+    wchar_t hpBuf[32];
+    swprintf_s(hpBuf, L"%d / %d", hp, maxHp);
+    RECT rcHP = { W - 120, 8, W - 10, 38 };
+    DrawTextW(hdc, hpBuf, -1, &rcHP, DT_RIGHT | DT_SINGLELINE);
+
+    // ─── HPゲージ暀外枕（ダークグレー） ───
+    const int barLeft   = 10;
+    const int barTop    = 44;
+    const int barRight  = W - 10;
+    const int barBottom = 70;
+    HBRUSH barBgBrush = CreateSolidBrush(COLOR_BAR_BG);
+    RECT barBgRect = { barLeft, barTop, barRight, barBottom };
+    FillRect(hdc, &barBgRect, barBgBrush);
+    DeleteObject(barBgBrush);
+
+    // ─── HPゲージ内側（赤から黄のグラデーション） ───
+    if (maxHp > 0 && hp > 0) {
+        float ratio = (float)hp / (float)maxHp;
+        int fillRight = barLeft + (int)((barRight - barLeft) * ratio);
+
+        // HP比率に応じて色を変化（高HP: 緑、中間: 黄、低HP: 赤）
+        int rCol = 0;
+        int gCol = 0;
+        int bCol = 0;
+        if (ratio > 0.5f) {
+            // 緑から黄への変化
+            float t = (ratio - 0.5f) * 2.0f; // 0.0(黄) から 1.0(緑)
+            rCol = (int)(GetRValue(COLOR_HP_MID) * (1.0f - t) + GetRValue(COLOR_HP_HIGH) * t);
+            gCol = (int)(GetGValue(COLOR_HP_MID) * (1.0f - t) + GetGValue(COLOR_HP_HIGH) * t);
+            bCol = (int)(GetBValue(COLOR_HP_MID) * (1.0f - t) + GetBValue(COLOR_HP_HIGH) * t);
+        } else {
+            // 黄から赤への変化
+            float t = ratio * 2.0f; // 0.0(赤) から 1.0(黄)
+            rCol = (int)(GetRValue(COLOR_HP_LOW) * (1.0f - t) + GetRValue(COLOR_HP_MID) * t);
+            gCol = (int)(GetGValue(COLOR_HP_LOW) * (1.0f - t) + GetGValue(COLOR_HP_MID) * t);
+            bCol = (int)(GetBValue(COLOR_HP_LOW) * (1.0f - t) + GetBValue(COLOR_HP_MID) * t);
+        }
+        rCol = (rCol < 0) ? 0 : (rCol > 255 ? 255 : rCol);
+        gCol = (gCol < 0) ? 0 : (gCol > 255 ? 255 : gCol);
+        bCol = (bCol < 0) ? 0 : (bCol > 255 ? 255 : bCol);
+
+        HBRUSH hpBrush = CreateSolidBrush(RGB(rCol, gCol, bCol));
+        RECT fillRect = { barLeft, barTop, fillRight, barBottom };
+        FillRect(hdc, &fillRect, hpBrush);
+        DeleteObject(hpBrush);
+
+        // ハイライト（ゲージ上部の白い親線）
+        HBRUSH hlBrush = CreateSolidBrush(RGB(255, 220, 220));
+        RECT hlRect = { barLeft, barTop, fillRight, barTop + 4 };
+        FillRect(hdc, &hlRect, hlBrush);
+        DeleteObject(hlBrush);
+    }
+
+    // ─── ゲージ枚線 ───
+    HPEN borderPen = CreatePen(PS_SOLID, 2, COLOR_BAR_BORDER);
+    HGDIOBJ oldPen = SelectObject(hdc, borderPen);
+    HBRUSH nullBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
+    HGDIOBJ oldBrush = SelectObject(hdc, nullBrush);
+    Rectangle(hdc, barLeft, barTop, barRight, barBottom);
+    SelectObject(hdc, oldPen);
+    SelectObject(hdc, oldBrush);
+    DeleteObject(borderPen);
+
+    GdiFlush();
+
+    // ─── アルファを踏まえた RGBA 変換 ───
+    std::vector<BYTE> rgba(W * H * 4);
+    for (int i = 0; i < W * H; i++) {
+        BYTE b = bits[i * 4 + 0];
+        BYTE g = bits[i * 4 + 1];
+        BYTE r = bits[i * 4 + 2];
+        
+        // 色が完全に黒 (RGB: 0, 0, 0) の部分のみ透過させ、それ以外は完全に不透明にする
+        // これにより、GDIで塗った背景パネルやゲージの色が透過して消えてしまうのを防ぎます
+        BYTE alpha = (r == 0 && g == 0 && b == 0) ? 0 : 255;
+        
+        rgba[i * 4 + 0] = r;
+        rgba[i * 4 + 1] = g;
+        rgba[i * 4 + 2] = b;
+        rgba[i * 4 + 3] = alpha;
+    }
+
+    // ─── D3D11 テクスチャの生成 ───
+    D3D11_TEXTURE2D_DESC td = {};
+    td.Width            = W;
+    td.Height           = H;
+    td.MipLevels        = 1;
+    td.ArraySize        = 1;
+    td.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+    td.SampleDesc.Count = 1;
+    td.Usage            = D3D11_USAGE_IMMUTABLE;
+    td.BindFlags        = D3D11_BIND_SHADER_RESOURCE;
+
+    D3D11_SUBRESOURCE_DATA initData = {};
+    initData.pSysMem     = rgba.data();
+    initData.SysMemPitch = W * 4;
+
+    ID3D11Texture2D* tex = nullptr;
+    HRESULT hr = device->CreateTexture2D(&td, &initData, &tex);
+
+    ID3D11ShaderResourceView* srv = nullptr;
+    if (SUCCEEDED(hr) && tex) {
+        device->CreateShaderResourceView(tex, nullptr, &srv);
+        tex->Release();
+    }
+
+    SelectObject(hdc, oldFont);
+    SelectObject(hdc, oldBmp);
+    DeleteObject(hFontLabel);
+    DeleteObject(hFontHP);
     DeleteObject(hBmp);
     DeleteDC(hdc);
 
@@ -417,6 +609,7 @@ void ScoreHUD::Uninit()
     if (m_TitleTexture) { m_TitleTexture->Release(); m_TitleTexture = nullptr; }
     if (m_ClearTexture) { m_ClearTexture->Release(); m_ClearTexture = nullptr; }
     if (m_GameOverTexture) { m_GameOverTexture->Release(); m_GameOverTexture = nullptr; }
+    if (m_BossHPTexture)   { m_BossHPTexture->Release();   m_BossHPTexture   = nullptr; }
     if (m_DepthState) { m_DepthState->Release(); m_DepthState = nullptr; }
     if (m_IL)         { m_IL->Release();         m_IL         = nullptr; }
     if (m_PS)         { m_PS->Release();         m_PS         = nullptr; }
@@ -464,6 +657,26 @@ void ScoreHUD::Update()
             if (m_ScaleEffect - 1.0f < 0.005f) {
                 m_ScaleEffect = 1.0f;
             }
+        }
+
+        // ボスステージ中のHP監視
+        if (Manager::IsBossStage()) {
+            BossEnemy* boss = Manager::GetGameObject<BossEnemy>();
+            if (boss && boss->GetEnemyState() != EnemyState::DEFEATED) {
+                int curBossHP    = boss->GetHP();
+                int curBossMaxHP = boss->GetMaxHP();
+                if (curBossHP != m_LastBossHP || curBossMaxHP != m_LastBossMaxHP || !m_BossHPTexture) {
+                    if (m_BossHPTexture) { m_BossHPTexture->Release(); m_BossHPTexture = nullptr; }
+                    m_BossHPTexture   = CreateBossHPTexture(Renderer::GetDevice(), curBossHP, curBossMaxHP);
+                    m_LastBossHP      = curBossHP;
+                    m_LastBossMaxHP   = curBossMaxHP;
+                }
+            } else {
+                // ボスが倒された・存在しない場合はバーを消す
+                if (m_BossHPTexture) { m_BossHPTexture->Release(); m_BossHPTexture = nullptr; }
+            }
+        } else {
+            if (m_BossHPTexture) { m_BossHPTexture->Release(); m_BossHPTexture = nullptr; }
         }
     } else if (currentScene == Scene::CLEAR) {
         if (!m_ClearTexture) {
@@ -584,4 +797,43 @@ void ScoreHUD::Draw()
     Renderer::SetViewMatrix(oldView);
     Renderer::SetProjectionMatrix(oldProj);
     ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    // ─── ボスHPバーの別途描画（ボスステージ中のみ、画面下部中央）───
+    if (currentScene == Scene::GAMEPLAY && m_BossHPTexture && m_QuadVB && m_VS && m_PS && m_IL) {
+        const float bossBarW = 640.0f;
+        const float bossBarH = 80.0f;
+        const float bossBarX = (float)SCREEN_WIDTH * 0.5f;
+        const float bossBarY = (float)SCREEN_HEIGHT - bossBarH * 0.5f - 10.0f; // 画面下部かり 10px上
+
+        ctx->OMSetDepthStencilState(m_DepthState, 0);
+        ctx->VSSetShader(m_VS, nullptr, 0);
+        ctx->PSSetShader(m_PS, nullptr, 0);
+        ctx->IASetInputLayout(m_IL);
+        ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+        UINT stride2 = 60u;
+        UINT offset2 = 0;
+        ctx->IASetVertexBuffers(0, 1, &m_QuadVB, &stride2, &offset2);
+
+        XMMATRIX view2D2 = XMMatrixIdentity();
+        XMMATRIX proj2D2 = XMMatrixOrthographicOffCenterLH(0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 0.0f, 0.0f, 1.0f);
+        Renderer::SetViewMatrix(view2D2);
+        Renderer::SetProjectionMatrix(proj2D2);
+
+        XMMATRIX worldBoss = XMMatrixScaling(bossBarW, bossBarH, 1.0f) * XMMatrixTranslation(bossBarX, bossBarY, 0.0f);
+        Renderer::SetWorldMatrix(worldBoss);
+
+        // ボスHPバーはカラーテクスチャなのでEmissionは使わず、ディフューズで描画
+        // ui_ps.hlsl側でTextureEnable=TRUEのときはテクスチャ色をそのまま出力します
+        MATERIAL matBoss = {};
+        matBoss.Diffuse       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        matBoss.Emission      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f); // Emissionなし
+        matBoss.TextureEnable = TRUE;
+        Renderer::SetMaterial(matBoss);
+        Renderer::SetTexture(m_BossHPTexture);
+        ctx->Draw(4, 0);
+
+        Renderer::SetViewMatrix(oldView);
+        Renderer::SetProjectionMatrix(oldProj);
+        ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    }
 }

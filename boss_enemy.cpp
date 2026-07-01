@@ -263,6 +263,23 @@ void BossEnemy::ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePo
         m_Position.z += pushDir.z * 0.3f;
     }
 
+    // ── オーバーダメージ保護：未発動フェーズがある場合はHPをその閾値でクランプ ──
+    // フェーズ移行閾値: Phase1=42, Phase2=30, Phase3=18
+    // HPが一気に閾値を通過してしまったとき、特殊モーションをスキップさせないために
+    // まだ発動していない最も優先度が高いフェーズの閾値+1でHPを下限クランプする
+    if (m_BossState == BossState::NORMAL) {
+        if (!m_Phase1Triggered && m_HP < 42) {
+            // フェーズ1が未発動なのに42を飛び越えた → 42でクランプ（Update()でフェーズ発動させる）
+            m_HP = 42;
+        } else if (!m_Phase2Triggered && m_HP < 30) {
+            // フェーズ2が未発動なのに30を飛び越えた → 30でクランプ
+            m_HP = 30;
+        } else if (!m_Phase3Triggered && m_HP < 18) {
+            // フェーズ3が未発動なのに18を飛び越えた → 18でクランプ
+            m_HP = 18;
+        }
+    }
+
     // 残りHPポップアップ (赤文字)
     ScorePopupSystem::AddPopup(m_Position.x, m_Position.y + 3.0f, m_Position.z, m_HP, 2.5f, 0.0f, 0.0f);
 

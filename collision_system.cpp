@@ -128,12 +128,18 @@ static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
                 LightningConfig::PUSH_FORCE_Y, 
                 dir.z * LightningConfig::PUSH_FORCE_XZ
             );
-            nearest->SetVelocity(pushVel);
-            nearest->SetEnemyState(EnemyState::BLOWN_AWAY);
-            nearest->SetLightning(true); // スパーク放電を有効化
+            // ボスの場合は吹き飛ばさず、Defeat()も直接呼ばずにダメージ処理を行う
+            if (nearest->GetObjectType() == ObjectType::Boss) {
+                BossEnemy* boss = static_cast<BossEnemy*>(nearest);
+                boss->ApplyBossDamage(3, currentPos); // 連鎖ダメージは3
+            } else {
+                nearest->SetVelocity(pushVel);
+                nearest->SetEnemyState(EnemyState::BLOWN_AWAY);
+                nearest->SetLightning(true); // スパーク放電を有効化
 
-            // 撃破処理（チェインライトニング）
-            nearest->Defeat(0.0f, 1.5f, 2.5f);
+                // 撃破処理（チェインライトニング）
+                nearest->Defeat(0.0f, 1.5f, 2.5f);
+            }
             
             chainedEnemies.push_back(nearest);
             currentPos = nextPos; // 次の連鎖の開始点にする
@@ -169,10 +175,13 @@ void CollisionSystem::Update()
     for (GameObject* obj : gameObjects) {
         if (!obj || obj->IsDestroy()) continue;
         ObjectType type = obj->GetObjectType();
-        if (type == ObjectType::Enemy || type == ObjectType::Boss) {
+        if (type == ObjectType::Enemy) {
             Enemy* enemy = static_cast<Enemy*>(obj);
             enemies.push_back(enemy);
             g_CollisionGrid.Register(enemy);
+        } else if (type == ObjectType::Boss) {
+            enemies.push_back(static_cast<Enemy*>(obj));
+            // ボスはセル跨ぎ判定を行うため、グリッドには登録しない
         } else if (type == ObjectType::Wall) {
             walls.push_back(static_cast<Wall*>(obj));
         } else if (type == ObjectType::Item) {
@@ -345,12 +354,69 @@ void CollisionSystem::Update()
         // 壁との衝突で既に倒された状態（DEFEATED）になった場合は、他の敵との判定は行わない
         if (flying->GetEnemyState() == EnemyState::DEFEATED) continue;
 
+        bool targetHit = false; // ループ脱出用フラグ
+
+        // --- ボスとの衝突判定を個別に行う（グリッドのセル跨ぎによる貫通バグを完全に防ぐ） ---
+        BossEnemy* boss = Manager::GetGameObject<BossEnemy>();
+        if (boss && !boss->IsDestroy()) {
+            EnemyState targetState = boss->GetEnemyState();
+            if (targetState != EnemyState::DEFEATED && targetState != EnemyState::BLOWN_AWAY) {
+                if (Collision::CheckSphere(flying, boss)) {
+                    bool hitHandled = false;
+
+                    // 1. 爆弾状態の敵との衝突
+                    if (!explosionThisFrame && flying->IsExplosive()) {
+                        ExplosionSystem::TriggerExplosion(flying->GetPosition());
+                        flying->SetEnemyState(EnemyState::DEFEATED);
+                        flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
+                        explosionThisFrame = true;
+                        hitHandled = true;
+                    }
+
+                    // 2. 電撃状態の敵との衝突
+                    if (!hitHandled && flying->IsLightning()) {
+                        TriggerChainLightning(flying->GetPosition(), player);
+                        boss->ApplyBossDamage(3, flying->GetPosition());
+                        flying->SetEnemyState(EnemyState::DEFEATED);
+                        flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
+                        Manager::AddHitStop(10);
+                        if (g_Camera) g_Camera->Shake(0.35f, 12);
+                        hitHandled = true;
+                    }
+
+                    // 3. 通常の衝突
+                    if (!hitHandled) {
+                        int dmg = 1;
+                        if (flying->IsSandbag()) {
+                            dmg = 6;
+                        } else if (flying->GetScale().x > 2.0f) {
+                            dmg = 3;
+                        }
+                        boss->ApplyBossDamage(dmg, flying->GetPosition());
+
+                        flying->SetEnemyState(EnemyState::DEFEATED);
+                        flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
+
+                        Manager::AddHitStop(10);
+                        if (g_Camera) g_Camera->Shake(0.4f, 15);
+                        hitHandled = true;
+                    }
+
+                    if (hitHandled) {
+                        targetHit = true;
+                    }
+                }
+            }
+        }
+
+        if (targetHit) continue; // ボスに衝突した場合はグリッド走査をスキップ
+
         // --- 他の敵との衝突判定 ---
         // 飛行エネミーの周囲 9 セルのグリッドから判定対象エネミーを抽出
         int centerCol = static_cast<int>(floorf((fPos.x - CollisionGrid::GRID_MIN_X) / CollisionGrid::CELL_SIZE));
         int centerRow = static_cast<int>(floorf((fPos.z - CollisionGrid::GRID_MIN_Z) / CollisionGrid::CELL_SIZE));
 
-        bool targetHit = false; // ループ脱出用フラグ
+        targetHit = false; // ループ脱出用フラグ
 
         for (int dr = -1; dr <= 1 && !targetHit; ++dr) {
             for (int dc = -1; dc <= 1 && !targetHit; ++dc) {
@@ -369,8 +435,8 @@ void CollisionSystem::Update()
                         // 爆弾属性の敵同士の衝突は爆発しない
                         if (flying->IsExplosive() && target->IsExplosive()) continue;
 
-                        // 爆弾状態の敵が通常の敵（NORMAL）に当たったら即爆発！
-                        if (!explosionThisFrame && flying->IsExplosive() && targetState == EnemyState::NORMAL) {
+                        // 爆弾状態の敵が通常の敵（NORMAL/CHASING）に当たったら即爆発！
+                        if (!explosionThisFrame && flying->IsExplosive() && (targetState == EnemyState::NORMAL || targetState == EnemyState::CHASING)) {
                             ExplosionSystem::TriggerExplosion(flying->GetPosition());
                             flying->SetEnemyState(EnemyState::DEFEATED);
                             flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
@@ -380,7 +446,21 @@ void CollisionSystem::Update()
                         }
 
                         // 電撃属性を持つエネミーの通常エネミー衝突でチェインライトニング発動
-                        if (flying->IsLightning() && targetState == EnemyState::NORMAL) {
+                        if (flying->IsLightning() && (targetState == EnemyState::NORMAL || targetState == EnemyState::CHASING)) {
+
+                            // ボスへの電撃衝突は Defeat() を直接呼ばず、ダメージ経由で処理する
+                            if (target->GetObjectType() == ObjectType::Boss) {
+                                BossEnemy* boss = static_cast<BossEnemy*>(target);
+                                TriggerChainLightning(flying->GetPosition(), player);
+                                boss->ApplyBossDamage(3, flying->GetPosition()); // 電撃投げはダメージ3
+                                flying->SetEnemyState(EnemyState::DEFEATED);
+                                flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
+                                Manager::AddHitStop(10);
+                                if (g_Camera) g_Camera->Shake(0.35f, 12);
+                                targetHit = true;
+                                break;
+                            }
+
                             TriggerChainLightning(flying->GetPosition(), player);
                             // 電撃属性は維持したまま撃破消滅へ移行し、スパークを散らし続ける
 
@@ -420,7 +500,7 @@ void CollisionSystem::Update()
                             targetHit = true;
                             break;
                         }
-                        else if (target->GetEnemyState() == EnemyState::NORMAL) {
+                        else if (targetState == EnemyState::NORMAL || targetState == EnemyState::CHASING || targetState == EnemyState::VACUUMED) {
                             XMFLOAT3 dir = MathHelper::Normalize(tPos - fPos);
                             
                             // 投げられたエネミーが巨大化している場合、ぶつかられた敵はダメージを受けて撃破される
@@ -435,11 +515,12 @@ void CollisionSystem::Update()
                                 Manager::AddHitStop(10); 
                                 if (g_Camera) g_Camera->Shake(0.4f, 15);
                             } else {
-                                // 通常サイズのエネミーの場合：単なる玉突き（生存して吹き飛ぶ）
-                                XMFLOAT3 vel = dir * 0.4f;
+                                // 通常サイズのエネミーの場合：玉突きしてダメージを与えて撃破
+                                XMFLOAT3 vel = dir * 0.5f;
                                 vel.y = 0.35f;
                                 target->SetVelocity(vel);
-                                target->SetEnemyState(EnemyState::FLYING);
+                                target->SetEnemyState(EnemyState::BLOWN_AWAY);
+                                target->Defeat(); // 撃破処理を適用
 
                                 Manager::AddHitStop(8); 
                                 if (g_Camera) g_Camera->Shake(0.3f, 12); 

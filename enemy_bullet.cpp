@@ -63,7 +63,6 @@ void EnemyBullet::Update()
         if (player)
         {
             XMFLOAT3 diff = m_Position - player->GetPosition();
-            diff.y = 0.0f;
             float dist = MathHelper::Length(diff);
             float limitDist = GetRadius() + player->GetRadius() * 0.7f;
 
@@ -167,7 +166,6 @@ void EnemyBullet::Update()
 
             // 弾と敵の距離判定
             XMFLOAT3 diff = m_Position - enemy->GetPosition();
-            diff.y = 0.0f;
             float dist = MathHelper::Length(diff);
             float limitDist = GetRadius() + enemy->GetRadius();
 

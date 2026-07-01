@@ -11,15 +11,13 @@ class TitleScene;
 class GameplayScene;
 class ClearScene;
 class GameOverScene;
-class ShaderTestScene;
 
 // シーン状態を定義する列挙型（既存のコードとの互換性のために残します）
 enum class Scene {
     TITLE,
     GAMEPLAY,
     CLEAR,
-    GAMEOVER,
-    SHADER_TEST
+    GAMEOVER
 };
 
 // =================================================================
@@ -34,7 +32,6 @@ class Manager
     friend class GameplayScene;
     friend class ClearScene;
     friend class GameOverScene;
-    friend class ShaderTestScene;
 
 private:
     static std::vector<GameObject*> m_GameObjects;     // 全オブジェクトリスト（描画・一括走査用）

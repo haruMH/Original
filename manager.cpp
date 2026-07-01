@@ -24,7 +24,6 @@
 #include "gameplay_scene.h"
 #include "clear_scene.h"
 #include "gameover_scene.h"
-#include "shadertest_scene.h"
 
 // 静的メンバ変数の実体定義
 std::vector<GameObject*> Manager::m_GameObjects;
@@ -36,7 +35,7 @@ int                    Manager::m_SlowMotionTimer = 0;
 int                    Manager::m_SlowMotionDuration = 0;
 Scene                  Manager::m_CurrentScene = Scene::TITLE;
 
-bool                   Manager::m_IsBossStage = false;
+bool                   Manager::m_IsBossStage = true;
 Scene                  Manager::m_NextScene = Scene::TITLE;
 bool                   Manager::m_SceneTransitionRequested = false;
 
@@ -228,21 +227,12 @@ void Manager::Draw()
     Renderer::SetupCubeDraw();
     for (GameObject* obj : m_GameObjects) {
         ObjectType type = obj->GetObjectType();
-        if (type == ObjectType::Field || type == ObjectType::Enemy) {
+        // 床、敵、壁は一括描画するため個別描画はスキップ
+        if (type == ObjectType::Field || type == ObjectType::Enemy || type == ObjectType::Wall) {
             continue;
-        }
-        // 通常の壁は一括描画するため個別描画はスキップ。ただし、テスト壁（IsShaderTest()がtrue）は個別描画する。
-        if (type == ObjectType::Wall) {
-            Wall* wall = static_cast<Wall*>(obj);
-            if (!wall->IsShaderTest()) {
-                continue;
-            }
         }
 
         obj->Draw();
-        if (type == ObjectType::Wall) {
-            Renderer::SetupCubeDraw();
-        }
         Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
 
@@ -438,9 +428,6 @@ void Manager::ExecuteChangeScene(Scene nextScene)
         break;
     case Scene::GAMEOVER:
         m_ActiveScene = new GameOverScene();
-        break;
-    case Scene::SHADER_TEST:
-        m_ActiveScene = new ShaderTestScene();
         break;
     }
 

@@ -165,7 +165,6 @@
     <ClCompile Include="gameplay_scene.cpp" />
     <ClCompile Include="clear_scene.cpp" />
     <ClCompile Include="gameover_scene.cpp" />
-    <ClCompile Include="shadertest_scene.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -210,7 +209,6 @@
     <ClInclude Include="gameplay_scene.h" />
     <ClInclude Include="clear_scene.h" />
     <ClInclude Include="gameover_scene.h" />
-    <ClInclude Include="shadertest_scene.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />
@@ -267,31 +265,6 @@
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
     </FXCompile>
     <FXCompile Include="ui_ps.hlsl">
-      <ShaderType>Pixel</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
-    </FXCompile>
-    <FXCompile Include="test_ps.hlsl">
-      <ShaderType>Pixel</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
-    </FXCompile>
-    <FXCompile Include="WaterVS.hlsl">
-      <ShaderType>Vertex</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
-    </FXCompile>
-    <FXCompile Include="WaterPS.hlsl">
-      <ShaderType>Pixel</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
-    </FXCompile>
-    <FXCompile Include="DissolvePS.hlsl">
-      <ShaderType>Pixel</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
-    </FXCompile>
-    <FXCompile Include="RefractPS.hlsl">
       <ShaderType>Pixel</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>

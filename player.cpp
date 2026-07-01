@@ -100,6 +100,11 @@ void Player::Update()
         m_TackleTimer--;
     }
 
+    // スタン（被弾硬直）タイマーの更新
+    if (m_DamageTimer > 0) {
+        m_DamageTimer--;
+    }
+
     // 無敵タイマーの更新とモデル点滅演出
     if (m_InvincibleTimer > 0) {
         m_InvincibleTimer--;

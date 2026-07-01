@@ -40,6 +40,7 @@ void GameplayScene::Init()
     Manager::m_HitStopFrames = 0;
     Manager::m_SlowMotionTimer = 0;
     Manager::m_SlowMotionDuration = 0;
+    m_ClearDelayTimer = 0;
 
     // 1. 地面オブジェクトの生成
     Manager::AddGameObject<Field>();
@@ -189,7 +190,17 @@ void GameplayScene::UpdateGameplay()
         GameObject* obj = Manager::m_UpdateObjects[i];
         bool shouldUpdate = true;
 
-        if (obj->GetObjectType() != ObjectType::Player) {
+        // プレイヤー、掴まれているエネミー、およびサンドバッグ（元弾）は毎フレーム更新する（スロー中の挙動バグを防ぐ）
+        bool isGrabbedEnemy = (player && player->GetGrabbedEnemy() == obj);
+        bool isSandbag = false;
+        if (obj->GetObjectType() == ObjectType::Enemy) {
+            Enemy* enemy = static_cast<Enemy*>(obj);
+            if (enemy->IsSandbag()) {
+                isSandbag = true;
+            }
+        }
+
+        if (obj->GetObjectType() != ObjectType::Player && !isGrabbedEnemy && !isSandbag) {
             shouldUpdate = updateOthers;
         }
 
@@ -233,8 +244,8 @@ void GameplayScene::UpdateGameplay()
         CollisionSystem::Update();
     }
 
-    // つかみ位置の同期（LateUpdate）
-    if (updateOthers && player) {
+    // つかみ位置の同期（LateUpdate）：スローモーション中でも毎フレーム同期してガクつきを防ぐ
+    if (player) {
         if (player->GetState() == PlayerState::GRABBED || player->GetState() == PlayerState::SPINNING) {
             Enemy* grabbedEnemy = player->GetGrabbedEnemy();
             if (grabbedEnemy) {
@@ -275,9 +286,15 @@ void GameplayScene::UpdateGameplay()
             }
 
             if (!bossExists) {
-                GameRule::SetGameClear(true);
-                Manager::ChangeScene(Scene::CLEAR);
-                OutputDebugStringA("[GameRule] *** ボス撃破！ゲームクリア! ***\n");
+                // ボス全滅後、2秒（120フレーム）のディレイをかけてからリザルト画面に遷移する
+                m_ClearDelayTimer++;
+                if (m_ClearDelayTimer >= 120) {
+                    GameRule::SetGameClear(true);
+                    Manager::ChangeScene(Scene::CLEAR);
+                    OutputDebugStringA("[GameRule] *** ボス撃破！ゲームクリア! ***\n");
+                }
+            } else {
+                m_ClearDelayTimer = 0;
             }
         }
     }

@@ -110,87 +110,25 @@ void Field::Draw()
                            
     Renderer::SetWorldMatrix(worldMatrix);
 
-    // シーン内の Wall からエフェクトタイプとパラメータを取得する
-    Wall::EffectType activeEffect = Wall::EffectType::Normal;
-    float refractionIndex = 0.03f;
-    float fresnelPower    = 4.0f;
-    XMFLOAT4 highlightColor(1, 1, 1, 1);
-    // 水面パラメータ
-    float    waterTime    = 0.0f;
-    XMFLOAT3 waveParams(0.08f, 3.0f, 2.0f);
-    float    waterShininess = 32.0f;
-    float    waterFresnel   = 4.0f;
-    XMFLOAT4 shallowColor(0.0f, 0.55f, 0.75f, 0.5f);
-    XMFLOAT4 deepColor(0.0f, 0.08f, 0.25f, 0.9f);
-    XMFLOAT2 scroll1(0.03f, 0.01f);
-    XMFLOAT2 scroll2(-0.02f, 0.04f);
-    Wall* activeWall = nullptr;
+    ID3D11DeviceContext* deviceContext = Renderer::GetDeviceContext();
+    UINT stride = sizeof(VERTEX_3D);
+    UINT offset = 0;
+    deviceContext->IASetVertexBuffers(0, 1, &m_VertexBuffer, &stride, &offset);
+    deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    deviceContext->IASetInputLayout(m_VertexLayout);
+    deviceContext->VSSetShader(m_VertexShader, NULL, 0);
+    deviceContext->PSSetShader(m_PixelShader, NULL, 0);
 
-    for (Wall* wall : Manager::GetGameObjects<Wall>()) {
-        activeEffect    = wall->GetEffectType();
-        refractionIndex = wall->GetRefractionIndex();
-        fresnelPower    = wall->GetRefractFresnelPower();
-        highlightColor  = wall->GetRefractHighlightColor();
-        waterTime       = wall->GetWaterTime();
-        waveParams      = wall->GetWaveParams();
-        waterShininess  = wall->GetWaterShininess();
-        waterFresnel    = wall->GetWaterFresnelPower();
-        shallowColor    = wall->GetWaterColorShallow();
-        deepColor       = wall->GetWaterColorDeep();
-        scroll1         = wall->GetScrollSpeed1();
-        scroll2         = wall->GetScrollSpeed2();
-        activeWall      = wall;
-        break;
-    }
+    Renderer::SetTexture(m_Texture);
 
-    if (activeEffect == Wall::EffectType::Refraction)
-    {
-        // Wall ブロックを表示（鏡ブロックとして見せる）
-        if (activeWall) activeWall->SetVisible(true);
+    MATERIAL material;
+    ZeroMemory(&material, sizeof(material));
+    material.Diffuse       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.Ambient       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.TextureEnable = TRUE;
+    Renderer::SetMaterial(material);
 
-        // カメラ座標を取得して鏡面反射シェーダーに渡す
-        XMFLOAT3 camPos = g_Camera ? g_Camera->GetPosition() : XMFLOAT3(0, 5, 0);
-        Renderer::DrawFieldWithRefractShader(
-            m_VertexBuffer, m_VertexCount, m_VertexLayout, m_VertexShader,
-            m_Texture, refractionIndex, fresnelPower, highlightColor,
-            waterTime, camPos, m_SkyTexture); // スカイテクスチャをフォールバックとして渡す
-    }
-    else if (activeEffect == Wall::EffectType::Water)
-    {
-        // 水面モード: Wall ブロックを非表示にして地面全体を水面にする
-        if (activeWall) activeWall->SetVisible(false);
-
-        Renderer::DrawFieldWithWaterShader(
-            m_VertexBuffer, m_VertexCount, m_VertexLayout, m_VertexShader,
-            m_Texture, m_Texture,
-            waterTime, waveParams, waterShininess, waterFresnel,
-            shallowColor, deepColor, scroll1, scroll2);
-    }
-    else
-    {
-        // 通常モード: Wall ブロックを表示して通常の石畳を描画
-        if (activeWall) activeWall->SetVisible(true);
-
-        ID3D11DeviceContext* deviceContext = Renderer::GetDeviceContext();
-        UINT stride = sizeof(VERTEX_3D);
-        UINT offset = 0;
-        deviceContext->IASetVertexBuffers(0, 1, &m_VertexBuffer, &stride, &offset);
-        deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 高密度メッシュは TriangleList で生成
-        deviceContext->IASetInputLayout(m_VertexLayout);
-        deviceContext->VSSetShader(m_VertexShader, NULL, 0);
-        deviceContext->PSSetShader(m_PixelShader, NULL, 0);
-
-        Renderer::SetTexture(m_Texture);
-
-        MATERIAL material;
-        ZeroMemory(&material, sizeof(material));
-        material.Diffuse       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-        material.Ambient       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-        material.TextureEnable = TRUE;
-        Renderer::SetMaterial(material);
-
-        deviceContext->Draw(m_VertexCount, 0);
-    }
+    deviceContext->Draw(m_VertexCount, 0);
 }
 
 
