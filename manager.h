@@ -7,6 +7,10 @@
 
 // 前方宣言
 class Player;
+class Enemy;
+class Wall;
+class Item;
+class EnemyBullet;
 class TitleScene;
 class GameplayScene;
 class ClearScene;
@@ -48,6 +52,12 @@ private:
 
     static IScene*                m_ActiveScene;      // 現在アクティブなシーンオブジェクト
 
+    // カテゴリ別オブジェクトキャッシュリスト
+    static std::vector<Enemy*>       m_Enemies;
+    static std::vector<Wall*>        m_Walls;
+    static std::vector<Item*>        m_Items;
+    static std::vector<EnemyBullet*> m_Bullets;
+
     static void ExecuteChangeScene(Scene nextScene); // 実際のシーン遷移実行
 
 public:
@@ -76,6 +86,10 @@ public:
         if constexpr (std::is_same_v<ObjT, Player>) {
             m_CachedPlayer = reinterpret_cast<Player*>(gameObject);
         }
+
+        // カテゴリ別リストへのキャッシュ登録
+        RegisterCategory(gameObject);
+
         return gameObject;
     }
 
@@ -116,6 +130,17 @@ public:
     // オブジェクトリストの取得.
     static const std::vector<GameObject*>& GetGameObjectList() { return m_GameObjects; }
     static const std::vector<GameObject*>& GetUpdateObjectList() { return m_UpdateObjects; }
+
+    // カテゴリ別リストへの高速アクセス
+    static const std::vector<Enemy*>&       GetEnemyList()  { return m_Enemies; }
+    static const std::vector<Wall*>&        GetWallList()   { return m_Walls; }
+    static const std::vector<Item*>&        GetItemList()   { return m_Items; }
+    static const std::vector<EnemyBullet*>& GetBulletList() { return m_Bullets; }
+
+    // カテゴリ別リストへの登録・解除用ヘルパー
+    static void RegisterCategory(GameObject* obj);
+    static void UnregisterCategory(GameObject* obj);
+    static void ClearCategoryLists();
 
     // ヒットストップのフレーム設定.
     static void AddHitStop(int frames) { m_HitStopFrames = frames; }

@@ -30,13 +30,9 @@ void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
     ShockwaveSystem::AddShockwave(shockPos, explosionRadius * 0.75f, 2.5f, 0.3f, 0.0f, 24, 0.0f, 6);
     ShockwaveSystem::AddShockwave(shockPos, explosionRadius * 0.50f, 2.5f, 0.3f, 0.0f, 18, 0.0f, 12);
 
-    // マネージャーからオブジェクト一覧を取得して走査
-    for (GameObject* obj : Manager::GetGameObjectList()) {
-        if (!obj) continue;
-        
-        if (obj->GetObjectType() != ObjectType::Enemy) continue;
-        Enemy* enemy = static_cast<Enemy*>(obj);
-        if (enemy->IsDestroy()) continue;
+    // マネージャーから敵キャッシュリストを取得して走査
+    for (Enemy* enemy : Manager::GetEnemyList()) {
+        if (!enemy || enemy->IsDestroy()) continue;
 
         EnemyState oldState = enemy->GetEnemyState();
         // すでに撃破済み、または既に吹き飛んでいる敵は除外

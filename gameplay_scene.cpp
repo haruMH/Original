@@ -220,6 +220,7 @@ void GameplayScene::UpdateGameplay()
             if (obj == Manager::m_CachedPlayer) {
                 Manager::m_CachedPlayer = nullptr;
             }
+            Manager::UnregisterCategory(obj);
             obj->Uninit();
             delete obj;
 
