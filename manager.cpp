@@ -13,6 +13,8 @@
 #include "field.h"
 #include "wall.h"
 #include "item.h"
+#include "enemy_bullet.h"
+#include <algorithm>
 #include "game_rule.h"
 #include "collision_system.h"
 #include "score_popup.h"
@@ -29,6 +31,11 @@
 std::vector<GameObject*> Manager::m_GameObjects;
 std::vector<GameObject*> Manager::m_UpdateObjects;
 Player*                Manager::m_CachedPlayer = nullptr;
+
+std::vector<Enemy*>       Manager::m_Enemies;
+std::vector<Wall*>        Manager::m_Walls;
+std::vector<Item*>        Manager::m_Items;
+std::vector<EnemyBullet*> Manager::m_Bullets;
 RenderSystem           Manager::m_RenderSystem;
 int                    Manager::m_HitStopFrames = 0;
 int                    Manager::m_SlowMotionTimer = 0;
@@ -122,6 +129,7 @@ void Manager::Uninit()
     m_GameObjects.clear();
     m_UpdateObjects.clear();
     m_CachedPlayer = nullptr;
+    ClearCategoryLists();
 
     if (g_Camera) {
         g_Camera->Uninit();
@@ -445,4 +453,49 @@ float Manager::GetSlowMotionIntensity()
     if (m_SlowMotionTimer <= 0) return 0.0f;
     if (m_SlowMotionTimer > 30) return 1.0f;
     return (float)m_SlowMotionTimer / 30.0f;
+}
+
+// ─────────────────────────────────────────────
+// カテゴリ別リスト登録・解除ヘルパー実装
+// ─────────────────────────────────────────────
+void Manager::RegisterCategory(GameObject* obj)
+{
+    if (!obj) return;
+    ObjectType type = obj->GetObjectType();
+    if (type == ObjectType::Enemy || type == ObjectType::Boss) {
+        m_Enemies.push_back(static_cast<Enemy*>(obj));
+    } else if (type == ObjectType::Wall) {
+        m_Walls.push_back(static_cast<Wall*>(obj));
+    } else if (type == ObjectType::Item) {
+        m_Items.push_back(static_cast<Item*>(obj));
+    } else if (type == ObjectType::Bullet) {
+        m_Bullets.push_back(static_cast<EnemyBullet*>(obj));
+    }
+}
+
+void Manager::UnregisterCategory(GameObject* obj)
+{
+    if (!obj) return;
+    ObjectType type = obj->GetObjectType();
+    if (type == ObjectType::Enemy || type == ObjectType::Boss) {
+        auto it = std::find(m_Enemies.begin(), m_Enemies.end(), static_cast<Enemy*>(obj));
+        if (it != m_Enemies.end()) m_Enemies.erase(it);
+    } else if (type == ObjectType::Wall) {
+        auto it = std::find(m_Walls.begin(), m_Walls.end(), static_cast<Wall*>(obj));
+        if (it != m_Walls.end()) m_Walls.erase(it);
+    } else if (type == ObjectType::Item) {
+        auto it = std::find(m_Items.begin(), m_Items.end(), static_cast<Item*>(obj));
+        if (it != m_Items.end()) m_Items.erase(it);
+    } else if (type == ObjectType::Bullet) {
+        auto it = std::find(m_Bullets.begin(), m_Bullets.end(), static_cast<EnemyBullet*>(obj));
+        if (it != m_Bullets.end()) m_Bullets.erase(it);
+    }
+}
+
+void Manager::ClearCategoryLists()
+{
+    m_Enemies.clear();
+    m_Walls.clear();
+    m_Items.clear();
+    m_Bullets.clear();
 }

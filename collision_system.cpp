@@ -58,7 +58,6 @@ namespace {
 // ─────────────────────────────────────────────
 static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
 {
-    const std::vector<GameObject*>& gameObjects = Manager::GetGameObjectList();
     XMFLOAT3 currentPos = startPos;
     
     // 連鎖回数と索敵半径の設定
@@ -66,6 +65,7 @@ static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
     float chainRadius = Constants::Lightning::CHAIN_RADIUS; // 連鎖する半径
 
     std::vector<Enemy*> chainedEnemies;
+    chainedEnemies.reserve(maxChain);
 
     for (int chain = 0; chain < maxChain; chain++) {
         Enemy* nearest = nullptr;
@@ -152,33 +152,16 @@ void CollisionSystem::Update()
     if (!player) return;
 
     XMFLOAT3 pPos = player->GetPosition();
-    const std::vector<GameObject*>& gameObjects = Manager::GetGameObjectList();
-
-    // 1回の走査で判定対象ごとに事前分類およびグリッド登録を行い、高速化
-    std::vector<Enemy*> enemies;
-    std::vector<Wall*> walls;
-    std::vector<Item*> items;
-
-    enemies.reserve(32);
-    walls.reserve(16);
-    items.reserve(8);
+    const std::vector<Enemy*>& enemies = Manager::GetEnemyList();
+    const std::vector<Wall*>& walls = Manager::GetWallList();
+    const std::vector<Item*>& items = Manager::GetItemList();
 
     g_CollisionGrid.Clear();
 
-    for (GameObject* obj : gameObjects) {
-        if (!obj || obj->IsDestroy()) continue;
-        ObjectType type = obj->GetObjectType();
-        if (type == ObjectType::Enemy) {
-            Enemy* enemy = static_cast<Enemy*>(obj);
-            enemies.push_back(enemy);
+    // 敵オブジェクトをグリッドへ登録（通常エネミーのみ）
+    for (Enemy* enemy : enemies) {
+        if (enemy && !enemy->IsDestroy() && enemy->GetObjectType() == ObjectType::Enemy) {
             g_CollisionGrid.Register(enemy);
-        } else if (type == ObjectType::Boss) {
-            enemies.push_back(static_cast<Enemy*>(obj));
-            // ボスはセル跨ぎ判定を行うため、グリッドには登録しない
-        } else if (type == ObjectType::Wall) {
-            walls.push_back(static_cast<Wall*>(obj));
-        } else if (type == ObjectType::Item) {
-            items.push_back(static_cast<Item*>(obj));
         }
     }
 
@@ -283,6 +266,7 @@ void CollisionSystem::Update()
 
     // ─── 飛んでいる敵 → 他の敵・壁への連鎖衝突 ────────────────
     std::vector<Enemy*> flyingEnemies;
+    flyingEnemies.reserve(enemies.size());
     for (Enemy* e : enemies) {
         if (e && e->GetEnemyState() == EnemyState::FLYING) {
             flyingEnemies.push_back(e);
