@@ -1,5 +1,4 @@
-﻿#define START_FROM_BOSS 0
-#include "gameplay_scene.h"
+﻿#include "gameplay_scene.h"
 #include "manager.h"
 #include "player.h"
 #include "enemy.h"
@@ -51,61 +50,66 @@ void GameplayScene::Init()
     player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
 
     // ボスから開始か通常から開始かの分岐
-#if START_FROM_BOSS
-    Manager::m_IsBossStage = true;
-    
-    // ボス部屋の壁を生成
-    float roomSize = 18.0f;
-    Wall* wallN = Manager::AddGameObject<Wall>();
-    wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
-    wallN->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
-    
-    Wall* wallS = Manager::AddGameObject<Wall>();
-    wallS->SetPosition(XMFLOAT3(0.0f, 1.5f, -roomSize));
-    wallS->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
-    
-    Wall* wallE = Manager::AddGameObject<Wall>();
-    wallE->SetPosition(XMFLOAT3(roomSize, 1.5f, 0.0f));
-    wallE->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
-    
-    Wall* wallW = Manager::AddGameObject<Wall>();
-    wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
-    wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+    if (Constants::Debug::START_FROM_BOSS) {
+        Manager::m_IsBossStage = true;
+        
+        // ボス部屋の壁を生成
+        float roomSize = Constants::Stage::BOSS_ROOM_SIZE;
+        Wall* wallN = Manager::AddGameObject<Wall>();
+        wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
+        wallN->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+        
+        Wall* wallS = Manager::AddGameObject<Wall>();
+        wallS->SetPosition(XMFLOAT3(0.0f, 1.5f, -roomSize));
+        wallS->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+        
+        Wall* wallE = Manager::AddGameObject<Wall>();
+        wallE->SetPosition(XMFLOAT3(roomSize, 1.5f, 0.0f));
+        wallE->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+        
+        Wall* wallW = Manager::AddGameObject<Wall>();
+        wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
+        wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
 
-    // ボスエネミーの生成
-    BossEnemy* boss = Manager::AddGameObject<BossEnemy>();
-    boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f));
+        // ボスエネミーの生成
+        BossEnemy* boss = Manager::AddGameObject<BossEnemy>();
+        boss->SetPosition(XMFLOAT3(0.0f, 1.5f, Constants::Stage::BOSS_SPAWN_OFFSET_Z));
 
-    GameRule::SetTotalEnemies(1);
-#else
-    Manager::m_IsBossStage = false;
-    
-    // 通常ステージ：壁を敵エリアの外側に配置
-    Wall* wall = Manager::AddGameObject<Wall>();
-    wall->SetPosition(XMFLOAT3(-8.0f, 1.5f, -7.0f));
-    wall->SetScale(XMFLOAT3(5.0f, 5.0f, 5.0f));
+        GameRule::SetTotalEnemies(1);
+    } else {
+        Manager::m_IsBossStage = false;
+        
+        // 通常ステージ：壁を敵エリアの外側に配置
+        Wall* wall = Manager::AddGameObject<Wall>();
+        wall->SetPosition(XMFLOAT3(-8.0f, 1.5f, -7.0f));
+        wall->SetScale(XMFLOAT3(5.0f, 5.0f, 5.0f));
 
-    // プレイヤーを初期位置へ
-    player->SetPosition(XMFLOAT3(0.0f, -0.5f, 8.0f));
+        // プレイヤーを初期位置へ
+        player->SetPosition(XMFLOAT3(0.0f, -0.5f, Constants::Stage::PLAYER_START_POS_Z));
 
-    // モブ敵をグリッド配置 (4x4 = 16体)
-    int totalEnemies = 0;
-    for (int x = -2; x <= 1; x++) {
-        for (int z = -2; z <= 1; z++) {
-            Enemy* enemy = nullptr;
-            if ((x + z) % 2 == 0) {
-                enemy = Manager::AddGameObject<AttackingEnemy>();
-            } else {
-                enemy = Manager::AddGameObject<Enemy>();
+        // モブ敵をグリッド配置
+        int totalEnemies = 0;
+        int minX = -Constants::Stage::ENEMY_GRID_COLS / 2;
+        int maxX = minX + Constants::Stage::ENEMY_GRID_COLS - 1;
+        int minZ = -Constants::Stage::ENEMY_GRID_ROWS / 2;
+        int maxZ = minZ + Constants::Stage::ENEMY_GRID_ROWS - 1;
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                Enemy* enemy = nullptr;
+                if ((x + z) % 2 == 0) {
+                    enemy = Manager::AddGameObject<AttackingEnemy>();
+                } else {
+                    enemy = Manager::AddGameObject<Enemy>();
+                }
+                float posX = (float)x * 3.2f + 1.0f;
+                float posZ = (float)z * 3.2f - 7.0f;
+                enemy->SetPosition(XMFLOAT3(posX, -0.5f, posZ));
+                totalEnemies++;
             }
-            float posX = (float)x * 3.2f + 1.0f;
-            float posZ = (float)z * 3.2f - 7.0f;
-            enemy->SetPosition(XMFLOAT3(posX, -0.5f, posZ));
-            totalEnemies++;
         }
+        GameRule::SetTotalEnemies(totalEnemies);
     }
-    GameRule::SetTotalEnemies(totalEnemies);
-#endif
 
     // 各種アイテムを生成
     Item* itemVacuum = Manager::AddGameObject<Item>();

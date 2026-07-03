@@ -450,7 +450,8 @@ void PlayerCombat::Throw()
 // =================================================================
 void PlayerCombat::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
 {
-    if (m_Owner->m_InvincibleTimer > 0 || m_Owner->m_HP <= 0) return;
+    // デバッグ用の無敵モードまたは通常の無敵時間中の場合はダメージを無効化
+    if (Constants::Debug::INVINCIBLE_PLAYER || m_Owner->m_InvincibleTimer > 0 || m_Owner->m_HP <= 0) return;
 
     m_Owner->m_HP -= damage;
     if (m_Owner->m_HP < 0) m_Owner->m_HP = 0;

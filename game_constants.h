@@ -133,4 +133,25 @@ namespace Constants
             const ColorRGB PANEL_BG         = { 20, 10, 30 };    // ボスHPバーパネル全体の背景カラー（深紫色）
         }
     }
+
+    // ステージ構築・配置に関するパラメータ
+    namespace Stage
+    {
+        // ボスステージ設定
+        const float BOSS_ROOM_SIZE          = 18.0f;    // ボス部屋の広さ（四方の壁の距離）
+        const float BOSS_SPAWN_OFFSET_Z     = 10.0f;    // ボスの初期出現位置のZ座標
+
+        // 通常ステージ設定
+        const float PLAYER_START_POS_Z      = 8.0f;     // 通常ステージでのプレイヤー開始Z座標
+        const int   ENEMY_GRID_COLS         = 4;        // モブ敵グリッド配置の列数
+        const int   ENEMY_GRID_ROWS         = 4;        // モブ敵グリッド配置の行数
+        const float ENEMY_SPAWN_INTERVAL    = 6.0f;     // 敵同士の配置間隔
+    }
+
+    // デバッグ・テスト用パラメータ
+    namespace Debug
+    {
+        const bool  START_FROM_BOSS         = false;    // trueにするとゲーム開始時にいきなりボス戦からスタートします
+        const bool  INVINCIBLE_PLAYER       = false;    // trueにするとプレイヤーが無敵になります（テスト用）
+    }
 }
