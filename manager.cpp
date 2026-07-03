@@ -315,6 +315,8 @@ void Manager::TransitionToBossStage()
         }
     }
     m_GameObjects = std::move(nextObjects);
+    // カテゴリ別キャッシュリストを一旦クリアし、残ったオブジェクトで再構築する
+    ClearCategoryLists();
     // 静的オブジェクトを除外して更新対象リスト（m_UpdateObjects）を再構築
     m_UpdateObjects.clear();
     for (GameObject* obj : m_GameObjects) {
@@ -322,6 +324,8 @@ void Manager::TransitionToBossStage()
         if (t != ::ObjectType::Wall && t != ::ObjectType::Field) {
             m_UpdateObjects.push_back(obj);
         }
+        // 残ったオブジェクトをカテゴリリストに再登録する
+        RegisterCategory(obj);
     }
     std::string destroyMsg = "[Manager] オブジェクト破棄が完了しました (個数: " + std::to_string(destroyedCount) + ")\n";
     OutputDebugStringA(destroyMsg.c_str());
@@ -408,6 +412,7 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     m_GameObjects.clear();
     m_UpdateObjects.clear();
     m_CachedPlayer = nullptr;
+    ClearCategoryLists(); // カテゴリ別キャッシュリストも必ずクリアする（ダングリングポインタ防止）
 
     if (g_Camera) {
         g_Camera->Uninit();
