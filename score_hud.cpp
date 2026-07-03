@@ -1,4 +1,5 @@
 ﻿#include "score_hud.h"
+#include "game_constants.h"
 #include "renderer.h"
 #include "game_rule.h"
 #include "player.h"
@@ -137,7 +138,8 @@ ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
     int maxHp
 )
 {
-    const int W = 640, H = 80;
+    const int W = static_cast<int>(Constants::UI::BossHP::BAR_WIDTH);
+    const int H = static_cast<int>(Constants::UI::BossHP::BAR_HEIGHT);
 
     // ─── GDI DIB セクションの作成 ───
     BITMAPINFO bmi = {};
@@ -154,25 +156,8 @@ ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
     HGDIOBJ oldBmp = SelectObject(hdc, hBmp);
     memset(bits, 0, W * H * 4);
 
-    // ─────────────────────────────────────────────────────────────
-    // 【ボスHPバー カラーカスタマイズ用パラメータ】
-    // ここでお好みの色（RGB）に直接変更できます！コメントアウトに従って調整してください。
-    // ─────────────────────────────────────────────────────────────
-    const COLORREF COLOR_HP_HIGH        = RGB(0, 255, 100);    // 高HP時（満タン）のカラー（明るい緑）
-    const COLORREF COLOR_HP_MID         = RGB(255, 220, 0);    // 中HP時のカラー（黄色）
-    const COLORREF COLOR_HP_LOW         = RGB(255, 40, 40);    // 低HP時（瀕死）のカラー（赤）
-    
-    const COLORREF COLOR_BAR_BG         = RGB(40, 25, 25);     // HPゲージの空部分（背景）のカラー（暗い赤）
-    const COLORREF COLOR_BAR_BORDER     = RGB(160, 50, 50);    // HPゲージの枠線のカラー（赤サビ色）
-    
-    const COLORREF COLOR_TEXT_HP        = RGB(220, 220, 220);  // HP数値テキスト（60/60など）のカラー（淡いグレー）
-    const COLORREF COLOR_TEXT_LABEL     = RGB(255, 80, 80);    // "BOSS"ラベルテキストのカラー（薄赤）
-    
-    const COLORREF COLOR_PANEL_BG       = RGB(20, 10, 30);     // ボスHPバーパネル全体の背景カラー（深紫色）
-    // ─────────────────────────────────────────────────────────────
-
     // ─── 輝度バックグラウンド（半透明の深灰） ───
-    HBRUSH bgBrush = CreateSolidBrush(COLOR_PANEL_BG);
+    HBRUSH bgBrush = CreateSolidBrush(RGB(Constants::UI::BossHP::PANEL_BG.R, Constants::UI::BossHP::PANEL_BG.G, Constants::UI::BossHP::PANEL_BG.B));
     RECT bgRect = { 0, 0, W, H };
     FillRect(hdc, &bgRect, bgBrush);
     DeleteObject(bgBrush);
@@ -186,7 +171,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
     );
     HGDIOBJ oldFont = SelectObject(hdc, hFontLabel);
     SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, COLOR_TEXT_LABEL);
+    SetTextColor(hdc, RGB(Constants::UI::BossHP::TEXT_LABEL.R, Constants::UI::BossHP::TEXT_LABEL.G, Constants::UI::BossHP::TEXT_LABEL.B));
     RECT rcLabel = { 10, 8, 100, 38 };
     DrawTextW(hdc, L"BOSS", -1, &rcLabel, DT_LEFT | DT_SINGLELINE);
 
@@ -198,7 +183,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
         ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Arial"
     );
     SelectObject(hdc, hFontHP);
-    SetTextColor(hdc, COLOR_TEXT_HP);
+    SetTextColor(hdc, RGB(Constants::UI::BossHP::TEXT_HP.R, Constants::UI::BossHP::TEXT_HP.G, Constants::UI::BossHP::TEXT_HP.B));
     wchar_t hpBuf[32];
     swprintf_s(hpBuf, L"%d / %d", hp, maxHp);
     RECT rcHP = { W - 120, 8, W - 10, 38 };
@@ -209,7 +194,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
     const int barTop    = 44;
     const int barRight  = W - 10;
     const int barBottom = 70;
-    HBRUSH barBgBrush = CreateSolidBrush(COLOR_BAR_BG);
+    HBRUSH barBgBrush = CreateSolidBrush(RGB(Constants::UI::BossHP::BAR_BG.R, Constants::UI::BossHP::BAR_BG.G, Constants::UI::BossHP::BAR_BG.B));
     RECT barBgRect = { barLeft, barTop, barRight, barBottom };
     FillRect(hdc, &barBgRect, barBgBrush);
     DeleteObject(barBgBrush);
@@ -226,15 +211,15 @@ ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
         if (ratio > 0.5f) {
             // 緑から黄への変化
             float t = (ratio - 0.5f) * 2.0f; // 0.0(黄) から 1.0(緑)
-            rCol = (int)(GetRValue(COLOR_HP_MID) * (1.0f - t) + GetRValue(COLOR_HP_HIGH) * t);
-            gCol = (int)(GetGValue(COLOR_HP_MID) * (1.0f - t) + GetGValue(COLOR_HP_HIGH) * t);
-            bCol = (int)(GetBValue(COLOR_HP_MID) * (1.0f - t) + GetBValue(COLOR_HP_HIGH) * t);
+            rCol = (int)(Constants::UI::BossHP::HP_MID.R * (1.0f - t) + Constants::UI::BossHP::HP_HIGH.R * t);
+            gCol = (int)(Constants::UI::BossHP::HP_MID.G * (1.0f - t) + Constants::UI::BossHP::HP_HIGH.G * t);
+            bCol = (int)(Constants::UI::BossHP::HP_MID.B * (1.0f - t) + Constants::UI::BossHP::HP_HIGH.B * t);
         } else {
             // 黄から赤への変化
             float t = ratio * 2.0f; // 0.0(赤) から 1.0(黄)
-            rCol = (int)(GetRValue(COLOR_HP_LOW) * (1.0f - t) + GetRValue(COLOR_HP_MID) * t);
-            gCol = (int)(GetGValue(COLOR_HP_LOW) * (1.0f - t) + GetGValue(COLOR_HP_MID) * t);
-            bCol = (int)(GetBValue(COLOR_HP_LOW) * (1.0f - t) + GetBValue(COLOR_HP_MID) * t);
+            rCol = (int)(Constants::UI::BossHP::HP_LOW.R * (1.0f - t) + Constants::UI::BossHP::HP_MID.R * t);
+            gCol = (int)(Constants::UI::BossHP::HP_LOW.G * (1.0f - t) + Constants::UI::BossHP::HP_MID.G * t);
+            bCol = (int)(Constants::UI::BossHP::HP_LOW.B * (1.0f - t) + Constants::UI::BossHP::HP_MID.B * t);
         }
         rCol = (rCol < 0) ? 0 : (rCol > 255 ? 255 : rCol);
         gCol = (gCol < 0) ? 0 : (gCol > 255 ? 255 : gCol);
@@ -253,7 +238,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
     }
 
     // ─── ゲージ枚線 ───
-    HPEN borderPen = CreatePen(PS_SOLID, 2, COLOR_BAR_BORDER);
+    HPEN borderPen = CreatePen(PS_SOLID, 2, RGB(Constants::UI::BossHP::BAR_BORDER.R, Constants::UI::BossHP::BAR_BORDER.G, Constants::UI::BossHP::BAR_BORDER.B));
     HGDIOBJ oldPen = SelectObject(hdc, borderPen);
     HBRUSH nullBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
     HGDIOBJ oldBrush = SelectObject(hdc, nullBrush);
@@ -800,10 +785,10 @@ void ScoreHUD::Draw()
 
     // ─── ボスHPバーの別途描画（ボスステージ中のみ、画面下部中央）───
     if (currentScene == Scene::GAMEPLAY && m_BossHPTexture && m_QuadVB && m_VS && m_PS && m_IL) {
-        const float bossBarW = 640.0f;
-        const float bossBarH = 80.0f;
+        const float bossBarW = Constants::UI::BossHP::BAR_WIDTH;
+        const float bossBarH = Constants::UI::BossHP::BAR_HEIGHT;
         const float bossBarX = (float)SCREEN_WIDTH * 0.5f;
-        const float bossBarY = (float)SCREEN_HEIGHT - bossBarH * 0.5f - 10.0f; // 画面下部かり 10px上
+        const float bossBarY = (float)SCREEN_HEIGHT - bossBarH * 0.5f - Constants::UI::BossHP::SCREEN_MARGIN_Y; // 画面下部からのマージン適用
 
         ctx->OMSetDepthStencilState(m_DepthState, 0);
         ctx->VSSetShader(m_VS, nullptr, 0);

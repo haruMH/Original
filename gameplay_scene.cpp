@@ -10,6 +10,7 @@
 #include "collision.h"
 #include "collision_system.h"
 #include "game_rule.h"
+#include "game_constants.h"
 #include "shockwave.h"
 #include "camera.h"
 #include "input.h"
@@ -286,9 +287,9 @@ void GameplayScene::UpdateGameplay()
             }
 
             if (!bossExists) {
-                // ボス全滅後、2秒（120フレーム）のディレイをかけてからリザルト画面に遷移する
+                // ボス全滅後、ディレイをかけてからリザルト画面に遷移する
                 m_ClearDelayTimer++;
-                if (m_ClearDelayTimer >= 120) {
+                if (m_ClearDelayTimer >= Constants::Boss::CLEAR_DELAY_FRAMES) {
                     GameRule::SetGameClear(true);
                     Manager::ChangeScene(Scene::CLEAR);
                     OutputDebugStringA("[GameRule] *** ボス撃破！ゲームクリア! ***\n");

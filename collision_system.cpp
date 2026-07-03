@@ -13,6 +13,7 @@
 #include "explosion_system.h"
 #include "score_popup.h"
 #include "boss_enemy.h"
+#include "game_constants.h"
 
 namespace {
     // 空間分割用のグリッド構造体
@@ -50,15 +51,7 @@ namespace {
     CollisionGrid g_CollisionGrid;
 }
 
-// =================================================================
-// 雷電（チェインライトニング）調整用パラメータ
-// =================================================================
-namespace LightningConfig {
-    const int   MAX_CHAIN     = 5;    // 雷電が敵から敵へと連鎖する最大回数（数値を増やすほど多くの敵に連鎖します）
-    const float CHAIN_RADIUS  = 8.0f; // 雷電が次に連鎖する敵を探す索敵半径（数値を増やすほど遠くの敵まで雷が届きます）
-    const float PUSH_FORCE_XZ = 0.8f; // 雷電に当たった敵が水平方向に吹き飛ぶ強さ（数値を増やすほど勢いよく吹き飛びます）
-    const float PUSH_FORCE_Y  = 0.4f; // 雷電に当たった敵が垂直（上空）方向に吹き飛ぶ強さ（数値を増やすほど高く浮き上がります）
-}
+// namespace LightningConfig は削除され、Constants::Lightning (game_constants.h) に統合されました。
 
 // ─────────────────────────────────────────────
 // チェインライトニング（電撃連鎖）の処理
@@ -68,9 +61,9 @@ static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
     const std::vector<GameObject*>& gameObjects = Manager::GetGameObjectList();
     XMFLOAT3 currentPos = startPos;
     
-    // 連鎖回数と索敵半径の設定（LightningConfig から取得）
-    const int maxChain = LightningConfig::MAX_CHAIN;
-    float chainRadius = LightningConfig::CHAIN_RADIUS; // 連鎖する半径
+    // 連鎖回数と索敵半径の設定
+    const int maxChain = Constants::Lightning::MAX_CHAIN;
+    float chainRadius = Constants::Lightning::CHAIN_RADIUS; // 連鎖する半径
 
     std::vector<Enemy*> chainedEnemies;
 
@@ -124,9 +117,9 @@ static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
             XMFLOAT3 dir = MathHelper::Normalize(nextPos - currentPos);
             // 放射状かつ上空へ吹き飛ばす（LightningConfig から取得した強さを適用）
             XMFLOAT3 pushVel = XMFLOAT3(
-                dir.x * LightningConfig::PUSH_FORCE_XZ, 
-                LightningConfig::PUSH_FORCE_Y, 
-                dir.z * LightningConfig::PUSH_FORCE_XZ
+                dir.x * Constants::Lightning::PUSH_FORCE_XZ, 
+                Constants::Lightning::PUSH_FORCE_Y, 
+                dir.z * Constants::Lightning::PUSH_FORCE_XZ
             );
             // ボスの場合は吹き飛ばさず、Defeat()も直接呼ばずにダメージ処理を行う
             if (nearest->GetObjectType() == ObjectType::Boss) {
@@ -267,7 +260,7 @@ void CollisionSystem::Update()
                                 // ボスかどうかの分岐
                                 if (enemy->GetObjectType() == ObjectType::Boss) {
                                     BossEnemy* boss = static_cast<BossEnemy*>(enemy);
-                                    boss->ApplyBossDamage(1, grabbed->GetPosition()); // スピンなぎ払いは1ダメージ
+                                    boss->ApplyBossDamage(Constants::Player::SPIN_SWEEP_DAMAGE, grabbed->GetPosition()); // スピンなぎ払いダメージ
                                 } else {
                                     // 吹き飛ばす
                                     enemy->SetVelocity(pushVel);
@@ -376,7 +369,7 @@ void CollisionSystem::Update()
                     // 2. 電撃状態の敵との衝突
                     if (!hitHandled && flying->IsLightning()) {
                         TriggerChainLightning(flying->GetPosition(), player);
-                        boss->ApplyBossDamage(3, flying->GetPosition());
+                        boss->ApplyBossDamage(Constants::Lightning::CHAIN_DAMAGE, flying->GetPosition());
                         flying->SetEnemyState(EnemyState::DEFEATED);
                         flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
                         Manager::AddHitStop(10);
@@ -386,11 +379,11 @@ void CollisionSystem::Update()
 
                     // 3. 通常の衝突
                     if (!hitHandled) {
-                        int dmg = 1;
+                        int dmg = Constants::Boss::THROW_NORMAL_DAMAGE;
                         if (flying->IsSandbag()) {
-                            dmg = 6;
+                            dmg = Constants::Boss::THROW_SANDBAG_DAMAGE;
                         } else if (flying->GetScale().x > 2.0f) {
-                            dmg = 3;
+                            dmg = Constants::Boss::THROW_GIGANT_DAMAGE;
                         }
                         boss->ApplyBossDamage(dmg, flying->GetPosition());
 
@@ -452,7 +445,7 @@ void CollisionSystem::Update()
                             if (target->GetObjectType() == ObjectType::Boss) {
                                 BossEnemy* boss = static_cast<BossEnemy*>(target);
                                 TriggerChainLightning(flying->GetPosition(), player);
-                                boss->ApplyBossDamage(3, flying->GetPosition()); // 電撃投げはダメージ3
+                                boss->ApplyBossDamage(Constants::Lightning::CHAIN_DAMAGE, flying->GetPosition()); // 電撃投げダメージ
                                 flying->SetEnemyState(EnemyState::DEFEATED);
                                 flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
                                 Manager::AddHitStop(10);
@@ -484,11 +477,11 @@ void CollisionSystem::Update()
                         // ─── 通常の敵またはボスに衝突 ───
                         if (target->GetObjectType() == ObjectType::Boss) {
                             BossEnemy* boss = static_cast<BossEnemy*>(target);
-                            int dmg = 1;
+                            int dmg = Constants::Boss::THROW_NORMAL_DAMAGE;
                             if (flying->IsSandbag()) {
-                                dmg = 6;
+                                dmg = Constants::Boss::THROW_SANDBAG_DAMAGE;
                             } else if (flying->GetScale().x > 2.0f) {
-                                dmg = 3;
+                                dmg = Constants::Boss::THROW_GIGANT_DAMAGE;
                             }
                             boss->ApplyBossDamage(dmg, flying->GetPosition());
 

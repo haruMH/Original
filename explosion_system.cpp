@@ -7,14 +7,15 @@
 #include "math_helper.h"
 #include "score_popup.h"
 #include "shockwave.h"
+#include "game_constants.h"
 
 // ─────────────────────────────────────────────
 // 爆発を発生させ周囲の敵を吹き飛ばす
 // ─────────────────────────────────────────────
 void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
 {
-    float explosionRadius = 12.0f; // 爆発の有効半径
-    float baseForce       = 1.2f;  // 爆風の基本威力
+    float explosionRadius = Constants::Explosion::RADIUS; // 爆発の有効半径
+    float baseForce       = Constants::Explosion::BASE_FORCE;  // 爆風の基本威力
 
     // カメラシェイクで爆発のインパクトを演出
     if (g_Camera) {
@@ -65,7 +66,7 @@ void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
             // ボスは Defeat() を直接呼ばず、フェーズ保護を経由した ApplyBossDamage でダメージを与える
             if (enemy->GetObjectType() == ObjectType::Boss) {
                 BossEnemy* boss = static_cast<BossEnemy*>(enemy);
-                boss->ApplyBossDamage(4, center); // 爆発ダメージは4
+                boss->ApplyBossDamage(Constants::Explosion::BOSS_DAMAGE, center); // 爆発ダメージ
                 // ボスは吹き飛ばさない
             } else {
                 // 撃破処理（爆発・赤色ポップアップ）

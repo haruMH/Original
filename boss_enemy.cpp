@@ -12,18 +12,7 @@
 #include "game_constants.h"
 #include <algorithm> // std::remove_if 使用のため
 
-// =================================================================
-// ボス戦の落雷攻撃 調整用パラメータ
-// =================================================================
-namespace BossLightningConfig {
-    const float TARGET_STRIKE_DAMAGE_RADIUS = 4.0f;  // プレイヤー狙い落雷の当たり判定半径（減らすと避けやすくなります）
-    const int   TARGET_STRIKE_DAMAGE        = 1;     // プレイヤー狙い落雷のダメージ値
-    const float STAGE_HALF_WIDTH            = 17.0f; // ランダム落雷が発生するステージの半幅（部屋サイズ18.0fに合わせて調整）
-    const int   RANDOM_STRIKE_MIN_COUNT     = 3;     // ランダム落雷の最小発生箇所数（1回あたり）
-    const int   RANDOM_STRIKE_EXTRA_COUNT   = 3;     // ランダム落雷の追加発生箇所数（MIN_COUNT + 0〜(EXTRA_COUNT-1)）
-    const int   ATTACK_START_FRAME          = 350;   // 落雷攻撃が開始するフレーム数（フェーズ移行後）
-    const int   ATTACK_DURATION_FRAME       = 550;   // 落雷攻撃が持続するフレーム数（元の150fから550fに延長し、落雷時間を約9.2秒間に長くしました）
-}
+// namespace BossLightningConfig は削除され、Constants::Boss (game_constants.h) に統合されました。
 
 // ─────────────────────────────────────────────
 // 初期化
@@ -35,9 +24,9 @@ void BossEnemy::Init()
     m_EnemyState = EnemyState::NORMAL;
     m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f); // 壁と同じ大きさ (5x5x5)
     m_Size  = XMFLOAT3(1.0f, 1.0f, 1.0f);
-    m_HP    = Constants::Enemy::BOSS_HP;
-    m_MaxHP = Constants::Enemy::BOSS_HP;
-    SetScoreValue(Constants::Enemy::BOSS_SCORE); // 巨大ボスは15倍スコア 
+    m_HP    = Constants::Boss::HP;
+    m_MaxHP = Constants::Boss::HP;
+    SetScoreValue(Constants::Boss::SCORE); // 巨大ボスは15倍スコア 
     m_DamageFlashTimer = 0;
     m_AttackTimer      = 0;
     m_AttackPattern    = 0;
@@ -82,7 +71,7 @@ void BossEnemy::Update()
 
     // 通常状態の時にHPを監視してフェーズ移行を行う
     if (m_BossState == BossState::NORMAL) {
-        if (m_HP <= 18 && !m_Phase3Triggered) {
+        if (m_HP <= Constants::Boss::PHASE3_HP_THRESHOLD && !m_Phase3Triggered) {
             m_BossState = BossState::PHASE_TRANSITION;
             m_PhaseIndex = 3;
             m_IsInvincible = true;
@@ -91,7 +80,7 @@ void BossEnemy::Update()
             m_LightningVisualTimer = 0;
             OutputDebugStringA("[BossEnemy] Phase 3 Triggered!\n");
         }
-        else if (m_HP <= 30 && !m_Phase2Triggered) {
+        else if (m_HP <= Constants::Boss::PHASE2_HP_THRESHOLD && !m_Phase2Triggered) {
             m_BossState = BossState::PHASE_TRANSITION;
             m_PhaseIndex = 2;
             m_IsInvincible = true;
@@ -99,7 +88,7 @@ void BossEnemy::Update()
             m_PhaseAttackTimer = 0;
             OutputDebugStringA("[BossEnemy] Phase 2 Triggered!\n");
         }
-        else if (m_HP <= 42 && !m_Phase1Triggered) {
+        else if (m_HP <= Constants::Boss::PHASE1_HP_THRESHOLD && !m_Phase1Triggered) {
             m_BossState = BossState::PHASE_TRANSITION;
             m_PhaseIndex = 1;
             m_IsInvincible = true;
@@ -268,15 +257,15 @@ void BossEnemy::ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePo
     // HPが一気に閾値を通過してしまったとき、特殊モーションをスキップさせないために
     // まだ発動していない最も優先度が高いフェーズの閾値+1でHPを下限クランプする
     if (m_BossState == BossState::NORMAL) {
-        if (!m_Phase1Triggered && m_HP < 42) {
-            // フェーズ1が未発動なのに42を飛び越えた → 42でクランプ（Update()でフェーズ発動させる）
-            m_HP = 42;
-        } else if (!m_Phase2Triggered && m_HP < 30) {
-            // フェーズ2が未発動なのに30を飛び越えた → 30でクランプ
-            m_HP = 30;
-        } else if (!m_Phase3Triggered && m_HP < 18) {
-            // フェーズ3が未発動なのに18を飛び越えた → 18でクランプ
-            m_HP = 18;
+        if (!m_Phase1Triggered && m_HP < Constants::Boss::PHASE1_HP_THRESHOLD) {
+            // フェーズ1が未発動なのに飛び越えた → クランプ（Update()でフェーズ発動させる）
+            m_HP = Constants::Boss::PHASE1_HP_THRESHOLD;
+        } else if (!m_Phase2Triggered && m_HP < Constants::Boss::PHASE2_HP_THRESHOLD) {
+            // フェーズ2が未発動なのに飛び越えた → クランプ
+            m_HP = Constants::Boss::PHASE2_HP_THRESHOLD;
+        } else if (!m_Phase3Triggered && m_HP < Constants::Boss::PHASE3_HP_THRESHOLD) {
+            // フェーズ3が未発動なのに飛び越えた → クランプ
+            m_HP = Constants::Boss::PHASE3_HP_THRESHOLD;
         }
     }
 
@@ -525,8 +514,8 @@ void BossEnemy::PerformPhase3Attack()
     // ─────────────────────────────────────────────────────────────────────────
 
     // ── [落雷A] プレイヤー狙い撃ち警告（90fに1回） ──
-    int start = BossLightningConfig::ATTACK_START_FRAME;
-    int end = start + BossLightningConfig::ATTACK_DURATION_FRAME;
+    int start = Constants::Boss::ATTACK_START_FRAME;
+    int end = start + Constants::Boss::ATTACK_DURATION_FRAME;
     if (m_PhaseAttackTimer >= start && m_PhaseAttackTimer <= end &&
         (m_PhaseAttackTimer - start) % 90 == 0)
     {
@@ -549,19 +538,19 @@ void BossEnemy::PerformPhase3Attack()
         float dx  = pPos.x - m_PhaseTargetPos.x;
         float dz  = pPos.z - m_PhaseTargetPos.z;
         float dst = sqrtf(dx * dx + dz * dz);
-        if (dst < BossLightningConfig::TARGET_STRIKE_DAMAGE_RADIUS && !player->IsInvincible()) {
-            player->ApplyDamage(BossLightningConfig::TARGET_STRIKE_DAMAGE, m_PhaseTargetPos);
+        if (dst < Constants::Boss::STRIKE_DAMAGE_RADIUS && !player->IsInvincible()) {
+            player->ApplyDamage(Constants::Boss::STRIKE_DAMAGE, m_PhaseTargetPos);
         }
         if (g_Camera) g_Camera->Shake(0.3f, 8);
     }
 
     // ── [落雷B] マップランダム多発警告（40fに1回・3〜5箇所） ──
     //   ステージ範囲: 壁(roomSize=18.0f)の内側に雷が落ちるように調整
-    const float STAGE_HALF = BossLightningConfig::STAGE_HALF_WIDTH;
+    const float STAGE_HALF = Constants::Boss::STAGE_HALF_WIDTH;
     if (m_PhaseAttackTimer >= start + 10 && m_PhaseAttackTimer <= end &&
         (m_PhaseAttackTimer - (start - 20)) % 35 == 0)
     {
-        int strikeCount = BossLightningConfig::RANDOM_STRIKE_MIN_COUNT + (rand() % BossLightningConfig::RANDOM_STRIKE_EXTRA_COUNT);
+        int strikeCount = Constants::Boss::RANDOM_STRIKE_MIN + (rand() % Constants::Boss::RANDOM_STRIKE_EXTRA);
         for (int s = 0; s < strikeCount; s++) {
             XMFLOAT3 randPos;
             randPos.x = ((float)rand() / RAND_MAX) * STAGE_HALF * 2.0f - STAGE_HALF;
