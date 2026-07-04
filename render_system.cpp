@@ -303,8 +303,9 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
                 // オブジェクトのスケールを考慮して、簡易バウンディング球（マージン付き）を構築
                 DirectX::XMFLOAT3 pos = obj->GetPosition();
                 DirectX::XMFLOAT3 scale = obj->GetScale();
-                float maxScale = (std::max)(scale.x, (std::max)(scale.y, scale.z));
-                float radius = 1.0f * maxScale; // 安全のためのマージン係数1.0
+                // 直方体の外接球半径（対角線の半分）で計算する
+                // → 細長い壁など、最大スケール軸と直交する方向の広がりも正しく扱える
+                float radius = sqrtf(scale.x * scale.x + scale.y * scale.y + scale.z * scale.z) * 0.5f + 1.0f;
 
                 DirectX::BoundingSphere sphere(pos, radius);
                 if (!frustum.Intersects(sphere))
