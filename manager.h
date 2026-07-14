@@ -2,6 +2,7 @@
 #include <vector>
 #include <type_traits>
 #include <memory>
+#include <unordered_map>
 #include "render_system.h"
 #include "gameobject.h"
 #include "scene_interface.h"
@@ -56,11 +57,8 @@ private:
 
     static IScene*                m_ActiveScene;      // 現在アクティブなシーンオブジェクト
 
-    // カテゴリ別オブジェクトキャッシュリスト
-    static std::vector<Enemy*>       m_Enemies;
-    static std::vector<Wall*>        m_Walls;
-    static std::vector<Item*>        m_Items;
-    static std::vector<EnemyBullet*> m_Bullets;
+    // カテゴリ別オブジェクトキャッシュマップ
+    static std::unordered_map<ObjectType, std::vector<GameObject*>> m_CategoryMap;
 
     static void ExecuteChangeScene(Scene nextScene); // 実際のシーン遷移実行
 
@@ -148,10 +146,15 @@ public:
     static const std::vector<GameObject*>& GetUpdateObjectList() { return m_UpdateObjects; }
 
     // カテゴリ別リストへの高速アクセス
-    static const std::vector<Enemy*>&       GetEnemyList()  { return m_Enemies; }
-    static const std::vector<Wall*>&        GetWallList()   { return m_Walls; }
-    static const std::vector<Item*>&        GetItemList()   { return m_Items; }
-    static const std::vector<EnemyBullet*>& GetBulletList() { return m_Bullets; }
+    static const std::vector<GameObject*>& GetCategoryList(ObjectType type)
+    {
+        static const std::vector<GameObject*> emptyList;
+        auto it = m_CategoryMap.find(type);
+        if (it != m_CategoryMap.end()) {
+            return it->second;
+        }
+        return emptyList;
+    }
 
     // カテゴリ別リストへの登録・解除用ヘルパー
     static void RegisterCategory(GameObject* obj);

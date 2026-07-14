@@ -35,10 +35,7 @@ std::vector<GameObject*> Manager::m_UpdateObjects;
 Player*                Manager::m_CachedPlayer = nullptr;
 BossEnemy*             Manager::m_CachedBoss = nullptr;
 
-std::vector<Enemy*>       Manager::m_Enemies;
-std::vector<Wall*>        Manager::m_Walls;
-std::vector<Item*>        Manager::m_Items;
-std::vector<EnemyBullet*> Manager::m_Bullets;
+std::unordered_map<ObjectType, std::vector<GameObject*>> Manager::m_CategoryMap;
 RenderSystem           Manager::m_RenderSystem;
 int                    Manager::m_HitStopFrames = 0;
 int                    Manager::m_SlowMotionTimer = 0;
@@ -463,60 +460,32 @@ void Manager::RegisterCategory(GameObject* obj)
 {
     if (!obj) return;
     ObjectType type = obj->GetObjectType();
-    if (type == ObjectType::Enemy || type == ObjectType::Boss) {
-        m_Enemies.push_back(static_cast<Enemy*>(obj));
-    } else if (type == ObjectType::Wall) {
-        m_Walls.push_back(static_cast<Wall*>(obj));
-    } else if (type == ObjectType::Item) {
-        m_Items.push_back(static_cast<Item*>(obj));
-    } else if (type == ObjectType::Bullet) {
-        m_Bullets.push_back(static_cast<EnemyBullet*>(obj));
-    }
+    m_CategoryMap[type].push_back(obj);
 }
 
 void Manager::UnregisterCategory(GameObject* obj)
 {
     if (!obj) return;
 
-    // BossEnemy ?E?L?E??E??E?b?E?V?E??E??E??N?E??E??E?A
     if (obj == m_CachedBoss) {
         m_CachedBoss = nullptr;
     }
 
     ObjectType type = obj->GetObjectType();
-    if (type == ObjectType::Enemy || type == ObjectType::Boss) {
-        auto it = std::find(m_Enemies.begin(), m_Enemies.end(), static_cast<Enemy*>(obj));
-        if (it != m_Enemies.end()) {
-            std::iter_swap(it, m_Enemies.end() - 1);
-            m_Enemies.pop_back();
-        }
-    } else if (type == ObjectType::Wall) {
-        auto it = std::find(m_Walls.begin(), m_Walls.end(), static_cast<Wall*>(obj));
-        if (it != m_Walls.end()) {
-            std::iter_swap(it, m_Walls.end() - 1);
-            m_Walls.pop_back();
-        }
-    } else if (type == ObjectType::Item) {
-        auto it = std::find(m_Items.begin(), m_Items.end(), static_cast<Item*>(obj));
-        if (it != m_Items.end()) {
-            std::iter_swap(it, m_Items.end() - 1);
-            m_Items.pop_back();
-        }
-    } else if (type == ObjectType::Bullet) {
-        auto it = std::find(m_Bullets.begin(), m_Bullets.end(), static_cast<EnemyBullet*>(obj));
-        if (it != m_Bullets.end()) {
-            std::iter_swap(it, m_Bullets.end() - 1);
-            m_Bullets.pop_back();
+    auto it = m_CategoryMap.find(type);
+    if (it != m_CategoryMap.end()) {
+        auto& vec = it->second;
+        auto vit = std::find(vec.begin(), vec.end(), obj);
+        if (vit != vec.end()) {
+            std::iter_swap(vit, vec.end() - 1);
+            vec.pop_back();
         }
     }
 }
 
 void Manager::ClearCategoryLists()
 {
-    m_Enemies.clear();
-    m_Walls.clear();
-    m_Items.clear();
-    m_Bullets.clear();
+    m_CategoryMap.clear();
 }
 
 void Manager::DestroyObjectsIf()

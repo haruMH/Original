@@ -24,18 +24,19 @@ void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
 
     // �������d�g��i�r�W���A���G�t�F�N�g�̂݁AY���W��n�ʂɔ��킹�A���ԍ���3�{�̐Ԃ��g�䂪�L����j
     XMFLOAT3 shockPos = center;
-    shockPos.y = -0.95f; // �n�ʂ̍����Ɋ��S�N�����v
+    shockPos.y = -0.95f; // nʂ̍ɊSNv
 
     ShockwaveSystem::AddShockwave(shockPos, explosionRadius,        2.5f, 0.3f, 0.0f, 30, 0.0f, 0);
     ShockwaveSystem::AddShockwave(shockPos, explosionRadius * 0.75f, 2.5f, 0.3f, 0.0f, 24, 0.0f, 6);
     ShockwaveSystem::AddShockwave(shockPos, explosionRadius * 0.50f, 2.5f, 0.3f, 0.0f, 18, 0.0f, 12);
 
-    // �}�l�[�W���[����G�L���b�V�����X�g��擾���đ���
-    for (Enemy* enemy : Manager::GetEnemyList()) {
+    // マネージャーから敵キャッシュリストを取得して走査
+    for (GameObject* obj : Manager::GetCategoryList(ObjectType::Enemy)) {
+        Enemy* enemy = static_cast<Enemy*>(obj);
         if (!enemy || enemy->IsDestroy()) continue;
 
         EnemyState oldState = enemy->GetEnemyState();
-        // ���łɌ��j�ς݁A�܂��͊��ɐ������ł���G�͏��O
+        // łɌjς݁A܂͊ɐłG͏O
         if (oldState == EnemyState::DEFEATED || oldState == EnemyState::BLOWN_AWAY) continue;
 
         XMFLOAT3 ePos = enemy->GetPosition();

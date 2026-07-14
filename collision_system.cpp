@@ -253,10 +253,11 @@ static bool ResolveFlyingEnemyImpact(
 // ─────────────────────────────────────────────
 // プレイヤーとアイテムの衝突判定（各種アイテム取得）
 // ─────────────────────────────────────────────
-static void HandlePlayerItemPickup(Player* player, const std::vector<Item*>& items)
+static void HandlePlayerItemPickup(Player* player, const std::vector<GameObject*>& items)
 {
     XMFLOAT3 pPos = player->GetPosition();
-    for (Item* item : items) {
+    for (GameObject* obj : items) {
+        Item* item = static_cast<Item*>(obj);
         XMFLOAT3 iPos = item->GetPosition();
         float dx = pPos.x - iPos.x;
         float dy = pPos.y - iPos.y;
@@ -364,12 +365,13 @@ static void HandleSpinSweep(Player* player, CollisionGrid& grid)
 // 壁に衝突した場合、飛行エネミーを撃破または跳ね返す。
 // ─────────────────────────────────────────────
 static void HandleFlyingVsWall(
-    Enemy*                   flying,
-    const std::vector<Wall*>& walls,
-    Player*                  player,
-    bool&                    explosionThisFrame)
+    Enemy*                         flying,
+    const std::vector<GameObject*>& walls,
+    Player*                        player,
+    bool&                          explosionThisFrame)
 {
-    for (Wall* wall : walls) {
+    for (GameObject* obj : walls) {
+        Wall* wall = static_cast<Wall*>(obj);
         if (wall->IsDestroy()) continue;
         if (!Collision::CheckAABB(flying, wall)) continue;
 
@@ -475,14 +477,15 @@ void CollisionSystem::Update()
     Player* player = Manager::GetGameObject<Player>();
     if (!player) return;
 
-    const std::vector<Enemy*>& enemies = Manager::GetEnemyList();
-    const std::vector<Wall*>&  walls   = Manager::GetWallList();
-    const std::vector<Item*>&  items   = Manager::GetItemList();
+    const std::vector<GameObject*>& enemies = Manager::GetCategoryList(ObjectType::Enemy);
+    const std::vector<GameObject*>& walls   = Manager::GetCategoryList(ObjectType::Wall);
+    const std::vector<GameObject*>& items   = Manager::GetCategoryList(ObjectType::Item);
 
     g_CollisionGrid.Clear();
 
     // 敵オブジェクトをグリッドへ登録（通常エネミーのみ）
-    for (Enemy* enemy : enemies) {
+    for (GameObject* obj : enemies) {
+        Enemy* enemy = static_cast<Enemy*>(obj);
         if (enemy && !enemy->IsDestroy() && enemy->GetObjectType() == ObjectType::Enemy) {
             g_CollisionGrid.Register(enemy);
         }
@@ -497,7 +500,8 @@ void CollisionSystem::Update()
     // ─── 飛んでいる敵 → 他の敵・壁への連鎖衝突 ───
     std::vector<Enemy*> flyingEnemies;
     flyingEnemies.reserve(enemies.size());
-    for (Enemy* e : enemies) {
+    for (GameObject* obj : enemies) {
+        Enemy* e = static_cast<Enemy*>(obj);
         if (e && e->GetEnemyState() == EnemyState::FLYING) {
             flyingEnemies.push_back(e);
         }
