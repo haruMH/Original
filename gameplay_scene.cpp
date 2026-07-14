@@ -19,7 +19,7 @@
 using namespace DirectX;
 
 // =================================================================
-// コンストラクタ / デストラクタ
+// �R���X�g���N�^ / �f�X�g���N�^
 // =================================================================
 GameplayScene::GameplayScene()
 {
@@ -30,30 +30,30 @@ GameplayScene::~GameplayScene()
 }
 
 // =================================================================
-// 初期化
+// ������
 // =================================================================
 void GameplayScene::Init()
 {
-    // ゲームプレイ本編の初期化
-    GameRule::Init(); // スコアや敵数、ゲームクリア状態のリセット
+    // �Q�[���v���C�{�҂̏�����
+    GameRule::Init(); // �X�R�A��G���A�Q�[���N���A��Ԃ̃��Z�b�g
     
     Manager::m_HitStopFrames = 0;
     Manager::m_SlowMotionTimer = 0;
     Manager::m_SlowMotionDuration = 0;
     m_ClearDelayTimer = 0;
 
-    // 1. 地面オブジェクトの生成
+    // 1. �n�ʃI�u�W�F�N�g�̐���
     Manager::AddGameObject<Field>();
 
-    // 2. プレイヤーオブジェクトの生成
+    // 2. �v���C���[�I�u�W�F�N�g�̐���
     Player* player = Manager::AddGameObject<Player>();
     player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
 
-    // ボスから開始か通常から開始かの分岐
+    // �{�X����J�n���ʏ킩��J�n���̕���
     if (Constants::Debug::START_FROM_BOSS) {
         Manager::m_IsBossStage = true;
         
-        // ボス部屋の壁を生成
+        // �{�X�����̕ǂ𐶐�
         float roomSize = Constants::Stage::BOSS_ROOM_SIZE;
         Wall* wallN = Manager::AddGameObject<Wall>();
         wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
@@ -71,7 +71,7 @@ void GameplayScene::Init()
         wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
         wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
 
-        // ボスエネミーの生成
+        // �{�X�G�l�~�[�̐���
         BossEnemy* boss = Manager::AddGameObject<BossEnemy>();
         boss->SetPosition(XMFLOAT3(0.0f, 1.5f, Constants::Stage::BOSS_SPAWN_OFFSET_Z));
 
@@ -79,15 +79,15 @@ void GameplayScene::Init()
     } else {
         Manager::m_IsBossStage = false;
         
-        // 通常ステージ：壁を敵エリアの外側に配置
+        // �ʏ�X�e�[�W�F�ǂ�G�G���A�̊O���ɔz�u
         Wall* wall = Manager::AddGameObject<Wall>();
         wall->SetPosition(XMFLOAT3(Constants::Stage::WALL_DEFAULT_POS_X, Constants::Stage::WALL_DEFAULT_POS_Y, Constants::Stage::WALL_DEFAULT_POS_Z));
         wall->SetScale(XMFLOAT3(Constants::Stage::WALL_DEFAULT_SCALE, Constants::Stage::WALL_DEFAULT_SCALE, Constants::Stage::WALL_DEFAULT_SCALE));
 
-        // プレイヤーを初期位置へ
+        // �v���C���[������ʒu��
         player->SetPosition(XMFLOAT3(0.0f, -0.5f, Constants::Stage::PLAYER_START_POS_Z));
 
-        // モブ敵をグリッド配置
+        // ���u�G��O���b�h�z�u
         int totalEnemies = 0;
         int minX = -Constants::Stage::ENEMY_GRID_COLS / 2;
         int maxX = minX + Constants::Stage::ENEMY_GRID_COLS - 1;
@@ -111,7 +111,7 @@ void GameplayScene::Init()
         GameRule::SetTotalEnemies(totalEnemies);
     }
 
-    // 各種アイテムを生成
+    // �e��A�C�e���𐶐�
     Item* itemVacuum = Manager::AddGameObject<Item>();
     itemVacuum->SetItemType(ItemType::VACUUM);
 
@@ -133,53 +133,53 @@ void GameplayScene::Init()
 }
 
 // =================================================================
-// 終了処理
+// �I������
 // =================================================================
 void GameplayScene::Uninit()
 {
 }
 
 // =================================================================
-// 毎フレーム更新処理
+// ���t���[���X�V����
 // =================================================================
 void GameplayScene::Update()
 {
-    // プレイヤーの生存確認
+    // �v���C���[�̐����m�F
     Player* player = Manager::GetGameObject<Player>();
     if (player && player->GetHP() <= 0) {
         Manager::ChangeScene(Scene::GAMEOVER);
         return;
     }
 
-    // ゲームプレイ本編の物理・更新ロジックを実行
+    // �Q�[���v���C�{�҂̕����E�X�V���W�b�N����s
     UpdateGameplay();
 }
 
 // =================================================================
-// ゲームプレイの更新処理の実体（旧 Manager::UpdateGameplay）
+// �Q�[���v���C�̍X�V�����̎��́i�� Manager::UpdateGameplay�j
 // =================================================================
 void GameplayScene::UpdateGameplay()
 {
-    // スローモーションタイマーの更新
+    // �X���[���[�V�����^�C�}�[�̍X�V
     if (Manager::m_SlowMotionTimer > 0) {
         Manager::m_SlowMotionTimer--;
     }
 
-    // スローモーション中は更新頻度を 1/5 に間引く
+    // �X���[���[�V�������͍X�V�p�x�� 1/5 �ɊԈ���
     bool updateOthers = true;
     if (Manager::m_SlowMotionTimer > 0) {
         updateOthers = (Manager::m_SlowMotionTimer % 5 == 0);
     }
 
-    // 衝撃波システムの更新
+    // �Ռ��g�V�X�e���̍X�V
     if (updateOthers) {
         ShockwaveSystem::Update();
     }
 
-    // ゲームクリア後は更新を行わない
+    // �Q�[���N���A��͍X�V��s��Ȃ�
     if (GameRule::IsGameClear()) return;
 
-    // ヒットストップ中は他の更新をスキップ
+    // �q�b�g�X�g�b�v���͑��̍X�V��X�L�b�v
     if (Manager::m_HitStopFrames > 0) {
         Manager::m_HitStopFrames--;
         return;
@@ -187,15 +187,11 @@ void GameplayScene::UpdateGameplay()
 
     Player* player = Manager::GetGameObject<Player>();
 
-    // 全オブジェクトの更新と破棄の管理
-    std::vector<GameObject*> nextUpdateObjects;
-    nextUpdateObjects.reserve(Manager::m_UpdateObjects.size());
-
-    for (size_t i = 0; i < Manager::m_UpdateObjects.size(); ) {
+    // �S�I�u�W�F�N�g�̍X�V�Ɣj���̊Ǘ�
+    for (size_t i = 0; i < Manager::m_UpdateObjects.size(); i++) {
         GameObject* obj = Manager::m_UpdateObjects[i];
         bool shouldUpdate = true;
 
-        // プレイヤー、掴まれているエネミー、およびサンドバッグ（元弾）は毎フレーム更新する（スロー中の挙動バグを防ぐ）
         bool isGrabbedEnemy = (player && player->GetGrabbedEnemy() == obj);
         bool isSandbag = false;
         if (obj->GetObjectType() == ObjectType::Enemy) {
@@ -212,45 +208,17 @@ void GameplayScene::UpdateGameplay()
         if (shouldUpdate) {
             obj->Update();
         }
-
-        if (obj->IsDestroy()) {
-            if (player) {
-                player->NotifyObjectDestroyed(obj);
-            }
-            if (obj == Manager::m_CachedPlayer) {
-                Manager::m_CachedPlayer = nullptr;
-            }
-            Manager::UnregisterCategory(obj);
-            obj->Uninit();
-            delete obj;
-
-            // O(1)スワップ＆ポップ消去法
-            if (i != Manager::m_UpdateObjects.size() - 1) {
-                Manager::m_UpdateObjects[i] = Manager::m_UpdateObjects.back();
-            }
-            Manager::m_UpdateObjects.pop_back();
-
-            // 描画用リストからも削除
-            for (size_t j = 0; j < Manager::m_GameObjects.size(); j++) {
-                if (Manager::m_GameObjects[j] == obj) {
-                    if (j != Manager::m_GameObjects.size() - 1) {
-                        Manager::m_GameObjects[j] = Manager::m_GameObjects.back();
-                    }
-                    Manager::m_GameObjects.pop_back();
-                    break;
-                }
-            }
-        } else {
-            i++;
-        }
     }
 
-    // 衝突判定システムの実行
+    // �j���ΏۃI�u�W�F�N�g��ꊇ�N���[���A�b�v
+    Manager::DestroyObjectsIf();
+
+    // �Փ˔���V�X�e���̎��s
     if (updateOthers) {
         CollisionSystem::Update();
     }
 
-    // つかみ位置の同期（LateUpdate）：スローモーション中でも毎フレーム同期してガクつきを防ぐ
+    // ���݈ʒu�̓����iLateUpdate�j�F�X���[���[�V�������ł���t���[���������ăK�N����h��
     if (player) {
         if (player->GetState() == PlayerState::GRABBED || player->GetState() == PlayerState::SPINNING) {
             Enemy* grabbedEnemy = player->GetGrabbedEnemy();
@@ -260,9 +228,9 @@ void GameplayScene::UpdateGameplay()
         }
     }
 
-    // ステージクリア・進行度の監視
+    // �X�e�[�W�N���A�E�i�s�x�̊Ď�
     if (!Manager::m_IsBossStage) {
-        // 通常ステージ：モブ敵の全滅監視
+        // �ʏ�X�e�[�W�F���u�G�̑S�ŊĎ�
         bool attackingEnemyExists = false; 
         for (GameObject* obj : Manager::m_GameObjects) {
             if (obj && obj->GetObjectType() == ObjectType::Enemy) {
@@ -278,7 +246,7 @@ void GameplayScene::UpdateGameplay()
             Manager::TransitionToBossStage();
         }
     } else {
-        // ボスステージ：ボス撃破の監視
+        // �{�X�X�e�[�W�F�{�X���j�̊Ď�
         if (!GameRule::IsGameClear()) {
             bool bossExists = false;
             for (GameObject* obj : Manager::m_GameObjects) {
@@ -292,12 +260,12 @@ void GameplayScene::UpdateGameplay()
             }
 
             if (!bossExists) {
-                // ボス全滅後、ディレイをかけてからリザルト画面に遷移する
+                // �{�X�S�Ō�A�f�B���C������Ă��烊�U���g��ʂɑJ�ڂ���
                 m_ClearDelayTimer++;
                 if (m_ClearDelayTimer >= Constants::Boss::CLEAR_DELAY_FRAMES) {
                     GameRule::SetGameClear(true);
                     Manager::ChangeScene(Scene::CLEAR);
-                    OutputDebugStringA("[GameRule] *** ボス撃破！ゲームクリア! ***\n");
+                    OutputDebugStringA("[GameRule] *** �{�X���j�I�Q�[���N���A! ***\n");
                 }
             } else {
                 m_ClearDelayTimer = 0;
@@ -307,7 +275,7 @@ void GameplayScene::UpdateGameplay()
 }
 
 // =================================================================
-// 描画
+// �`��
 // =================================================================
 void GameplayScene::Draw()
 {

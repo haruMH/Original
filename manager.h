@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <vector>
 #include <type_traits>
+#include <memory>
 #include "render_system.h"
 #include "gameobject.h"
 #include "scene_interface.h"
@@ -39,6 +40,7 @@ class Manager
     friend class GameOverScene;
 
 private:
+    static std::vector<std::unique_ptr<GameObject>> m_ManagedObjects; // ライフサイクル管理用オブジェクトリスト
     static std::vector<GameObject*> m_GameObjects;     // 全オブジェクトリスト（描画・一括走査用）
     static std::vector<GameObject*> m_UpdateObjects;   // 更新対象（動的）オブジェクトのリスト（更新処理高速化用）
     static Player*                m_CachedPlayer;     // キャッシュされたプレイヤーへのポインタ (O(1)アクセス用)
@@ -49,7 +51,7 @@ private:
     static int                    m_SlowMotionDuration;// スローモーションの総開始フレーム数
     static bool                   m_IsBossStage;      // ボスステージ中フラグ
     static Scene                  m_CurrentScene;     // 現在のシーン（既存コード互換用）
-    static Scene                  m_NextScene;        // 遷移予定の次のシーン
+    static Scene                  m_NextScene;        // 遷移予定 of the next scene
     static bool                   m_SceneTransitionRequested; // シーン遷移リクエストフラグ
 
     static IScene*                m_ActiveScene;      // 現在アクティブなシーンオブジェクト
@@ -70,6 +72,7 @@ public:
     // 更新と描画（アクティブなシーンオブジェクトに処理を委譲します）
     static void Update();
     static void Draw();
+    static void DestroyObjectsIf(); // オブジェクト破棄処理の一元化
 
     // テンプレート関数によるオブジェクトの生成・追加.
     template<typename ObjT>
@@ -77,6 +80,7 @@ public:
     {
         ObjT* gameObject = new ObjT();
         gameObject->Init();
+        m_ManagedObjects.push_back(std::unique_ptr<GameObject>(gameObject));
         m_GameObjects.push_back(gameObject);
         // 静的オブジェクト（Wall, Field）は更新不要なため、更新リストから除外してパフォーマンスを向上
         ::ObjectType t = gameObject->GetObjectType();
