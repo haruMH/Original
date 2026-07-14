@@ -1,5 +1,8 @@
 ﻿#pragma once
 #include "gameobject.h"
+#include <memory>
+
+class IEnemyAffix;
 
 enum class EnemyState {
     NORMAL,    // 通常状態
@@ -22,8 +25,6 @@ protected:
 
     int        m_ScoreValue = 100;   // 撃破時のスコア加算値
     int        m_UprightTimer = 0;   // 着地後、起き上がるまでのタイマー
-    bool       m_IsExplosive = false; // 爆発属性フラグ
-    bool       m_IsLightning = false; // 雷電属性フラグ
     bool       m_IsDefeatedCounted = false; // 二重撃破ガード用フラグ
 
 public:
@@ -37,14 +38,14 @@ public:
     void       SetVelocity(XMFLOAT3 v)       { m_Velocity = v; m_VelocityY = v.y; }
     XMFLOAT3   GetVelocity() const           { return m_Velocity; }
     
-    bool       IsExplosive() const           { return m_IsExplosive; }
-    void       SetExplosive(bool explosive)  { m_IsExplosive = explosive; }
+    bool       IsExplosive() const;
+    void       SetExplosive(bool explosive);
 
-    bool       IsLightning() const           { return m_IsLightning; }
-    void       SetLightning(bool lightning)  { m_IsLightning = lightning; }
+    bool       IsLightning() const;
+    void       SetLightning(bool lightning);
 
-    bool       IsSandbag() const             { return m_IsSandbag; }
-    void       SetSandbag(bool enable)       { m_IsSandbag = enable; }
+    bool       IsSandbag() const;
+    void       SetSandbag(bool enable);
 
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }
@@ -62,6 +63,5 @@ public:
     virtual bool IsAttackingEnemy() const    { return false; }
 
 protected:
-    bool       m_IsSandbag = false;
-    int        m_SandbagLife = 300;
+    std::shared_ptr<IEnemyAffix> m_Affix; // 敵の属性オブジェクトへのポインタ
 };
