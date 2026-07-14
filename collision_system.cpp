@@ -122,16 +122,17 @@ static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
                 dir.z * Constants::Lightning::PUSH_FORCE_XZ
             );
             // ボスの場合は吹き飛ばさず、Defeat()も直接呼ばずにダメージ処理を行う
+            HitInfo hitInfo;
+            hitInfo.hitSourcePos = currentPos;
             if (nearest->GetObjectType() == ObjectType::Boss) {
-                BossEnemy* boss = static_cast<BossEnemy*>(nearest);
-                boss->ApplyBossDamage(3, currentPos); // 連鎖ダメージは3
+                hitInfo.damage = 3; // 連鎖ダメージは3
+                nearest->OnHit(hitInfo);
             } else {
-                nearest->SetVelocity(pushVel);
-                nearest->SetEnemyState(EnemyState::BLOWN_AWAY);
-                nearest->SetLightning(true); // スパーク放電を有効化
-
-                // 撃破処理（チェインライトニング）
-                nearest->Defeat(0.0f, 1.5f, 2.5f);
+                hitInfo.damage = 1;
+                hitInfo.knockbackVel = pushVel;
+                hitInfo.setLightning = true;
+                hitInfo.popupColor = {0.0f, 1.5f, 2.5f};
+                nearest->OnHit(hitInfo);
             }
             
             chainedEnemies.push_back(nearest);
@@ -171,17 +172,19 @@ static bool ResolveFlyingEnemyImpact(
     if (flying->IsLightning()) {
         TriggerChainLightning(flying->GetPosition(), player);
 
+        HitInfo hitInfo;
+        hitInfo.hitSourcePos = flying->GetPosition();
+        hitInfo.setLightning = true;
+        hitInfo.popupColor = {0.0f, 1.5f, 2.5f};
+
         if (target->GetObjectType() == ObjectType::Boss) {
-            BossEnemy* boss = static_cast<BossEnemy*>(target);
-            boss->ApplyBossDamage(Constants::Lightning::CHAIN_DAMAGE, flying->GetPosition());
+            hitInfo.damage = Constants::Lightning::CHAIN_DAMAGE;
         } else {
-            // ぶつかった通常エネミーも撃破
-            Enemy* te = static_cast<Enemy*>(target);
-            te->SetEnemyState(EnemyState::DEFEATED);
-            te->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
-            te->SetLightning(true); // 対象エネミーもスパーク放電させる
-            te->Defeat(0.0f, 1.5f, 2.5f);
+            hitInfo.damage = 1;
+            hitInfo.knockbackVel = XMFLOAT3(0.0f, 0.0f, 0.0f);
         }
+        target->OnHit(hitInfo);
+
         flying->SetEnemyState(EnemyState::DEFEATED);
         flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
         Manager::AddHitStop(10);
@@ -191,15 +194,17 @@ static bool ResolveFlyingEnemyImpact(
 
     // ─── 3. 通常衝突 ───
     if (target->GetObjectType() == ObjectType::Boss) {
-        // ボスへのダメージは種別によって変わる
         int dmg = Constants::Boss::THROW_NORMAL_DAMAGE;
         if (flying->IsSandbag()) {
             dmg = Constants::Boss::THROW_SANDBAG_DAMAGE;
         } else if (flying->GetScale().x > 2.0f) {
             dmg = Constants::Boss::THROW_GIGANT_DAMAGE;
         }
-        BossEnemy* boss = static_cast<BossEnemy*>(target);
-        boss->ApplyBossDamage(dmg, flying->GetPosition());
+        
+        HitInfo hitInfo;
+        hitInfo.damage = dmg;
+        hitInfo.hitSourcePos = flying->GetPosition();
+        target->OnHit(hitInfo);
 
         flying->SetEnemyState(EnemyState::DEFEATED);
         flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
@@ -214,31 +219,33 @@ static bool ResolveFlyingEnemyImpact(
         XMFLOAT3 tPos = target->GetPosition();
         XMFLOAT3 dir = MathHelper::Normalize(tPos - fPos);
 
+        HitInfo hitInfo;
+        hitInfo.damage = 1;
+        hitInfo.hitSourcePos = fPos;
+
         if (flying->GetScale().x > 2.0f) {
             // 巨大エネミーによる投げ：ぶつかられた敵は撃破される
             XMFLOAT3 vel = dir * 0.8f;
             vel.y = 0.4f;
-            Enemy* te = static_cast<Enemy*>(target);
-            te->SetVelocity(vel);
-            te->SetEnemyState(EnemyState::BLOWN_AWAY);
-            te->Defeat(2.5f, 0.7f, 0.0f); // 撃破処理（ギガント投げ撃退）
+            hitInfo.knockbackVel = vel;
+            hitInfo.popupColor = {2.5f, 0.7f, 0.0f};
+            target->OnHit(hitInfo);
             Manager::AddHitStop(10);
             if (g_Camera) g_Camera->Shake(0.4f, 15);
         } else {
             // 通常サイズ：玉突きして撃破
             XMFLOAT3 vel = dir * 0.5f;
             vel.y = 0.35f;
-            Enemy* te = static_cast<Enemy*>(target);
-            te->SetVelocity(vel);
-            te->SetEnemyState(EnemyState::BLOWN_AWAY);
-            te->Defeat(); // 撃破処理を適用
+            hitInfo.knockbackVel = vel;
+            target->OnHit(hitInfo);
             Manager::AddHitStop(8);
             if (g_Camera) g_Camera->Shake(0.3f, 12);
         }
 
         float rotY = atan2f(-dir.x, -dir.z);
-        Enemy* te = static_cast<Enemy*>(target);
-        te->SetRotation(XMFLOAT3(0.0f, rotY, 0.0f));
+        if (target->GetObjectType() == ObjectType::Enemy) {
+            static_cast<Enemy*>(target)->SetRotation(XMFLOAT3(0.0f, rotY, 0.0f));
+        }
     }
     return true;
 }
@@ -331,17 +338,16 @@ static void HandleSpinSweep(Player* player, CollisionGrid& grid)
                     pushVel.x += tangent.x;
                     pushVel.z += tangent.z;
 
-                    // ボスかどうかの分岐
+                    // ボスかどうかの判定
+                    HitInfo hitInfo;
+                    hitInfo.hitSourcePos = grabbed->GetPosition();
+                    hitInfo.knockbackVel = pushVel;
                     if (enemy->GetObjectType() == ObjectType::Boss) {
-                        BossEnemy* boss = static_cast<BossEnemy*>(enemy);
-                        boss->ApplyBossDamage(Constants::Player::SPIN_SWEEP_DAMAGE, grabbed->GetPosition());
+                        hitInfo.damage = Constants::Player::SPIN_SWEEP_DAMAGE;
+                        enemy->OnHit(hitInfo);
                     } else {
-                        // 吹き飛ばす
-                        enemy->SetVelocity(pushVel);
-                        enemy->SetEnemyState(EnemyState::BLOWN_AWAY);
-
-                        // 撃破処理（スピンなぎ払い）
-                        enemy->Defeat();
+                        hitInfo.damage = 1;
+                        enemy->OnHit(hitInfo);
                     }
 
                     // ヒットインパクト演出（ヒットストップとカメラ揺れ）

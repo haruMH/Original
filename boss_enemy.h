@@ -65,6 +65,7 @@ public:
     void Draw() override;
 
     void ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePos);
+    void OnHit(const HitInfo& info) override;
     int  GetHP() const { return m_HP; }
     int  GetMaxHP() const { return m_MaxHP; }
     bool IsInvincible() const { return m_IsInvincible; }

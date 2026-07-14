@@ -196,7 +196,11 @@ void BossEnemy::FireRapidShot()
     if (g_Camera) g_Camera->Shake(0.12f, 8);
 }
 
-// ─────────────────────────────────────────────
+void BossEnemy::OnHit(const HitInfo& info)
+{
+    ApplyBossDamage(info.damage, info.hitSourcePos);
+}
+
 // ボス被弾ダメージ処理
 // ─────────────────────────────────────────────
 void BossEnemy::ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePos)

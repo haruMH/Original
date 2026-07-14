@@ -211,6 +211,11 @@ void Player::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
     if (m_Combat) m_Combat->ApplyDamage(damage, enemyPos);
 }
 
+void Player::OnHit(const HitInfo& info)
+{
+    ApplyDamage(info.damage, info.hitSourcePos);
+}
+
 void Player::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
 {
     if (m_Combat) m_Combat->ExecuteParryCounter(bulletPos);

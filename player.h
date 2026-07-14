@@ -120,6 +120,7 @@ public:
 
     // 被弾ダメージ適用
     void ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos);
+    void OnHit(const HitInfo& info) override;
 
     // ステータス取得
     int  GetHP() const { return m_HP; }

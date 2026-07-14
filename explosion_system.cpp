@@ -9,33 +9,33 @@
 #include "shockwave.h"
 #include "game_constants.h"
 
-// ─────────────────────────────────────────────
-// 爆発を発生させ周囲の敵を吹き飛ばす
-// ─────────────────────────────────────────────
+// ������������������������������������������������������������������������������������������
+// �����𔭐��������͂̓G�𐁂���΂�
+// ������������������������������������������������������������������������������������������
 void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
 {
-    float explosionRadius = Constants::Explosion::RADIUS; // 爆発の有効半径
-    float baseForce       = Constants::Explosion::BASE_FORCE;  // 爆風の基本威力
+    float explosionRadius = Constants::Explosion::RADIUS; // �����̗L�����a
+    float baseForce       = Constants::Explosion::BASE_FORCE;  // �����̊�{�З�
 
-    // カメラシェイクで爆発のインパクトを演出
+    // �J�����V�F�C�N�Ŕ����̃C���p�N�g����o
     if (g_Camera) {
         g_Camera->Shake(1.2f, 25);
     }
 
-    // 爆発多重波紋（ビジュアルエフェクトのみ、Y座標を地面に這わせ、時間差で3本の赤い波紋が広がる）
+    // �������d�g��i�r�W���A���G�t�F�N�g�̂݁AY���W��n�ʂɔ��킹�A���ԍ���3�{�̐Ԃ��g�䂪�L����j
     XMFLOAT3 shockPos = center;
-    shockPos.y = -0.95f; // 地面の高さに完全クランプ
+    shockPos.y = -0.95f; // �n�ʂ̍����Ɋ��S�N�����v
 
     ShockwaveSystem::AddShockwave(shockPos, explosionRadius,        2.5f, 0.3f, 0.0f, 30, 0.0f, 0);
     ShockwaveSystem::AddShockwave(shockPos, explosionRadius * 0.75f, 2.5f, 0.3f, 0.0f, 24, 0.0f, 6);
     ShockwaveSystem::AddShockwave(shockPos, explosionRadius * 0.50f, 2.5f, 0.3f, 0.0f, 18, 0.0f, 12);
 
-    // マネージャーから敵キャッシュリストを取得して走査
+    // �}�l�[�W���[����G�L���b�V�����X�g��擾���đ���
     for (Enemy* enemy : Manager::GetEnemyList()) {
         if (!enemy || enemy->IsDestroy()) continue;
 
         EnemyState oldState = enemy->GetEnemyState();
-        // すでに撃破済み、または既に吹き飛んでいる敵は除外
+        // ���łɌ��j�ς݁A�܂��͊��ɐ������ł���G�͏��O
         if (oldState == EnemyState::DEFEATED || oldState == EnemyState::BLOWN_AWAY) continue;
 
         XMFLOAT3 ePos = enemy->GetPosition();
@@ -44,33 +44,31 @@ void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
         float dz = ePos.z - center.z;
         float distSq = dx * dx + dy * dy + dz * dz;
 
-        // 爆風の範囲内に入っているか判定
+        // �����͈͓̔�ɓ����Ă��邩����
         if (distSq < explosionRadius * explosionRadius) {
             float dist = sqrtf(distSq);
             if (dist < 0.01f) dist = 0.01f;
 
-            // 距離減衰（中心に近いほど強い力を受ける）
+            // ���������i���S�ɋ߂��قǋ����͂�󂯂�j
             float attenuation = (explosionRadius - dist) / explosionRadius;
 
-            // XZ平面での吹き飛ぶ方向ベクトル
+            // XZ���ʂł̐�����ԕ����x�N�g��
             XMFLOAT3 dir = XMFLOAT3(dx / dist, 0.0f, dz / dist);
 
-            // 爆風速度ベクトル（水平ベクトル ＋ 打ち上げ力）
+            // �������x�x�N�g���i�����x�N�g�� �{ �ł��グ�́j
             float force = baseForce * attenuation;
             XMFLOAT3 vel = XMFLOAT3(dir.x * force, 1.0f * attenuation + 0.4f, dir.z * force);
 
-            // ボスは Defeat() を直接呼ばず、フェーズ保護を経由した ApplyBossDamage でダメージを与える
+            HitInfo hitInfo;
+            hitInfo.hitSourcePos = center;
             if (enemy->GetObjectType() == ObjectType::Boss) {
-                BossEnemy* boss = static_cast<BossEnemy*>(enemy);
-                boss->ApplyBossDamage(Constants::Explosion::BOSS_DAMAGE, center); // 爆発ダメージ
-                // ボスは吹き飛ばさない
+                hitInfo.damage = Constants::Explosion::BOSS_DAMAGE;
+                enemy->OnHit(hitInfo);
             } else {
-                // 撃破処理（爆発・赤色ポップアップ）
-                enemy->Defeat(2.5f, 0.2f, 0.0f);
-
-                // 敵に爆風の速度と吹き飛び状態を設定
-                enemy->SetVelocity(vel);
-                enemy->SetEnemyState(EnemyState::BLOWN_AWAY);
+                hitInfo.damage = 1;
+                hitInfo.knockbackVel = vel;
+                hitInfo.popupColor = {2.5f, 0.2f, 0.0f};
+                enemy->OnHit(hitInfo);
             }
         }
     }

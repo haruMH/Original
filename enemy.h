@@ -55,6 +55,7 @@ public:
 
     // 撃破処理（二重カウント防止機能付き）
     void       Defeat(float colorR = 2.5f, float colorG = 1.8f, float colorB = 0.0f);
+    void       OnHit(const HitInfo& info) override;
     bool       IsDefeatedCounted() const     { return m_IsDefeatedCounted; }
 
     // 攻撃エネミー判定用（dynamic_cast排除の最適化）
