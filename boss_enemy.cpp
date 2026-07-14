@@ -35,9 +35,11 @@ void BossEnemy::Init()
     m_PhaseAttackTimer = 0;
     m_PhaseIndex       = 0;
     m_IsInvincible     = false;
-    m_Phase1Triggered  = false;
-    m_Phase2Triggered  = false;
-    m_Phase3Triggered  = false;
+    m_Phases = {
+        { Constants::Boss::PHASE1_HP_THRESHOLD, 1, false },
+        { Constants::Boss::PHASE2_HP_THRESHOLD, 2, false },
+        { Constants::Boss::PHASE3_HP_THRESHOLD, 3, false }
+    };
     m_PhaseTargetPos   = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_LightningVisualTimer = 0;
 
@@ -66,30 +68,19 @@ void BossEnemy::Update()
 
     // 通常状態の時にHPを監視してフェーズ移行を行う
     if (m_BossState == BossState::NORMAL) {
-        if (m_HP <= Constants::Boss::PHASE3_HP_THRESHOLD && !m_Phase3Triggered) {
-            m_BossState = BossState::PHASE_TRANSITION;
-            m_PhaseIndex = 3;
-            m_IsInvincible = true;
-            m_Phase3Triggered = true;
-            m_PhaseAttackTimer = 0;
-            m_LightningVisualTimer = 0;
-            OutputDebugStringA("[BossEnemy] Phase 3 Triggered!\n");
-        }
-        else if (m_HP <= Constants::Boss::PHASE2_HP_THRESHOLD && !m_Phase2Triggered) {
-            m_BossState = BossState::PHASE_TRANSITION;
-            m_PhaseIndex = 2;
-            m_IsInvincible = true;
-            m_Phase2Triggered = true;
-            m_PhaseAttackTimer = 0;
-            OutputDebugStringA("[BossEnemy] Phase 2 Triggered!\n");
-        }
-        else if (m_HP <= Constants::Boss::PHASE1_HP_THRESHOLD && !m_Phase1Triggered) {
-            m_BossState = BossState::PHASE_TRANSITION;
-            m_PhaseIndex = 1;
-            m_IsInvincible = true;
-            m_Phase1Triggered = true;
-            m_PhaseAttackTimer = 0;
-            OutputDebugStringA("[BossEnemy] Phase 1 Triggered!\n");
+        for (auto& phase : m_Phases) {
+            if (m_HP <= phase.hpThreshold && !phase.triggered) {
+                m_BossState = BossState::PHASE_TRANSITION;
+                m_PhaseIndex = phase.phaseIndex;
+                m_IsInvincible = true;
+                phase.triggered = true;
+                m_PhaseAttackTimer = 0;
+                m_LightningVisualTimer = 0;
+                char dbg[128];
+                sprintf_s(dbg, "[BossEnemy] Phase %d Triggered!\n", phase.phaseIndex);
+                OutputDebugStringA(dbg);
+                break;
+            }
         }
     }
 
@@ -252,19 +243,12 @@ void BossEnemy::ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePo
     }
 
     // ── オーバーダメージ保護：未発動フェーズがある場合はHPをその閾値でクランプ ──
-    // フェーズ移行閾値: Phase1=42, Phase2=30, Phase3=18
-    // HPが一気に閾値を通過してしまったとき、特殊モーションをスキップさせないために
-    // まだ発動していない最も優先度が高いフェーズの閾値+1でHPを下限クランプする
     if (m_BossState == BossState::NORMAL) {
-        if (!m_Phase1Triggered && m_HP < Constants::Boss::PHASE1_HP_THRESHOLD) {
-            // フェーズ1が未発動なのに飛び越えた → クランプ（Update()でフェーズ発動させる）
-            m_HP = Constants::Boss::PHASE1_HP_THRESHOLD;
-        } else if (!m_Phase2Triggered && m_HP < Constants::Boss::PHASE2_HP_THRESHOLD) {
-            // フェーズ2が未発動なのに飛び越えた → クランプ
-            m_HP = Constants::Boss::PHASE2_HP_THRESHOLD;
-        } else if (!m_Phase3Triggered && m_HP < Constants::Boss::PHASE3_HP_THRESHOLD) {
-            // フェーズ3が未発動なのに飛び越えた → クランプ
-            m_HP = Constants::Boss::PHASE3_HP_THRESHOLD;
+        for (auto& phase : m_Phases) {
+            if (!phase.triggered && m_HP < phase.hpThreshold) {
+                m_HP = phase.hpThreshold;
+                break;
+            }
         }
     }
 

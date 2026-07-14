@@ -30,13 +30,17 @@ private:
     int   m_AttackPattern = 0;    // 攻撃パターンインデックス
 
     // 段階的フェーズ移行用
+    struct BossPhase {
+        int hpThreshold;
+        int phaseIndex;
+        bool triggered;
+    };
+    std::vector<BossPhase> m_Phases;
+
     BossState m_BossState        = BossState::NORMAL;
     int   m_PhaseAttackTimer     = 0;     // 特別攻撃進行用タイマー
     int   m_PhaseIndex           = 0;     // 現在の特別フェーズ (1, 2, 3)
     bool  m_IsInvincible         = false; // 無敵フラグ
-    bool  m_Phase1Triggered      = false; // フェーズ1実行フラグ
-    bool  m_Phase2Triggered      = false; // フェーズ2実行フラグ
-    bool  m_Phase3Triggered      = false; // フェーズ3実行フラグ
     DirectX::XMFLOAT3 m_PhaseTargetPos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f); // 特別攻撃ターゲット座標
     int   m_LightningVisualTimer = 0;     // 落雷A（プレイヤー狙い）ビジュアルタイマー
     std::vector<BossShockwave> m_ActiveShockwaves; // アクティブな地響き衝撃波リスト
