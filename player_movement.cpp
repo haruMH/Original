@@ -13,7 +13,7 @@
 using namespace DirectX;
 
 // =================================================================
-// コンストラクタ / デストラクタ
+// �R���X�g���N�^ / �f�X�g���N�^
 // =================================================================
 PlayerMovement::PlayerMovement(Player* owner)
     : m_Owner(owner)
@@ -25,7 +25,7 @@ PlayerMovement::~PlayerMovement()
 }
 
 // =================================================================
-// 初期化
+// ������
 // =================================================================
 void PlayerMovement::Init()
 {
@@ -48,34 +48,34 @@ void PlayerMovement::Init()
 }
 
 // =================================================================
-// 毎フレーム更新処理
+// ���t���[���X�V����
 // =================================================================
 void PlayerMovement::Update()
 {
     XMFLOAT3 oldPos = m_Owner->m_Position;
     float oldRotY = m_Owner->m_Rotation.y;
 
-    // ダッシュのクールダウン更新
+    // �_�b�V���̃N�[���_�E���X�V
     if (m_DashCooldown > 0) {
         m_DashCooldown--;
     }
 
-    // 残像（ゴースト）の更新
+    // �c���i�S�[�X�g�j�̍X�V
     UpdateGhosts();
 
-    // ダッシュ発動判定
-    // (スタン中でない、かつダッシュ中でない、かつクールダウンでない)
+    // �_�b�V����������
+    // (�X�^�����łȂ��A���_�b�V�����łȂ��A���N�[���_�E���łȂ�)
     if (m_Owner->m_DamageTimer <= 0 && m_DashTimer <= 0 && m_DashCooldown <= 0) {
         if (PlayerController::IsDashAction()) {
             float camYaw = g_Camera ? g_Camera->GetAngleY() : 0.0f;
             XMFLOAT3 moveDir = PlayerController::GetMoveDirection(camYaw);
             
-            // 移動入力がない場合はプレイヤーの正面方向にダッシュ
+            // �ړ����͂��Ȃ��ꍇ�̓v���C���[�̐��ʕ����Ƀ_�b�V��
             if (MathHelper::LengthSq(moveDir) < 0.001f) {
                 moveDir = XMFLOAT3(sinf(m_Owner->m_Rotation.y), 0.0f, cosf(m_Owner->m_Rotation.y));
             }
             
-            // 正規化
+            // ���K��
             float len = sqrtf(moveDir.x * moveDir.x + moveDir.y * moveDir.y + moveDir.z * moveDir.z);
             if (len > 0.001f) {
                 moveDir.x /= len;
@@ -88,7 +88,7 @@ void PlayerMovement::Update()
             m_DashCooldown = Constants::Player::DASH_COOLDOWN;
             m_IsDashing = true;
 
-            // もちもち変形演出：進行方向に長く伸びるように設定
+            // �������ό`���o�F�i�s�����ɒ����L�т�悤�ɐݒ�
             m_Owner->m_Scale.y = 0.5f;
             m_Owner->m_Scale.x = 1.8f;
             m_Owner->m_Scale.z = 1.8f;
@@ -97,28 +97,28 @@ void PlayerMovement::Update()
             m_ScaleVelocityX = 0.08f;
             m_ScaleVelocityZ = 0.08f;
             
-            // ダッシュ中の無敵時間設定
+            // �_�b�V�����̖��G���Ԑݒ�
             m_Owner->m_InvincibleTimer = Constants::Player::DASH_INVINCIBLE_TIME;
         }
     }
 
-    // ─────────────────────────────────────────────
-    // ダッシュ中の挙動処理
-    // ─────────────────────────────────────────────
+    // ������������������������������������������������������������������������������������������
+    // �_�b�V�����̋�������
+    // ������������������������������������������������������������������������������������������
     if (m_DashTimer > 0) {
         m_DashTimer--;
         
-        // 高速移動
+        // �����ړ�
         float dashSpeed = Constants::Player::DASH_SPEED;
         XMFLOAT3 nextPos = m_Owner->m_Position;
         nextPos.x += m_DashDirection.x * dashSpeed;
         nextPos.z += m_DashDirection.z * dashSpeed;
 
-        // タックル有効時は衝突判定と攻撃処理を行う
+        // �^�b�N���L�����͏Փ˔���ƍU��������s��
         if (m_Owner->m_TackleTimer > 0) {
             Enemy* hitTarget = nullptr;
             
-            // 1. ロックオン対象を優先
+            // 1. ���b�N�I���Ώۂ�D��
             if (m_Owner->m_LockOnTarget && !m_Owner->m_LockOnTarget->IsDestroy()) {
                 XMFLOAT3 diff = m_Owner->m_Position - m_Owner->m_LockOnTarget->GetPosition();
                 diff.y = 0.0f;
@@ -128,7 +128,7 @@ void PlayerMovement::Update()
                 }
             }
             
-            // 2. 周囲の敵を走査
+            // 2. ���͂̓G�𑖍�
             if (!hitTarget) {
                 for (GameObject* obj : Manager::GetGameObjectList()) {
                     if (!obj || obj->IsDestroy() || obj == m_Owner) continue;
@@ -146,7 +146,7 @@ void PlayerMovement::Update()
                 }
             }
             
-            // ダメージ・吹き飛ばし適用
+            // �_���[�W�E������΂��K�p
             if (hitTarget) {
                 if (hitTarget->GetObjectType() == ObjectType::Boss) {
                     BossEnemy* bossE = static_cast<BossEnemy*>(hitTarget);
@@ -164,22 +164,22 @@ void PlayerMovement::Update()
                     hitTarget->Defeat(0.0f, 1.0f, 2.0f);
                 }
                 
-                // ヒット演出
+                // �q�b�g���o
                 Manager::AddHitStop(10);
                 if (g_Camera) {
                     g_Camera->Shake(0.25f, 10);
                 }
                 
-                m_Owner->m_TackleTimer = 0; // タックル消費
+                m_Owner->m_TackleTimer = 0; // �^�b�N������
             }
         }
 
-        // 壁との衝突解決
+        // �ǂƂ̏Փˉ��
         if (!Collision::CheckAABBCollision(m_Owner, nextPos, Manager::GetGameObjectList())) {
             m_Owner->m_Position = nextPos;
         }
 
-        // 残像生成（3フレームごと）
+        // �c�������i3�t���[�����Ɓj
         if (m_DashTimer % 3 == 0) {
             DashGhost ghost;
             ghost.Position = m_Owner->m_Position;
@@ -189,7 +189,7 @@ void PlayerMovement::Update()
             m_DashGhosts.push_back(ghost);
         }
 
-        // ダッシュ終了時のバウンド演出
+        // �_�b�V���I�����̃o�E���h���o
         if (m_DashTimer == 0) {
             m_IsDashing = false;
             m_Owner->m_Scale.y = 1.5f;
@@ -200,19 +200,15 @@ void PlayerMovement::Update()
             m_ScaleVelocityZ = -0.04f;
         }
 
-        // 掴んでいる敵の位置同期（ダッシュ中も正面位置を正しく維持し、バウンドを防止する）
-        if ((m_Owner->m_State == PlayerState::GRABBED || m_Owner->m_State == PlayerState::SPINNING) && m_Owner->m_GrabbedEnemy) {
-            Collision::ResolveGrabPhysics(m_Owner, m_Owner->m_GrabbedEnemy, 0.0f);
-        }
 
-        // ダッシュ中ももちもちの減衰振動を更新
+        // �_�b�V������������̌����U����X�V
         UpdateSpringPhysics();
         return;
     }
 
-    // ─────────────────────────────────────────────
-    // 被弾気絶（スタン）中のノックバック物理
-    // ─────────────────────────────────────────────
+    // ������������������������������������������������������������������������������������������
+    // ��e�C��i�X�^���j���̃m�b�N�o�b�N����
+    // ������������������������������������������������������������������������������������������
     if (m_Owner->m_DamageTimer > 0) {
         XMFLOAT3 nextPos = m_Owner->m_Position;
         nextPos.x += m_KnockbackVelocity.x;
@@ -226,17 +222,17 @@ void PlayerMovement::Update()
         }
     }
 
-    // ─────────────────────────────────────────────
-    // 通常移動とジャンプ入力の更新
-    // ─────────────────────────────────────────────
+    // ������������������������������������������������������������������������������������������
+    // �ʏ�ړ��ƃW�����v���͂̍X�V
+    // ������������������������������������������������������������������������������������������
     if (m_Owner->m_DamageTimer <= 0) {
-        // スペースキーでジャンプ（2段ジャンプ対応）
+        // �X�y�[�X�L�[�ŃW�����v�i2�i�W�����v�Ή��j
         if (Input::GetKeyTrigger(0x20) && m_JumpCount < Constants::Player::MAX_JUMP_COUNT) {
             m_VelocityY = Constants::Player::JUMP_VELOCITY;
             m_IsJumping = true;
             m_JumpCount++;
 
-            // 踏み切り時のもちもち演出
+            // ���ݐ؂莞�̂��������o
             m_Owner->m_Scale.y = 0.6f;
             m_Owner->m_Scale.x = 1.3f;
             m_Owner->m_Scale.z = 1.3f;
@@ -246,32 +242,32 @@ void PlayerMovement::Update()
             m_ScaleVelocityZ = -0.05f;
         }
 
-        // 通常移動処理の呼び出し
+        // �ʏ�ړ������̌Ăяo��
         UpdateNormalMovement();
     }
 
-    // ─────────────────────────────────────────────
-    // 重力と接地判定の適用
-    // ─────────────────────────────────────────────
+    // ������������������������������������������������������������������������������������������
+    // �d�͂Ɛڒn����̓K�p
+    // ������������������������������������������������������������������������������������������
     if (m_Owner->m_Position.y > -0.5f || m_VelocityY != 0.0f) {
         m_VelocityY -= Constants::Player::GRAVITY;
         m_Owner->m_Position.y += m_VelocityY;
 
-        // 空中での引き伸ばし演出（縦長）
+        // �󒆂ł̈����L�΂����o�i�c���j
         if (m_VelocityY > 0.01f) {
             m_Owner->m_Scale.y += (1.0f + m_VelocityY * 1.5f - m_Owner->m_Scale.y) * 0.2f;
             m_Owner->m_Scale.x += (1.0f - m_VelocityY * 0.75f - m_Owner->m_Scale.x) * 0.2f;
             m_Owner->m_Scale.z += (1.0f - m_VelocityY * 0.75f - m_Owner->m_Scale.z) * 0.2f;
         }
 
-        // 着地判定
+        // ���n����
         if (m_Owner->m_Position.y <= -0.5f) {
             m_Owner->m_Position.y = -0.5f;
             m_VelocityY = 0.0f;
             m_IsJumping = false;
             m_JumpCount = 0;
 
-            // 着地時の潰れ演出
+            // ���n���ׂ̒ꉉ�o
             m_Owner->m_Scale.y = 0.5f;
             m_Owner->m_Scale.x = 1.3f;
             m_Owner->m_Scale.z = 1.3f;
@@ -282,18 +278,18 @@ void PlayerMovement::Update()
         }
     }
 
-    // 角速度（旋回速度）の計算
+    // �p���x�i���񑬓x�j�̌v�Z
     float diff = m_Owner->m_Rotation.y - oldRotY;
     while (diff < -XM_PI) diff += XM_2PI;
     while (diff > XM_PI)  diff -= XM_2PI;
     m_Owner->m_AngularVelocity = diff;
 
-    // ─────────────────────────────────────────────
-    // スプリング物理によるもちもち復元と歩行揺れ
-    // ─────────────────────────────────────────────
+    // ������������������������������������������������������������������������������������������
+    // �X�v�����O�����ɂ������������ƕ�s�h��
+    // ������������������������������������������������������������������������������������������
     UpdateSpringPhysics();
 
-    // 1フレームのXZ移動量から移動速度を算出
+    // 1�t���[����XZ�ړ��ʂ���ړ����x��Z�o
     XMFLOAT3 actualVel = XMFLOAT3(m_Owner->m_Position.x - oldPos.x, m_Owner->m_Position.y - oldPos.y, m_Owner->m_Position.z - oldPos.z);
     float speed = sqrtf(actualVel.x * actualVel.x + actualVel.y * actualVel.y + actualVel.z * actualVel.z);
     float dt = 1.0f / 60.0f;
@@ -305,31 +301,31 @@ void PlayerMovement::Update()
         m_Owner->m_Scale.z -= sinf(m_MoveAnimation * 3.0f) * 0.015f;
     }
 
-    // 衝突判定によるめり込みの押し戻し解決
+    // �Փ˔���ɂ��߂荞�݂̉����߂����
     Collision::ResolveAABBCollision(m_Owner, Manager::GetGameObjectList());
 }
 
 // =================================================================
-// 通常移動処理
+// �ʏ�ړ�����
 // =================================================================
 void PlayerMovement::UpdateNormalMovement()
 {
     float camYaw = g_Camera ? g_Camera->GetAngleY() : 0.0f;
     XMFLOAT3 moveDir = PlayerController::GetMoveDirection(camYaw);
 
-    // 移動入力がある場合のみ座標と回転を更新
+    // �ړ����͂�����ꍇ�̂ݍ��W�Ɖ�]��X�V
     if (MathHelper::LengthSq(moveDir) > 0.001f) {
         float speed = Constants::Player::MOVE_SPEED;
         XMFLOAT3 nextPos = m_Owner->m_Position;
         nextPos.x += moveDir.x * speed;
         nextPos.z += moveDir.z * speed;
 
-        // 壁との衝突がなければ移動する
+        // �ǂƂ̏Փ˂��Ȃ���Έړ�����
         if (!Collision::CheckAABBCollision(m_Owner, nextPos, Manager::GetGameObjectList())) {
             m_Owner->m_Position = nextPos;
         }
 
-        // スピン（自動・手動）中でない場合のみ、移動方向へ向きを変える
+        // �X�s���i�����E�蓮�j���łȂ��ꍇ�̂݁A�ړ������֌�����ς���
         if (m_Owner->m_State != PlayerState::SPINNING) {
             float targetYaw = atan2f(moveDir.x, moveDir.z);
             m_Owner->m_Rotation.y = MathHelper::LerpAngle(m_Owner->m_Rotation.y, targetYaw, 0.15f);
@@ -338,26 +334,26 @@ void PlayerMovement::UpdateNormalMovement()
 }
 
 // =================================================================
-// もちもち復元のスプリング物理演算
+// �����������̃X�v�����O�������Z
 // =================================================================
 void PlayerMovement::UpdateSpringPhysics()
 {
     float springK = Constants::Player::SPRING_K;
     float damping = Constants::Player::DAMPING;
 
-    // X軸
+    // X��
     float forceX = (1.0f - m_Owner->m_Scale.x) * springK;
     m_ScaleVelocityX += forceX;
     m_ScaleVelocityX *= damping;
     m_Owner->m_Scale.x += m_ScaleVelocityX;
 
-    // Y軸
+    // Y��
     float forceY = (1.0f - m_Owner->m_Scale.y) * springK;
     m_ScaleVelocityY += forceY;
     m_ScaleVelocityY *= damping;
     m_Owner->m_Scale.y += m_ScaleVelocityY;
 
-    // Z軸
+    // Z��
     float forceZ = (1.0f - m_Owner->m_Scale.z) * springK;
     m_ScaleVelocityZ += forceZ;
     m_ScaleVelocityZ *= damping;
@@ -365,12 +361,12 @@ void PlayerMovement::UpdateSpringPhysics()
 }
 
 // =================================================================
-// ダッシュ残像の寿命管理
+// �_�b�V���c���̎����Ǘ�
 // =================================================================
 void PlayerMovement::UpdateGhosts()
 {
     for (auto it = m_DashGhosts.begin(); it != m_DashGhosts.end(); ) {
-        it->Alpha -= 0.08f; // 毎フレーム不透明度を減少
+        it->Alpha -= 0.08f; // ���t���[���s�����x�����
         if (it->Alpha <= 0.0f) {
             it = m_DashGhosts.erase(it);
         } else {

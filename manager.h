@@ -15,6 +15,7 @@ class TitleScene;
 class GameplayScene;
 class ClearScene;
 class GameOverScene;
+class BossEnemy;
 
 // シーン状態を定義する列挙型（既存のコードとの互換性のために残します）
 enum class Scene {
@@ -41,6 +42,7 @@ private:
     static std::vector<GameObject*> m_GameObjects;     // 全オブジェクトリスト（描画・一括走査用）
     static std::vector<GameObject*> m_UpdateObjects;   // 更新対象（動的）オブジェクトのリスト（更新処理高速化用）
     static Player*                m_CachedPlayer;     // キャッシュされたプレイヤーへのポインタ (O(1)アクセス用)
+    static BossEnemy*             m_CachedBoss;       // キャッシュされたボスへのポインタ (O(1)アクセス用)
     static RenderSystem           m_RenderSystem;     // インスタンスバッチ描画システム
     static int                    m_HitStopFrames;    // ヒットストップの残りフレーム数
     static int                    m_SlowMotionTimer;  // スローモーションの残りフレーム数
@@ -87,6 +89,11 @@ public:
             m_CachedPlayer = reinterpret_cast<Player*>(gameObject);
         }
 
+        // ボスエネミーが生成された場合はキャッシュポインタに保存
+        if constexpr (std::is_same_v<ObjT, BossEnemy>) {
+            m_CachedBoss = reinterpret_cast<BossEnemy*>(gameObject);
+        }
+
         // カテゴリ別リストへのキャッシュ登録
         RegisterCategory(gameObject);
 
@@ -100,6 +107,11 @@ public:
         // Playerの場合は全探索せずキャッシュを即時返却して O(1) に最適化
         if constexpr (std::is_same_v<TargetType, Player>) {
             return reinterpret_cast<TargetType*>(m_CachedPlayer);
+        }
+
+        // BossEnemyの場合は全探索せずキャッシュを即時返却して O(1) に最適化
+        if constexpr (std::is_same_v<TargetType, BossEnemy>) {
+            return reinterpret_cast<TargetType*>(m_CachedBoss);
         }
 
         ObjectType targetType = TargetType::GetStaticType();

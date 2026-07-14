@@ -447,18 +447,10 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
 
     if (!device) return false;
 
-    // 配列にするテクスチャのキー一覧
-    // リリースビルド時は Assets/texture/ サブフォルダのパスを使用する
     std::vector<std::string> textureKeys = {
-#ifdef NDEBUG
-        "Assets/texture/enemy.png",
-        "Assets/texture/player.png",
-        "Assets/texture/grid.png"
-#else
         "enemy.png",
         "player.png",
         "grid.png"
-#endif
     };
 
     std::vector<ID3D11Texture2D*> textures;

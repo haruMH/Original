@@ -134,6 +134,16 @@ namespace Constants
         }
     }
 
+    // 空間分割（コリジョングリッド）に関するパラメータ
+    namespace Collision
+    {
+        const float GRID_CELL_SIZE  = 5.0f;
+        const int   GRID_COLS       = 24;
+        const int   GRID_ROWS       = 24;
+        const float GRID_MIN_X      = -60.0f;
+        const float GRID_MIN_Z      = -60.0f;
+    }
+
     // ステージ構築・配置に関するパラメータ
     namespace Stage
     {
@@ -146,12 +156,39 @@ namespace Constants
         const int   ENEMY_GRID_COLS         = 4;        // モブ敵グリッド配置の列数
         const int   ENEMY_GRID_ROWS         = 4;        // モブ敵グリッド配置の行数
         const float ENEMY_SPAWN_INTERVAL    = 6.0f;     // 敵同士の配置間隔
+        const float WALL_DEFAULT_POS_X      = -8.0f;
+        const float WALL_DEFAULT_POS_Y      = 1.5f;
+        const float WALL_DEFAULT_POS_Z      = -7.0f;
+        const float WALL_DEFAULT_SCALE      = 5.0f;
+
+        const float ENEMY_GRID_SPAWN_OFFSET_X = 1.0f;
+        const float ENEMY_GRID_SPAWN_OFFSET_Z = -7.0f;
+        const float ENEMY_GRID_SPAWN_INTERVAL_XZ = 3.2f;
+
+        // アイテム配置
+        const float ITEM_SPAWN_Y            = 0.5f;
+        const float ITEM_BOSS_VACUUM_Z      = -15.0f;
+        const float ITEM_BOSS_GIGANT_X      = -4.0f;
+        const float ITEM_BOSS_GIGANT_Z      = -15.0f;
+        const float ITEM_BOSS_LIGHTNING_X   = 4.0f;
+        const float ITEM_BOSS_LIGHTNING_Z   = -15.0f;
+
+        const float ITEM_NORMAL_VACUUM_Z    = 4.0f;
+        const float ITEM_NORMAL_GIGANT_X    = -4.0f;
+        const float ITEM_NORMAL_GIGANT_Z    = 4.0f;
+        const float ITEM_NORMAL_LIGHTNING_X = 2.0f;
+        const float ITEM_NORMAL_LIGHTNING_Z = 6.0f;
     }
 
     // デバッグ・テスト用パラメータ
     namespace Debug
     {
-        const bool  START_FROM_BOSS         = false;    // trueにするとゲーム開始時にいきなりボス戦からスタートします
+#ifdef NDEBUG
+        const bool  START_FROM_BOSS         = false;    // リリース時は強制的に通常ステージから開始
+        const bool  INVINCIBLE_PLAYER       = false;    // リリース時は無敵化を強制無効
+#else
+        const bool  START_FROM_BOSS         = true;    // trueにするとゲーム開始時にいきなりボス戦からスタートします
         const bool  INVINCIBLE_PLAYER       = false;    // trueにするとプレイヤーが無敵になります（テスト用）
+#endif
     }
 }

@@ -41,12 +41,7 @@ void BossEnemy::Init()
     m_PhaseTargetPos   = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_LightningVisualTimer = 0;
 
-    // リリースビルド時は Assets/texture/ サブフォルダから読み込む
-#ifdef NDEBUG
-    m_RenderComponent = RenderComponent("Assets/texture/enemy.png", MeshType::Cube, true);
-#else
     m_RenderComponent = RenderComponent("enemy.png", MeshType::Cube, true);
-#endif
 }
 
 // ─────────────────────────────────────────────

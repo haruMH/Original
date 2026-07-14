@@ -55,13 +55,8 @@ void Player::Init()
     m_Visual->Init();
 
     // テクスチャリソースの読み込みと描画コンポーネント設定
-#ifdef NDEBUG
-    m_Texture = ResourceManager::GetTexture("Assets/texture/player.png");
-    m_RenderComponent = RenderComponent("Assets/texture/player.png", MeshType::Cube, true);
-#else
     m_Texture = ResourceManager::GetTexture("player.png");
     m_RenderComponent = RenderComponent("player.png", MeshType::Cube, true);
-#endif
 }
 
 // =================================================================

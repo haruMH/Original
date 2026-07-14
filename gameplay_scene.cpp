@@ -81,8 +81,8 @@ void GameplayScene::Init()
         
         // 通常ステージ：壁を敵エリアの外側に配置
         Wall* wall = Manager::AddGameObject<Wall>();
-        wall->SetPosition(XMFLOAT3(-8.0f, 1.5f, -7.0f));
-        wall->SetScale(XMFLOAT3(5.0f, 5.0f, 5.0f));
+        wall->SetPosition(XMFLOAT3(Constants::Stage::WALL_DEFAULT_POS_X, Constants::Stage::WALL_DEFAULT_POS_Y, Constants::Stage::WALL_DEFAULT_POS_Z));
+        wall->SetScale(XMFLOAT3(Constants::Stage::WALL_DEFAULT_SCALE, Constants::Stage::WALL_DEFAULT_SCALE, Constants::Stage::WALL_DEFAULT_SCALE));
 
         // プレイヤーを初期位置へ
         player->SetPosition(XMFLOAT3(0.0f, -0.5f, Constants::Stage::PLAYER_START_POS_Z));
@@ -102,8 +102,8 @@ void GameplayScene::Init()
                 } else {
                     enemy = Manager::AddGameObject<Enemy>();
                 }
-                float posX = (float)x * 3.2f + 1.0f;
-                float posZ = (float)z * 3.2f - 7.0f;
+                float posX = (float)x * Constants::Stage::ENEMY_GRID_SPAWN_INTERVAL_XZ + Constants::Stage::ENEMY_GRID_SPAWN_OFFSET_X;
+                float posZ = (float)z * Constants::Stage::ENEMY_GRID_SPAWN_INTERVAL_XZ + Constants::Stage::ENEMY_GRID_SPAWN_OFFSET_Z;
                 enemy->SetPosition(XMFLOAT3(posX, -0.5f, posZ));
                 totalEnemies++;
             }
@@ -122,13 +122,13 @@ void GameplayScene::Init()
     itemLightning->SetItemType(ItemType::LIGHTNING);
 
     if (Manager::m_IsBossStage) {
-        itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, -15.0f));
-        itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, -15.0f));
-        itemLightning->SetPosition(XMFLOAT3(4.0f, 0.5f, -15.0f));
+        itemVacuum->SetPosition(XMFLOAT3(0.0f, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_BOSS_VACUUM_Z));
+        itemGigant->SetPosition(XMFLOAT3(Constants::Stage::ITEM_BOSS_GIGANT_X, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_BOSS_GIGANT_Z));
+        itemLightning->SetPosition(XMFLOAT3(Constants::Stage::ITEM_BOSS_LIGHTNING_X, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_BOSS_LIGHTNING_Z));
     } else {
-        itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, 4.0f));
-        itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, 4.0f));
-        itemLightning->SetPosition(XMFLOAT3(2.0f, 0.5f, 6.0f));
+        itemVacuum->SetPosition(XMFLOAT3(0.0f, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_NORMAL_VACUUM_Z));
+        itemGigant->SetPosition(XMFLOAT3(Constants::Stage::ITEM_NORMAL_GIGANT_X, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_NORMAL_GIGANT_Z));
+        itemLightning->SetPosition(XMFLOAT3(Constants::Stage::ITEM_NORMAL_LIGHTNING_X, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_NORMAL_LIGHTNING_Z));
     }
 }
 

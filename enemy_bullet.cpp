@@ -239,10 +239,6 @@ void EnemyBullet::Draw()
         XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
     Renderer::SetWorldMatrix(worldMatrix);
 
-#ifdef NDEBUG
-    ID3D11ShaderResourceView* tex = ResourceManager::GetTexture("Assets/texture/enemy.png");
-#else
     ID3D11ShaderResourceView* tex = ResourceManager::GetTexture("enemy.png");
-#endif
     Renderer::DrawCube(worldMatrix, tex);
 }

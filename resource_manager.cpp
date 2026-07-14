@@ -15,9 +15,23 @@ ID3D11ShaderResourceView* ResourceManager::GetTexture(const std::string& fileNam
         return it->second;
     }
 
+    // パス解決
+    std::string path = fileName;
+#ifdef NDEBUG
+    // リリースビルド時は、Assets/texture/ から始まっていない場合のみ付与する
+    if (fileName.rfind("Assets/texture/", 0) != 0) {
+        path = "Assets/texture/" + fileName;
+    }
+#else
+    // デバッグビルド時は、もし Assets/texture/ から始まっていたらそれを取り除いてプレーン名にする
+    if (fileName.rfind("Assets/texture/", 0) == 0) {
+        path = fileName.substr(15); // "Assets/texture/" の長さは 15
+    }
+#endif
+
     // 新規ロード
     ID3D11ShaderResourceView* texture = nullptr;
-    Renderer::CreateTexture(fileName.c_str(), &texture);
+    Renderer::CreateTexture(path.c_str(), &texture);
     if (texture) {
         m_Textures[fileName] = texture;
     }

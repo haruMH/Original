@@ -22,18 +22,10 @@ void Enemy::Init()
     m_IsDefeatedCounted = false;
     m_ScoreValue   = Constants::Enemy::DEFAULT_SCORE;
 
-    // リリースビルド時は Assets/texture/ サブフォルダから読み込む
-#ifdef NDEBUG
-    m_Texture = ResourceManager::GetTexture("Assets/texture/enemy.png");
-    
-    // コンポーネント指向での描画パラメータ初期化
-    m_RenderComponent = RenderComponent("Assets/texture/enemy.png", MeshType::Cube, true);
-#else
     m_Texture = ResourceManager::GetTexture("enemy.png");
     
     // コンポーネント指向での描画パラメータ初期化
     m_RenderComponent = RenderComponent("enemy.png", MeshType::Cube, true);
-#endif
 }
 
 void Enemy::Uninit()

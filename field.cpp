@@ -71,13 +71,8 @@ void Field::Init()
 
     // テクスチャの読み込み
     // リリースビルド時は Assets/texture/ サブフォルダから読み込む
-#ifdef NDEBUG
-    m_Texture    = ResourceManager::GetTexture("Assets/texture/grid.png");
-    m_SkyTexture = ResourceManager::GetTexture("Assets/texture/sky.png"); // 反射フォールバック用
-#else
     m_Texture    = ResourceManager::GetTexture("grid.png");
     m_SkyTexture = ResourceManager::GetTexture("sky.png"); // 反射フォールバック用
-#endif
 
     // シェーダーの読み込み
     // リリースビルド時は Assets/shader/ サブフォルダから読み込む
@@ -141,11 +136,7 @@ void Skybox::Init()
     m_Rotation = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_Scale    = XMFLOAT3(200.0f, 200.0f, 200.0f);
 
-#ifdef NDEBUG
-    m_Texture = ResourceManager::GetTexture("Assets/texture/sky.png");
-#else
     m_Texture = ResourceManager::GetTexture("sky.png");
-#endif
 }
 
 void Skybox::Uninit()

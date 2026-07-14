@@ -15,7 +15,7 @@
 using namespace DirectX;
 
 // =================================================================
-// コンストラクタ / デストラクタ
+// �R���X�g���N�^ / �f�X�g���N�^
 // =================================================================
 PlayerCombat::PlayerCombat(Player* owner)
     : m_Owner(owner)
@@ -27,18 +27,18 @@ PlayerCombat::~PlayerCombat()
 }
 
 // =================================================================
-// 初期化
+// ������
 // =================================================================
 void PlayerCombat::Init()
 {
 }
 
 // =================================================================
-// 毎フレーム更新処理
+// ���t���[���X�V����
 // =================================================================
 void PlayerCombat::Update()
 {
-    // ガード状態の更新（スタン中でなく、かつ敵を掴んでいない通常状態のときのみ可能）
+    // �K�[�h��Ԃ̍X�V�i�X�^�����łȂ��A���G��͂�ł��Ȃ��ʏ��Ԃ̂Ƃ��̂݉\�j
     if (m_Owner->m_DamageTimer <= 0 && m_Owner->m_State == PlayerState::IDLE && !m_Owner->m_GrabbedEnemy) {
         if (PlayerController::IsGuardAction()) {
             m_Owner->m_GuardTimer++;
@@ -49,7 +49,7 @@ void PlayerCombat::Update()
         m_Owner->m_GuardTimer = 0;
     }
 
-    // ロックオンの更新（スローモーション中のみ有効）
+    // ���b�N�I���̍X�V�i�X���[���[�V�������̂ݗL���j
     if (Manager::IsSlowMotionActive()) {
         FindLockOnTarget();
     } else {
@@ -61,7 +61,7 @@ void PlayerCombat::Update()
 
     m_Owner->m_MarkerTimer++;
 
-    // しびれスタン中でなければ、各状態の更新を行う
+    // ���т�X�^�����łȂ���΁A�e��Ԃ̍X�V��s��
     if (m_Owner->m_DamageTimer <= 0) {
         switch (m_Owner->m_State) {
         case PlayerState::IDLE:
@@ -78,19 +78,19 @@ void PlayerCombat::Update()
 }
 
 // =================================================================
-// IDLE（通常）状態の戦闘更新
+// IDLE�i�ʏ�j��Ԃ̐퓬�X�V
 // =================================================================
 void PlayerCombat::UpdateIdle()
 {
-    // タックル有効中に左クリック → 敵の目の前にテレポートしてタックル！
+    // �^�b�N���L�����ɍ��N���b�N �� �G�̖ڂ̑O�Ƀe���|�[�g���ă^�b�N���I
     if (m_Owner->m_TackleTimer > 0 && PlayerController::IsGrabOrThrowAction()) {
         Enemy* target = nullptr;
         
-        // ロックオン対象を優先
+        // ���b�N�I���Ώۂ�D��
         if (m_Owner->m_LockOnTarget && !m_Owner->m_LockOnTarget->IsDestroy()) {
             target = m_Owner->m_LockOnTarget;
         } else {
-            // 近くの敵を検索
+            // �߂��̓G�����
             float nearestDist = 15.0f;
             for (GameObject* obj : Manager::GetGameObjectList()) {
                 if (!obj || obj == m_Owner || obj->IsDestroy()) continue;
@@ -106,7 +106,7 @@ void PlayerCombat::UpdateIdle()
             }
         }
         
-        // タックルテレポート実行
+        // �^�b�N���e���|�[�g���s
         if (target) {
             XMFLOAT3 targetPos = target->GetPosition();
             XMFLOAT3 startPos = m_Owner->m_Position;
@@ -125,23 +125,23 @@ void PlayerCombat::UpdateIdle()
             XMVECTOR vWarpPos = vTarget - vDir * warpDistance;
             XMFLOAT3 warpPos;
             XMStoreFloat3(&warpPos, vWarpPos);
-            warpPos.y = m_Owner->m_Position.y; // 接地高さを維持
+            warpPos.y = m_Owner->m_Position.y; // �ڒn������ێ�
             
             m_Owner->m_Position = warpPos;
             XMFLOAT3 dir;
             XMStoreFloat3(&dir, vDir);
             m_Owner->m_Rotation.y = atan2f(dir.x, dir.z);
             
-            // もちもち変形演出
+            // �������ό`���o
             m_Owner->m_Scale.y = 0.4f;
             m_Owner->m_Scale.x = 1.8f;
             m_Owner->m_Scale.z = 1.8f;
             m_Owner->m_Movement->SetScaleVelocity(0.08f, -0.1f, 0.08f);
             
-            // 衝撃波発生
+            // �Ռ��g����
             ShockwaveSystem::AddShockwave(warpPos, 5.0f, 0.0f, 2.5f, 4.0f, 20, 1.5f, 0);
             
-            // ダメージ適用
+            // �_���[�W�K�p
             if (target->GetObjectType() == ObjectType::Boss) {
                 BossEnemy* boss = static_cast<BossEnemy*>(target);
                 boss->ApplyBossDamage(3, m_Owner->m_Position);
@@ -152,7 +152,7 @@ void PlayerCombat::UpdateIdle()
                 target->Defeat(0.0f, 1.0f, 2.0f);
             }
             
-            // インパクト演出
+            // �C���p�N�g���o
             Manager::AddHitStop(12);
             if (g_Camera) {
                 g_Camera->Shake(0.35f, 12);
@@ -163,7 +163,7 @@ void PlayerCombat::UpdateIdle()
         }
     }
 
-    // 雷電テレポートスラッシュ発動判定（スロー中かつロックオン中かつ攻撃回数3回未満）
+    // ���d�e���|�[�g�X���b�V����������i�X���[�������b�N�I�������U����3�񖢖��j
     if (Manager::IsSlowMotionActive() && m_Owner->m_CanWarpSlash && m_Owner->m_LockOnTarget && m_Owner->m_WarpSlashCount < 3) {
         if (PlayerController::IsGrabOrThrowAction()) {
             bool hasGrabTarget = false;
@@ -181,7 +181,7 @@ void PlayerCombat::UpdateIdle()
                 }
             }
 
-            // 掴み有効範囲内に敵がいない場合のみ、テレポートスラッシュ発動
+            // �͂ݗL���͈͓�ɓG�����Ȃ��ꍇ�̂݁A�e���|�[�g�X���b�V������
             if (!hasGrabTarget) {
                 m_Owner->m_WarpSlashCount++;
                 Enemy* target = m_Owner->m_LockOnTarget;
@@ -213,7 +213,7 @@ void PlayerCombat::UpdateIdle()
                 XMStoreFloat3(&dir, vDir);
                 m_Owner->m_Rotation.y = atan2f(dir.x, dir.z);
                 
-                // 雷電エフェクトの追加
+                // ���d�G�t�F�N�g�̒ǉ�
                 XMFLOAT3 boltStart = startPos;
                 XMFLOAT3 boltEnd = targetPos;
                 boltStart.y += 0.3f;
@@ -222,10 +222,10 @@ void PlayerCombat::UpdateIdle()
                 m_Owner->AddLightningEffect(XMFLOAT3(boltStart.x + 0.1f, boltStart.y, boltStart.z), XMFLOAT3(boltEnd.x + 0.1f, boltEnd.y, boltEnd.z));
                 m_Owner->AddLightningEffect(XMFLOAT3(boltStart.x - 0.1f, boltStart.y, boltStart.z), XMFLOAT3(boltEnd.x - 0.1f, boltEnd.y, boltEnd.z));
                 
-                // 衝撃波
+                // �Ռ��g
                 ShockwaveSystem::AddShockwave(warpPos, 4.0f, 0.0f, 2.5f, 4.0f, 20, 1.5f, 0);
                 
-                // ダメージ適用
+                // �_���[�W�K�p
                 if (target->GetObjectType() == ObjectType::Boss) {
                     BossEnemy* boss = static_cast<BossEnemy*>(target);
                     boss->ApplyBossDamage(4, m_Owner->m_Position);
@@ -237,7 +237,7 @@ void PlayerCombat::UpdateIdle()
                     target->Defeat(0.0f, 2.0f, 3.0f);
                 }
                 
-                // インパクト
+                // �C���p�N�g
                 Manager::AddHitStop(15);
                 if (g_Camera) {
                     g_Camera->Shake(0.45f, 15);
@@ -249,7 +249,7 @@ void PlayerCombat::UpdateIdle()
         }
     }
 
-    // 通常の敵の掴み処理
+    // �ʏ�̓G�̒͂ݏ���
     if (PlayerController::IsGrabOrThrowAction()) {
         float grabRange = Constants::Player::GRAB_RANGE;
         Enemy* nearest  = nullptr;
@@ -276,26 +276,22 @@ void PlayerCombat::UpdateIdle()
 }
 
 // =================================================================
-// GRABBED（敵掴み）状態の戦闘更新
+// GRABBED�i�G�͂݁j��Ԃ̐퓬�X�V
 // =================================================================
 void PlayerCombat::UpdateGrabbed()
 {
-    // 右クリック：スピン開始
+    // �E�N���b�N�F�X�s���J�n
     if (m_Owner->m_GrabbedEnemy && PlayerController::IsSpinToggleAction()) {
         m_Owner->m_State = PlayerState::SPINNING;
         m_Owner->m_CurrentSpinSpeed = Constants::Player::MIN_SPIN_SPEED;
     }
 
-    // 左クリック：直接投げる
+    // ���N���b�N�F���ړ�����
     if (m_Owner->m_GrabbedEnemy && PlayerController::IsGrabOrThrowAction()) {
         Throw();
         return;
     }
 
-    // 敵の位置同期
-    if (m_Owner->m_GrabbedEnemy) {
-        Collision::ResolveGrabPhysics(m_Owner, m_Owner->m_GrabbedEnemy, 0.0f);
-    }
 
     if (!m_Owner->m_GrabbedEnemy) {
         m_Owner->m_State = PlayerState::IDLE;
@@ -303,11 +299,11 @@ void PlayerCombat::UpdateGrabbed()
 }
 
 // =================================================================
-// SPINNING（振り回し）状態の戦闘更新
+// SPINNING�i�U��񂵁j��Ԃ̐퓬�X�V
 // =================================================================
 void PlayerCombat::UpdateSpinning()
 {
-    // スピン加速
+    // �X�s������
     float targetSpinSpeed = Constants::Player::MAX_SPIN_SPEED;
     m_Owner->m_CurrentSpinSpeed += (targetSpinSpeed - m_Owner->m_CurrentSpinSpeed) * Constants::Player::SPIN_ACCELERATION;
 
@@ -319,7 +315,7 @@ void PlayerCombat::UpdateSpinning()
         g_Camera->Shake(dynamicShake, 2);
     }
 
-    // 吸引効果
+    // �z������
     if (m_Owner->m_HasVacuumItem) {
         float vacuumRadius = 8.0f;
         float vacuumForce = 0.03f;
@@ -354,22 +350,18 @@ void PlayerCombat::UpdateSpinning()
         }
     }
 
-    // 左クリック：投げる
+    // ���N���b�N�F������
     if (PlayerController::IsGrabOrThrowAction()) {
         Throw();
         return;
     }
 
-    // 右クリック：掴み状態に戻る（キャンセル）
+    // �E�N���b�N�F�͂ݏ�Ԃɖ߂�i�L�����Z���j
     if (PlayerController::IsSpinToggleAction()) {
         m_Owner->m_State = PlayerState::GRABBED;
         m_Owner->m_CurrentSpinSpeed = Constants::Player::MIN_SPIN_SPEED;
     }
 
-    // 敵の位置同期
-    if (m_Owner->m_GrabbedEnemy) {
-        Collision::ResolveGrabPhysics(m_Owner, m_Owner->m_GrabbedEnemy, 0.0f);
-    }
 
     if (!m_Owner->m_GrabbedEnemy) {
         m_Owner->m_State = PlayerState::IDLE;
@@ -378,7 +370,7 @@ void PlayerCombat::UpdateSpinning()
 }
 
 // =================================================================
-// 掴んでいる敵を投げ飛ばす
+// �͂�ł���G�𓊂���΂�
 // =================================================================
 void PlayerCombat::Throw()
 {
@@ -401,7 +393,7 @@ void PlayerCombat::Throw()
         m_Owner->m_GrabbedEnemy->SetVelocity(throwVelocity);
         m_Owner->m_GrabbedEnemy->SetEnemyState(EnemyState::FLYING);
 
-        // アイテム効果の適用
+        // �A�C�e�����ʂ̓K�p
         if (m_Owner->m_HasVacuumItem) {
             m_Owner->m_GrabbedEnemy->SetExplosive(true);
         }
@@ -409,7 +401,7 @@ void PlayerCombat::Throw()
             m_Owner->m_GrabbedEnemy->SetLightning(true);
         }
 
-        // 公転中の敵も一斉射出
+        // ���]���̓G���Ďˏo
         for (GameObject* obj : Manager::GetGameObjectList()) {
             if (!obj) continue;
             if (obj->GetObjectType() != ObjectType::Enemy) continue;
@@ -424,7 +416,7 @@ void PlayerCombat::Throw()
             }
         }
 
-        // フラグ消費
+        // �t���O����
         m_Owner->m_HasVacuumItem = false;
         m_Owner->m_HasGigantItem = false;
         m_Owner->m_HasLightningItem = false;
@@ -433,12 +425,12 @@ void PlayerCombat::Throw()
         m_Owner->m_State = PlayerState::IDLE;
         m_Owner->m_IsAutoSpinning = false;
 
-        // 伸縮演出
+        // �L�k���o
         m_Owner->m_Scale.y = 0.5f;
         m_Owner->m_Scale.x = 1.6f;
         m_Owner->m_Scale.z = 1.6f;
 
-        // カメラシェイク
+        // �J�����V�F�C�N
         float throwShake = 0.08f + abs(m_Owner->m_AngularVelocity) * 1.8f;
         if (throwShake > 0.40f) throwShake = 0.40f;
         g_Camera->Shake(throwShake, 12);
@@ -446,11 +438,11 @@ void PlayerCombat::Throw()
 }
 
 // =================================================================
-// 被弾ダメージ適用
+// ��e�_���[�W�K�p
 // =================================================================
 void PlayerCombat::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
 {
-    // デバッグ用の無敵モードまたは通常の無敵時間中の場合はダメージを無効化
+    // �f�o�b�O�p�̖��G���[�h�܂��͒ʏ�̖��G���Ԓ��̏ꍇ�̓_���[�W�𖳌���
     if (Constants::Debug::INVINCIBLE_PLAYER || m_Owner->m_InvincibleTimer > 0 || m_Owner->m_HP <= 0) return;
 
     m_Owner->m_HP -= damage;
@@ -460,8 +452,8 @@ void PlayerCombat::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
     m_Owner->m_Scale.x = 1.7f;
     m_Owner->m_Scale.z = 1.7f;
 
-    m_Owner->m_DamageTimer = Constants::Player::DAMAGE_STUN_DURATION * 2; // 60フレーム
-    m_Owner->m_InvincibleTimer = Constants::Player::INVINCIBLE_DURATION * 3; // 180フレーム
+    m_Owner->m_DamageTimer = Constants::Player::DAMAGE_STUN_DURATION * 2; // 60�t���[��
+    m_Owner->m_InvincibleTimer = Constants::Player::INVINCIBLE_DURATION * 3; // 180�t���[��
 
     if (m_Owner->m_GrabbedEnemy) {
         m_Owner->m_GrabbedEnemy->SetEnemyState(EnemyState::NORMAL);
@@ -470,7 +462,7 @@ void PlayerCombat::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
     }
     m_Owner->m_State = PlayerState::IDLE;
 
-    // ノックバック計算
+    // �m�b�N�o�b�N�v�Z
     DirectX::XMFLOAT3 diff = m_Owner->m_Position - enemyPos;
     diff.y = 0.0f;
     float dist = MathHelper::Length(diff);
@@ -491,11 +483,11 @@ void PlayerCombat::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
 }
 
 // =================================================================
-// パリィ成功時のカウンター実行
+// �p���B�������̃J�E���^�[���s
 // =================================================================
 void PlayerCombat::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
 {
-    // サンドバッグ敵の生成
+    // �T���h�o�b�O�G�̐���
     Enemy* sandbag = Manager::AddGameObject<Enemy>();
     if (sandbag) {
         XMFLOAT3 spawnPos = bulletPos;
@@ -505,25 +497,25 @@ void PlayerCombat::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
         sandbag->SetSandbag(true);
     }
 
-    // もちもち変形
+    // �������ό`
     m_Owner->m_Scale.y = 1.3f;
     m_Owner->m_Scale.x = 0.8f;
     m_Owner->m_Scale.z = 0.8f;
     m_Owner->m_Movement->SetScaleVelocity(-0.04f, 0.08f, -0.04f);
 
-    // 火花イナズマ軌跡の生成
+    // �ΉԃC�i�Y�}�O�Ղ̐���
     XMFLOAT3 boltStart = m_Owner->m_Position;
     boltStart.y += 0.3f;
     XMFLOAT3 boltEnd = bulletPos;
     boltEnd.y += 0.3f;
     m_Owner->AddLightningEffect(boltStart, boltEnd);
 
-    // 衝撃波
+    // �Ռ��g
     XMFLOAT3 shockPos = bulletPos;
     shockPos.y = -0.95f;
     ShockwaveSystem::AddShockwave(shockPos, 3.0f, 1.5f, 0.8f, 0.0f, 16, 0.0f, 0);
 
-    // ヒット演出
+    // �q�b�g���o
     Manager::AddHitStop(8);
     if (g_Camera) {
         g_Camera->Shake(0.2f, 10);
@@ -534,7 +526,7 @@ void PlayerCombat::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
 }
 
 // =================================================================
-// ロックオン対象探索（スロー中のみ）
+// ���b�N�I���ΏےT���i�X���[���̂݁j
 // =================================================================
 void PlayerCombat::FindLockOnTarget()
 {
@@ -549,7 +541,7 @@ void PlayerCombat::FindLockOnTarget()
     Enemy* bestTarget = nullptr;
     float maxCos = -1.0f;
     float maxDistance = 30.0f;
-    float minCos = 0.7071f; // cos(45度)
+    float minCos = 0.7071f; // cos(45�x)
 
     for (GameObject* obj : Manager::GetGameObjectList()) {
         if (!obj || obj == m_Owner || obj->IsDestroy()) continue;
