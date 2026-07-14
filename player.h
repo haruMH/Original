@@ -34,11 +34,6 @@ enum class PlayerState {
 // 役割ごとに分割されたサブモジュール（移動・戦闘・描画）を統合します。
 class Player : public GameObject
 {
-    // 各モジュールクラスからプライベートメンバへの直接アクセスを許可する
-    friend class PlayerMovement;
-    friend class PlayerCombat;
-    friend class PlayerVisual;
-
 private:
     ID3D11ShaderResourceView* m_Texture = nullptr;
 
@@ -124,6 +119,7 @@ public:
 
     // ステータス取得
     int  GetHP() const { return m_HP; }
+    void SetHP(int hp) { m_HP = hp; }
     int  GetMaxHP() const { return m_MaxHP; }
     bool IsInvincible() const { return m_InvincibleTimer > 0; }
     bool IsStunned() const { return m_DamageTimer > 0; }
@@ -141,4 +137,38 @@ public:
     void NotifyObjectDestroyed(GameObject* obj);
     void ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos);
     void DisableWarpSlash() { m_CanWarpSlash = false; }
+
+    // ゲッター・セッター（カプセル化対応）
+    void        SetState(PlayerState state) { m_State = state; }
+    void        SetAngularVelocity(float omega) { m_AngularVelocity = omega; }
+    bool        IsAutoSpinning() const { return m_IsAutoSpinning; }
+    void        SetAutoSpinning(bool enable) { m_IsAutoSpinning = enable; }
+    float       GetCurrentSpinSpeed() const { return m_CurrentSpinSpeed; }
+    void        SetCurrentSpinSpeed(float speed) { m_CurrentSpinSpeed = speed; }
+    int         GetMarkerTimer() const { return m_MarkerTimer; }
+    void        IncrementMarkerTimer() { m_MarkerTimer++; }
+    std::list<LightningEffect>& GetLightningEffects() { return m_LightningEffects; }
+    const std::list<LightningEffect>& GetLightningEffects() const { return m_LightningEffects; }
+    int         GetDamageTimer() const { return m_DamageTimer; }
+    void        SetDamageTimer(int timer) { m_DamageTimer = timer; }
+    int         GetInvincibleTimer() const { return m_InvincibleTimer; }
+    void        SetInvincibleTimer(int timer) { m_InvincibleTimer = timer; }
+    int         GetGuardTimer() const { return m_GuardTimer; }
+    void        SetGuardTimer(int timer) { m_GuardTimer = timer; }
+    void        IncrementGuardTimer() { m_GuardTimer++; }
+    void        SetLockOnTarget(Enemy* target) { m_LockOnTarget = target; }
+    void        SetLockOnFrame(int frame) { m_LockOnFrame = frame; }
+    void        IncrementLockOnFrame() { m_LockOnFrame++; }
+    int         GetWarpSlashCount() const { return m_WarpSlashCount; }
+    void        SetWarpSlashCount(int count) { m_WarpSlashCount = count; }
+    void        IncrementWarpSlashCount() { m_WarpSlashCount++; }
+    bool        CanWarpSlash() const { return m_CanWarpSlash; }
+    void        SetCanWarpSlash(bool enable) { m_CanWarpSlash = enable; }
+    int         GetTackleTimer() const { return m_TackleTimer; }
+    void        SetTackleTimer(int timer) { m_TackleTimer = timer; }
+    void        DecrementTackleTimer() { if (m_TackleTimer > 0) m_TackleTimer--; }
+
+    PlayerMovement* GetMovementModule() { return m_Movement; }
+    PlayerCombat*   GetCombatModule() { return m_Combat; }
+    PlayerVisual*   GetVisualModule() { return m_Visual; }
 };

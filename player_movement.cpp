@@ -13,7 +13,7 @@
 using namespace DirectX;
 
 // =================================================================
-// �R���X�g���N�^ / �f�X�g���N�^
+// Constructor / Destructor
 // =================================================================
 PlayerMovement::PlayerMovement(Player* owner)
     : m_Owner(owner)
@@ -25,7 +25,7 @@ PlayerMovement::~PlayerMovement()
 }
 
 // =================================================================
-// ������
+// Initialize
 // =================================================================
 void PlayerMovement::Init()
 {
@@ -48,34 +48,31 @@ void PlayerMovement::Init()
 }
 
 // =================================================================
-// ���t���[���X�V����
+// Update Frame
 // =================================================================
 void PlayerMovement::Update()
 {
-    XMFLOAT3 oldPos = m_Owner->m_Position;
-    float oldRotY = m_Owner->m_Rotation.y;
+    XMFLOAT3 oldPos = m_Owner->GetPosition();
+    float oldRotY = m_Owner->GetRotation().y;
 
-    // �_�b�V���̃N�[���_�E���X�V
+    // Update dash cooldown
     if (m_DashCooldown > 0) {
         m_DashCooldown--;
     }
 
-    // �c���i�S�[�X�g�j�̍X�V
+    // Update ghosts
     UpdateGhosts();
 
-    // �_�b�V����������
-    // (�X�^�����łȂ��A���_�b�V�����łȂ��A���N�[���_�E���łȂ�)
-    if (m_Owner->m_DamageTimer <= 0 && m_DashTimer <= 0 && m_DashCooldown <= 0) {
+    // Trigger dash check
+    if (m_Owner->GetDamageTimer() <= 0 && m_DashTimer <= 0 && m_DashCooldown <= 0) {
         if (PlayerController::IsDashAction()) {
             float camYaw = g_Camera ? g_Camera->GetAngleY() : 0.0f;
             XMFLOAT3 moveDir = PlayerController::GetMoveDirection(camYaw);
             
-            // �ړ����͂��Ȃ��ꍇ�̓v���C���[�̐��ʕ����Ƀ_�b�V��
             if (MathHelper::LengthSq(moveDir) < 0.001f) {
-                moveDir = XMFLOAT3(sinf(m_Owner->m_Rotation.y), 0.0f, cosf(m_Owner->m_Rotation.y));
+                moveDir = XMFLOAT3(sinf(m_Owner->GetRotation().y), 0.0f, cosf(m_Owner->GetRotation().y));
             }
             
-            // ���K��
             float len = sqrtf(moveDir.x * moveDir.x + moveDir.y * moveDir.y + moveDir.z * moveDir.z);
             if (len > 0.001f) {
                 moveDir.x /= len;
@@ -88,47 +85,37 @@ void PlayerMovement::Update()
             m_DashCooldown = Constants::Player::DASH_COOLDOWN;
             m_IsDashing = true;
 
-            // �������ό`���o�F�i�s�����ɒ����L�т�悤�ɐݒ�
-            m_Owner->m_Scale.y = 0.5f;
-            m_Owner->m_Scale.x = 1.8f;
-            m_Owner->m_Scale.z = 1.8f;
+            m_Owner->SetScale(XMFLOAT3(1.8f, 0.5f, 1.8f));
 
             m_ScaleVelocityY = -0.1f;
             m_ScaleVelocityX = 0.08f;
             m_ScaleVelocityZ = 0.08f;
             
-            // �_�b�V�����̖��G���Ԑݒ�
-            m_Owner->m_InvincibleTimer = Constants::Player::DASH_INVINCIBLE_TIME;
+            m_Owner->SetInvincibleTimer(Constants::Player::DASH_INVINCIBLE_TIME);
         }
     }
 
-    // ������������������������������������������������������������������������������������������
-    // �_�b�V�����̋�������
-    // ������������������������������������������������������������������������������������������
+    // Dash update
     if (m_DashTimer > 0) {
         m_DashTimer--;
         
-        // �����ړ�
         float dashSpeed = Constants::Player::DASH_SPEED;
-        XMFLOAT3 nextPos = m_Owner->m_Position;
+        XMFLOAT3 nextPos = m_Owner->GetPosition();
         nextPos.x += m_DashDirection.x * dashSpeed;
         nextPos.z += m_DashDirection.z * dashSpeed;
 
-        // �^�b�N���L�����͏Փ˔���ƍU��������s��
-        if (m_Owner->m_TackleTimer > 0) {
+        if (m_Owner->GetTackleTimer() > 0) {
             Enemy* hitTarget = nullptr;
             
-            // 1. ���b�N�I���Ώۂ�D��
-            if (m_Owner->m_LockOnTarget && !m_Owner->m_LockOnTarget->IsDestroy()) {
-                XMFLOAT3 diff = m_Owner->m_Position - m_Owner->m_LockOnTarget->GetPosition();
+            if (m_Owner->GetLockOnTarget() && !m_Owner->GetLockOnTarget()->IsDestroy()) {
+                XMFLOAT3 diff = m_Owner->GetPosition() - m_Owner->GetLockOnTarget()->GetPosition();
                 diff.y = 0.0f;
                 float dist = MathHelper::Length(diff);
-                if (dist < 1.0f + m_Owner->m_LockOnTarget->GetRadius()) {
-                    hitTarget = m_Owner->m_LockOnTarget;
+                if (dist < 1.0f + m_Owner->GetLockOnTarget()->GetRadius()) {
+                    hitTarget = m_Owner->GetLockOnTarget();
                 }
             }
             
-            // 2. ���͂̓G�𑖍�
             if (!hitTarget) {
                 for (GameObject* obj : Manager::GetGameObjectList()) {
                     if (!obj || obj->IsDestroy() || obj == m_Owner) continue;
@@ -136,7 +123,7 @@ void PlayerMovement::Update()
                     Enemy* e = static_cast<Enemy*>(obj);
                     if (e->GetEnemyState() == EnemyState::DEFEATED) continue;
                     
-                    XMFLOAT3 diff = m_Owner->m_Position - e->GetPosition();
+                    XMFLOAT3 diff = m_Owner->GetPosition() - e->GetPosition();
                     diff.y = 0.0f;
                     float dist = MathHelper::Length(diff);
                     if (dist < 1.0f + e->GetRadius()) {
@@ -146,13 +133,12 @@ void PlayerMovement::Update()
                 }
             }
             
-            // �_���[�W�E������΂��K�p
             if (hitTarget) {
                 if (hitTarget->GetObjectType() == ObjectType::Boss) {
                     BossEnemy* bossE = static_cast<BossEnemy*>(hitTarget);
-                    bossE->ApplyBossDamage(3, m_Owner->m_Position);
+                    bossE->ApplyBossDamage(3, m_Owner->GetPosition());
                 } else {
-                    XMFLOAT3 pushDir = hitTarget->GetPosition() - m_Owner->m_Position;
+                    XMFLOAT3 pushDir = hitTarget->GetPosition() - m_Owner->GetPosition();
                     pushDir.y = 0.0f;
                     float len = MathHelper::Length(pushDir);
                     if (len > 0.001f) { pushDir.x /= len; pushDir.z /= len; }
@@ -164,53 +150,43 @@ void PlayerMovement::Update()
                     hitTarget->Defeat(0.0f, 1.0f, 2.0f);
                 }
                 
-                // �q�b�g���o
                 Manager::AddHitStop(10);
                 if (g_Camera) {
                     g_Camera->Shake(0.25f, 10);
                 }
                 
-                m_Owner->m_TackleTimer = 0; // �^�b�N������
+                m_Owner->SetTackleTimer(0);
             }
         }
 
-        // �ǂƂ̏Փˉ��
         if (!Collision::CheckAABBCollision(m_Owner, nextPos, Manager::GetGameObjectList())) {
-            m_Owner->m_Position = nextPos;
+            m_Owner->SetPosition(nextPos);
         }
 
-        // �c�������i3�t���[�����Ɓj
         if (m_DashTimer % 3 == 0) {
             DashGhost ghost;
-            ghost.Position = m_Owner->m_Position;
-            ghost.Rotation = m_Owner->m_Rotation;
-            ghost.Scale = m_Owner->m_Scale;
+            ghost.Position = m_Owner->GetPosition();
+            ghost.Rotation = m_Owner->GetRotation();
+            ghost.Scale = m_Owner->GetScale();
             ghost.Alpha = 0.8f;
             m_DashGhosts.push_back(ghost);
         }
 
-        // �_�b�V���I�����̃o�E���h���o
         if (m_DashTimer == 0) {
             m_IsDashing = false;
-            m_Owner->m_Scale.y = 1.5f;
-            m_Owner->m_Scale.x = 0.7f;
-            m_Owner->m_Scale.z = 0.7f;
+            m_Owner->SetScale(XMFLOAT3(0.7f, 1.5f, 0.7f));
             m_ScaleVelocityY = 0.08f;
             m_ScaleVelocityX = -0.04f;
             m_ScaleVelocityZ = -0.04f;
         }
 
-
-        // �_�b�V������������̌����U����X�V
         UpdateSpringPhysics();
         return;
     }
 
-    // ������������������������������������������������������������������������������������������
-    // ��e�C��i�X�^���j���̃m�b�N�o�b�N����
-    // ������������������������������������������������������������������������������������������
-    if (m_Owner->m_DamageTimer > 0) {
-        XMFLOAT3 nextPos = m_Owner->m_Position;
+    // Damage knockback update
+    if (m_Owner->GetDamageTimer() > 0) {
+        XMFLOAT3 nextPos = m_Owner->GetPosition();
         nextPos.x += m_KnockbackVelocity.x;
         nextPos.z += m_KnockbackVelocity.z;
         
@@ -218,59 +194,51 @@ void PlayerMovement::Update()
         m_KnockbackVelocity.z *= 0.9f;
         
         if (!Collision::CheckAABBCollision(m_Owner, nextPos, Manager::GetGameObjectList())) {
-            m_Owner->m_Position = nextPos;
+            m_Owner->SetPosition(nextPos);
         }
     }
 
-    // ������������������������������������������������������������������������������������������
-    // �ʏ�ړ��ƃW�����v���͂̍X�V
-    // ������������������������������������������������������������������������������������������
-    if (m_Owner->m_DamageTimer <= 0) {
-        // �X�y�[�X�L�[�ŃW�����v�i2�i�W�����v�Ή��j
+    // Normal movement & jump update
+    if (m_Owner->GetDamageTimer() <= 0) {
         if (Input::GetKeyTrigger(0x20) && m_JumpCount < Constants::Player::MAX_JUMP_COUNT) {
             m_VelocityY = Constants::Player::JUMP_VELOCITY;
             m_IsJumping = true;
             m_JumpCount++;
 
-            // ���ݐ؂莞�̂��������o
-            m_Owner->m_Scale.y = 0.6f;
-            m_Owner->m_Scale.x = 1.3f;
-            m_Owner->m_Scale.z = 1.3f;
+            m_Owner->SetScale(XMFLOAT3(1.3f, 0.6f, 1.3f));
 
             m_ScaleVelocityY = 0.1f;
             m_ScaleVelocityX = -0.05f;
             m_ScaleVelocityZ = -0.05f;
         }
 
-        // �ʏ�ړ������̌Ăяo��
         UpdateNormalMovement();
     }
 
-    // ������������������������������������������������������������������������������������������
-    // �d�͂Ɛڒn����̓K�p
-    // ������������������������������������������������������������������������������������������
-    if (m_Owner->m_Position.y > -0.5f || m_VelocityY != 0.0f) {
+    // Gravity & Ground checks
+    XMFLOAT3 curPos = m_Owner->GetPosition();
+    if (curPos.y > -0.5f || m_VelocityY != 0.0f) {
         m_VelocityY -= Constants::Player::GRAVITY;
-        m_Owner->m_Position.y += m_VelocityY;
+        curPos.y += m_VelocityY;
+        m_Owner->SetPosition(curPos);
 
-        // �󒆂ł̈����L�΂����o�i�c���j
+        XMFLOAT3 curScale = m_Owner->GetScale();
         if (m_VelocityY > 0.01f) {
-            m_Owner->m_Scale.y += (1.0f + m_VelocityY * 1.5f - m_Owner->m_Scale.y) * 0.2f;
-            m_Owner->m_Scale.x += (1.0f - m_VelocityY * 0.75f - m_Owner->m_Scale.x) * 0.2f;
-            m_Owner->m_Scale.z += (1.0f - m_VelocityY * 0.75f - m_Owner->m_Scale.z) * 0.2f;
+            curScale.y += (1.0f + m_VelocityY * 1.5f - curScale.y) * 0.2f;
+            curScale.x += (1.0f - m_VelocityY * 0.75f - curScale.x) * 0.2f;
+            curScale.z += (1.0f - m_VelocityY * 0.75f - curScale.z) * 0.2f;
+            m_Owner->SetScale(curScale);
         }
 
-        // ���n����
-        if (m_Owner->m_Position.y <= -0.5f) {
-            m_Owner->m_Position.y = -0.5f;
+        curPos = m_Owner->GetPosition();
+        if (curPos.y <= -0.5f) {
+            curPos.y = -0.5f;
+            m_Owner->SetPosition(curPos);
             m_VelocityY = 0.0f;
             m_IsJumping = false;
             m_JumpCount = 0;
 
-            // ���n���ׂ̒ꉉ�o
-            m_Owner->m_Scale.y = 0.5f;
-            m_Owner->m_Scale.x = 1.3f;
-            m_Owner->m_Scale.z = 1.3f;
+            m_Owner->SetScale(XMFLOAT3(1.3f, 0.5f, 1.3f));
 
             m_ScaleVelocityY = -0.1f;
             m_ScaleVelocityX = 0.05f;
@@ -278,95 +246,98 @@ void PlayerMovement::Update()
         }
     }
 
-    // �p���x�i���񑬓x�j�̌v�Z
-    float diff = m_Owner->m_Rotation.y - oldRotY;
+    // Angular velocity
+    float diff = m_Owner->GetRotation().y - oldRotY;
     while (diff < -XM_PI) diff += XM_2PI;
     while (diff > XM_PI)  diff -= XM_2PI;
-    m_Owner->m_AngularVelocity = diff;
+    m_Owner->SetAngularVelocity(diff);
 
-    // ������������������������������������������������������������������������������������������
-    // �X�v�����O�����ɂ������������ƕ�s�h��
-    // ������������������������������������������������������������������������������������������
+    // Spring physics update
     UpdateSpringPhysics();
 
-    // 1�t���[����XZ�ړ��ʂ���ړ����x��Z�o
-    XMFLOAT3 actualVel = XMFLOAT3(m_Owner->m_Position.x - oldPos.x, m_Owner->m_Position.y - oldPos.y, m_Owner->m_Position.z - oldPos.z);
+    curPos = m_Owner->GetPosition();
+    XMFLOAT3 actualVel = XMFLOAT3(curPos.x - oldPos.x, curPos.y - oldPos.y, curPos.z - oldPos.z);
     float speed = sqrtf(actualVel.x * actualVel.x + actualVel.y * actualVel.y + actualVel.z * actualVel.z);
     float dt = 1.0f / 60.0f;
 
     if (speed > 0.005f) {
         m_MoveAnimation += speed * dt * 30.0f;
-        m_Owner->m_Scale.y += sinf(m_MoveAnimation * 3.0f) * 0.03f;
-        m_Owner->m_Scale.x -= sinf(m_MoveAnimation * 3.0f) * 0.015f;
-        m_Owner->m_Scale.z -= sinf(m_MoveAnimation * 3.0f) * 0.015f;
+        XMFLOAT3 curScale = m_Owner->GetScale();
+        curScale.y += sinf(m_MoveAnimation * 3.0f) * 0.03f;
+        curScale.x -= sinf(m_MoveAnimation * 3.0f) * 0.015f;
+        curScale.z -= sinf(m_MoveAnimation * 3.0f) * 0.015f;
+        m_Owner->SetScale(curScale);
     }
 
-    // �Փ˔���ɂ��߂荞�݂̉����߂����
+    // Resolve push out of collision
     Collision::ResolveAABBCollision(m_Owner, Manager::GetGameObjectList());
 }
 
 // =================================================================
-// �ʏ�ړ�����
+// Normal Movement
 // =================================================================
 void PlayerMovement::UpdateNormalMovement()
 {
     float camYaw = g_Camera ? g_Camera->GetAngleY() : 0.0f;
     XMFLOAT3 moveDir = PlayerController::GetMoveDirection(camYaw);
 
-    // �ړ����͂�����ꍇ�̂ݍ��W�Ɖ�]��X�V
     if (MathHelper::LengthSq(moveDir) > 0.001f) {
         float speed = Constants::Player::MOVE_SPEED;
-        XMFLOAT3 nextPos = m_Owner->m_Position;
+        XMFLOAT3 nextPos = m_Owner->GetPosition();
         nextPos.x += moveDir.x * speed;
         nextPos.z += moveDir.z * speed;
 
-        // �ǂƂ̏Փ˂��Ȃ���Έړ�����
         if (!Collision::CheckAABBCollision(m_Owner, nextPos, Manager::GetGameObjectList())) {
-            m_Owner->m_Position = nextPos;
+            m_Owner->SetPosition(nextPos);
         }
 
-        // �X�s���i�����E�蓮�j���łȂ��ꍇ�̂݁A�ړ������֌�����ς���
-        if (m_Owner->m_State != PlayerState::SPINNING) {
+        if (m_Owner->GetState() != PlayerState::SPINNING) {
             float targetYaw = atan2f(moveDir.x, moveDir.z);
-            m_Owner->m_Rotation.y = MathHelper::LerpAngle(m_Owner->m_Rotation.y, targetYaw, 0.15f);
+            XMFLOAT3 rot = m_Owner->GetRotation();
+            rot.y = MathHelper::LerpAngle(rot.y, targetYaw, 0.15f);
+            m_Owner->SetRotation(rot);
         }
     }
 }
 
 // =================================================================
-// �����������̃X�v�����O�������Z
+// Elastic Spring Calculation
 // =================================================================
 void PlayerMovement::UpdateSpringPhysics()
 {
     float springK = Constants::Player::SPRING_K;
     float damping = Constants::Player::DAMPING;
 
-    // X��
-    float forceX = (1.0f - m_Owner->m_Scale.x) * springK;
+    XMFLOAT3 scale = m_Owner->GetScale();
+
+    // X
+    float forceX = (1.0f - scale.x) * springK;
     m_ScaleVelocityX += forceX;
     m_ScaleVelocityX *= damping;
-    m_Owner->m_Scale.x += m_ScaleVelocityX;
+    scale.x += m_ScaleVelocityX;
 
-    // Y��
-    float forceY = (1.0f - m_Owner->m_Scale.y) * springK;
+    // Y
+    float forceY = (1.0f - scale.y) * springK;
     m_ScaleVelocityY += forceY;
     m_ScaleVelocityY *= damping;
-    m_Owner->m_Scale.y += m_ScaleVelocityY;
+    scale.y += m_ScaleVelocityY;
 
-    // Z��
-    float forceZ = (1.0f - m_Owner->m_Scale.z) * springK;
+    // Z
+    float forceZ = (1.0f - scale.z) * springK;
     m_ScaleVelocityZ += forceZ;
     m_ScaleVelocityZ *= damping;
-    m_Owner->m_Scale.z += m_ScaleVelocityZ;
+    scale.z += m_ScaleVelocityZ;
+
+    m_Owner->SetScale(scale);
 }
 
 // =================================================================
-// �_�b�V���c���̎����Ǘ�
+// Ghost Management
 // =================================================================
 void PlayerMovement::UpdateGhosts()
 {
     for (auto it = m_DashGhosts.begin(); it != m_DashGhosts.end(); ) {
-        it->Alpha -= 0.08f; // ���t���[���s�����x�����
+        it->Alpha -= 0.08f;
         if (it->Alpha <= 0.0f) {
             it = m_DashGhosts.erase(it);
         } else {

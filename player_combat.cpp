@@ -15,7 +15,7 @@
 using namespace DirectX;
 
 // =================================================================
-// �R���X�g���N�^ / �f�X�g���N�^
+// Constructor / Destructor
 // =================================================================
 PlayerCombat::PlayerCombat(Player* owner)
     : m_Owner(owner)
@@ -27,43 +27,43 @@ PlayerCombat::~PlayerCombat()
 }
 
 // =================================================================
-// ������
+// Initialize
 // =================================================================
 void PlayerCombat::Init()
 {
 }
 
 // =================================================================
-// ���t���[���X�V����
+// Update Frame
 // =================================================================
 void PlayerCombat::Update()
 {
-    // �K�[�h��Ԃ̍X�V�i�X�^�����łȂ��A���G��͂�ł��Ȃ��ʏ��Ԃ̂Ƃ��̂݉\�j
-    if (m_Owner->m_DamageTimer <= 0 && m_Owner->m_State == PlayerState::IDLE && !m_Owner->m_GrabbedEnemy) {
+    // Update guard status
+    if (m_Owner->GetDamageTimer() <= 0 && m_Owner->GetState() == PlayerState::IDLE && !m_Owner->GetGrabbedEnemy()) {
         if (PlayerController::IsGuardAction()) {
-            m_Owner->m_GuardTimer++;
+            m_Owner->IncrementGuardTimer();
         } else {
-            m_Owner->m_GuardTimer = 0;
+            m_Owner->SetGuardTimer(0);
         }
     } else {
-        m_Owner->m_GuardTimer = 0;
+        m_Owner->SetGuardTimer(0);
     }
 
-    // ���b�N�I���̍X�V�i�X���[���[�V�������̂ݗL���j
+    // Update Lockon
     if (Manager::IsSlowMotionActive()) {
         FindLockOnTarget();
     } else {
-        m_Owner->m_LockOnTarget = nullptr;
-        m_Owner->m_LockOnFrame = 0;
-        m_Owner->m_WarpSlashCount = 0;
-        m_Owner->m_CanWarpSlash = true;
+        m_Owner->SetLockOnTarget(nullptr);
+        m_Owner->SetLockOnFrame(0);
+        m_Owner->SetWarpSlashCount(0);
+        m_Owner->SetCanWarpSlash(true);
     }
 
-    m_Owner->m_MarkerTimer++;
+    m_Owner->IncrementMarkerTimer();
 
-    // ���т�X�^�����łȂ���΁A�e��Ԃ̍X�V��s��
-    if (m_Owner->m_DamageTimer <= 0) {
-        switch (m_Owner->m_State) {
+    // Check states if not stunned
+    if (m_Owner->GetDamageTimer() <= 0) {
+        switch (m_Owner->GetState()) {
         case PlayerState::IDLE:
             UpdateIdle();
             break;
@@ -78,19 +78,17 @@ void PlayerCombat::Update()
 }
 
 // =================================================================
-// IDLE�i�ʏ�j��Ԃ̐퓬�X�V
+// IDLE State Combat Update
 // =================================================================
 void PlayerCombat::UpdateIdle()
 {
-    // �^�b�N���L�����ɍ��N���b�N �� �G�̖ڂ̑O�Ƀe���|�[�g���ă^�b�N���I
-    if (m_Owner->m_TackleTimer > 0 && PlayerController::IsGrabOrThrowAction()) {
+    // Tackle Warp Attack
+    if (m_Owner->GetTackleTimer() > 0 && PlayerController::IsGrabOrThrowAction()) {
         Enemy* target = nullptr;
         
-        // ���b�N�I���Ώۂ�D��
-        if (m_Owner->m_LockOnTarget && !m_Owner->m_LockOnTarget->IsDestroy()) {
-            target = m_Owner->m_LockOnTarget;
+        if (m_Owner->GetLockOnTarget() && !m_Owner->GetLockOnTarget()->IsDestroy()) {
+            target = m_Owner->GetLockOnTarget();
         } else {
-            // �߂��̓G�����
             float nearestDist = 15.0f;
             for (GameObject* obj : Manager::GetGameObjectList()) {
                 if (!obj || obj == m_Owner || obj->IsDestroy()) continue;
@@ -98,7 +96,7 @@ void PlayerCombat::UpdateIdle()
                 Enemy* e = static_cast<Enemy*>(obj);
                 if (e->GetEnemyState() == EnemyState::DEFEATED) continue;
                 
-                float dist = MathHelper::Length(e->GetPosition() - m_Owner->m_Position);
+                float dist = MathHelper::Length(e->GetPosition() - m_Owner->GetPosition());
                 if (dist < nearestDist) {
                     nearestDist = dist;
                     target = e;
@@ -106,10 +104,9 @@ void PlayerCombat::UpdateIdle()
             }
         }
         
-        // �^�b�N���e���|�[�g���s
         if (target) {
             XMFLOAT3 targetPos = target->GetPosition();
-            XMFLOAT3 startPos = m_Owner->m_Position;
+            XMFLOAT3 startPos = m_Owner->GetPosition();
             
             XMVECTOR vStart = XMLoadFloat3(&startPos);
             XMVECTOR vTarget = XMLoadFloat3(&targetPos);
@@ -125,26 +122,26 @@ void PlayerCombat::UpdateIdle()
             XMVECTOR vWarpPos = vTarget - vDir * warpDistance;
             XMFLOAT3 warpPos;
             XMStoreFloat3(&warpPos, vWarpPos);
-            warpPos.y = m_Owner->m_Position.y; // �ڒn������ێ�
+            warpPos.y = m_Owner->GetPosition().y;
             
-            m_Owner->m_Position = warpPos;
+            m_Owner->SetPosition(warpPos);
             XMFLOAT3 dir;
             XMStoreFloat3(&dir, vDir);
-            m_Owner->m_Rotation.y = atan2f(dir.x, dir.z);
             
-            // �������ό`���o
-            m_Owner->m_Scale.y = 0.4f;
-            m_Owner->m_Scale.x = 1.8f;
-            m_Owner->m_Scale.z = 1.8f;
-            m_Owner->m_Movement->SetScaleVelocity(0.08f, -0.1f, 0.08f);
+            XMFLOAT3 rot = m_Owner->GetRotation();
+            rot.y = atan2f(dir.x, dir.z);
+            m_Owner->SetRotation(rot);
             
-            // �Ռ��g����
+            m_Owner->SetScale(XMFLOAT3(1.8f, 0.4f, 1.8f));
+            if (m_Owner->GetMovementModule()) {
+                m_Owner->GetMovementModule()->SetScaleVelocity(0.08f, -0.1f, 0.08f);
+            }
+            
             ShockwaveSystem::AddShockwave(warpPos, 5.0f, 0.0f, 2.5f, 4.0f, 20, 1.5f, 0);
             
-            // �_���[�W�K�p
             if (target->GetObjectType() == ObjectType::Boss) {
                 BossEnemy* boss = static_cast<BossEnemy*>(target);
-                boss->ApplyBossDamage(3, m_Owner->m_Position);
+                boss->ApplyBossDamage(3, m_Owner->GetPosition());
             } else {
                 XMFLOAT3 pushVel = XMFLOAT3(dir.x * 1.8f, 0.6f, dir.z * 1.8f);
                 target->SetVelocity(pushVel);
@@ -152,19 +149,18 @@ void PlayerCombat::UpdateIdle()
                 target->Defeat(0.0f, 1.0f, 2.0f);
             }
             
-            // �C���p�N�g���o
             Manager::AddHitStop(12);
             if (g_Camera) {
                 g_Camera->Shake(0.35f, 12);
             }
             
-            m_Owner->m_TackleTimer = 0;
+            m_Owner->SetTackleTimer(0);
             return;
         }
     }
 
-    // ���d�e���|�[�g�X���b�V����������i�X���[�������b�N�I�������U����3�񖢖��j
-    if (Manager::IsSlowMotionActive() && m_Owner->m_CanWarpSlash && m_Owner->m_LockOnTarget && m_Owner->m_WarpSlashCount < 3) {
+    // Warp Slash Counter (during Witch Time / Slow Motion)
+    if (Manager::IsSlowMotionActive() && m_Owner->CanWarpSlash() && m_Owner->GetLockOnTarget() && m_Owner->GetWarpSlashCount() < 3) {
         if (PlayerController::IsGrabOrThrowAction()) {
             bool hasGrabTarget = false;
             float grabRange = Constants::Player::GRAB_RANGE;
@@ -174,19 +170,18 @@ void PlayerCombat::UpdateIdle()
                 Enemy* e = static_cast<Enemy*>(obj);
                 if (e->GetEnemyState() != EnemyState::NORMAL) continue;
 
-                float dist = MathHelper::Length(e->GetPosition() - m_Owner->m_Position);
+                float dist = MathHelper::Length(e->GetPosition() - m_Owner->GetPosition());
                 if (dist < grabRange) {
                     hasGrabTarget = true;
                     break;
                 }
             }
 
-            // �͂ݗL���͈͓�ɓG�����Ȃ��ꍇ�̂݁A�e���|�[�g�X���b�V������
             if (!hasGrabTarget) {
-                m_Owner->m_WarpSlashCount++;
-                Enemy* target = m_Owner->m_LockOnTarget;
+                m_Owner->IncrementWarpSlashCount();
+                Enemy* target = m_Owner->GetLockOnTarget();
                 XMFLOAT3 targetPos = target->GetPosition();
-                XMFLOAT3 startPos = m_Owner->m_Position;
+                XMFLOAT3 startPos = m_Owner->GetPosition();
             
                 XMVECTOR vStart = XMLoadFloat3(&startPos);
                 XMVECTOR vTarget = XMLoadFloat3(&targetPos);
@@ -202,18 +197,18 @@ void PlayerCombat::UpdateIdle()
                 XMVECTOR vWarpPos = vTarget - vDir * warpDistance;
                 XMFLOAT3 warpPos;
                 XMStoreFloat3(&warpPos, vWarpPos);
-                warpPos.y = m_Owner->m_Position.y;
+                warpPos.y = m_Owner->GetPosition().y;
                 
-                m_Owner->m_Position = warpPos;
-                m_Owner->m_Scale.y = 0.4f;
-                m_Owner->m_Scale.x = 1.8f;
-                m_Owner->m_Scale.z = 1.8f;
+                m_Owner->SetPosition(warpPos);
+                m_Owner->SetScale(XMFLOAT3(1.8f, 0.4f, 1.8f));
                 
                 XMFLOAT3 dir;
                 XMStoreFloat3(&dir, vDir);
-                m_Owner->m_Rotation.y = atan2f(dir.x, dir.z);
                 
-                // ���d�G�t�F�N�g�̒ǉ�
+                XMFLOAT3 rot = m_Owner->GetRotation();
+                rot.y = atan2f(dir.x, dir.z);
+                m_Owner->SetRotation(rot);
+                
                 XMFLOAT3 boltStart = startPos;
                 XMFLOAT3 boltEnd = targetPos;
                 boltStart.y += 0.3f;
@@ -222,13 +217,11 @@ void PlayerCombat::UpdateIdle()
                 m_Owner->AddLightningEffect(XMFLOAT3(boltStart.x + 0.1f, boltStart.y, boltStart.z), XMFLOAT3(boltEnd.x + 0.1f, boltEnd.y, boltEnd.z));
                 m_Owner->AddLightningEffect(XMFLOAT3(boltStart.x - 0.1f, boltStart.y, boltStart.z), XMFLOAT3(boltEnd.x - 0.1f, boltEnd.y, boltEnd.z));
                 
-                // �Ռ��g
                 ShockwaveSystem::AddShockwave(warpPos, 4.0f, 0.0f, 2.5f, 4.0f, 20, 1.5f, 0);
                 
-                // �_���[�W�K�p
                 if (target->GetObjectType() == ObjectType::Boss) {
                     BossEnemy* boss = static_cast<BossEnemy*>(target);
-                    boss->ApplyBossDamage(4, m_Owner->m_Position);
+                    boss->ApplyBossDamage(4, m_Owner->GetPosition());
                 } else {
                     XMFLOAT3 pushVel = XMFLOAT3(dir.x * 1.6f, 0.6f, dir.z * 1.6f);
                     target->SetVelocity(pushVel);
@@ -237,7 +230,6 @@ void PlayerCombat::UpdateIdle()
                     target->Defeat(0.0f, 2.0f, 3.0f);
                 }
                 
-                // �C���p�N�g
                 Manager::AddHitStop(15);
                 if (g_Camera) {
                     g_Camera->Shake(0.45f, 15);
@@ -249,7 +241,7 @@ void PlayerCombat::UpdateIdle()
         }
     }
 
-    // �ʏ�̓G�̒͂ݏ���
+    // Try grabbing a nearby enemy
     if (PlayerController::IsGrabOrThrowAction()) {
         float grabRange = Constants::Player::GRAB_RANGE;
         Enemy* nearest  = nullptr;
@@ -261,7 +253,7 @@ void PlayerCombat::UpdateIdle()
             Enemy* e = static_cast<Enemy*>(obj);
             if (e->GetEnemyState() != EnemyState::NORMAL) continue;
 
-            XMFLOAT3 toEnemy = e->GetPosition() - m_Owner->m_Position;
+            XMFLOAT3 toEnemy = e->GetPosition() - m_Owner->GetPosition();
             float dist = MathHelper::Length(toEnemy);
             if (dist < nearestDist) {
                 nearestDist = dist;
@@ -276,65 +268,65 @@ void PlayerCombat::UpdateIdle()
 }
 
 // =================================================================
-// GRABBED�i�G�͂݁j��Ԃ̐퓬�X�V
+// GRABBED State Update
 // =================================================================
 void PlayerCombat::UpdateGrabbed()
 {
-    // �E�N���b�N�F�X�s���J�n
-    if (m_Owner->m_GrabbedEnemy && PlayerController::IsSpinToggleAction()) {
-        m_Owner->m_State = PlayerState::SPINNING;
-        m_Owner->m_CurrentSpinSpeed = Constants::Player::MIN_SPIN_SPEED;
+    if (m_Owner->GetGrabbedEnemy() && PlayerController::IsSpinToggleAction()) {
+        m_Owner->SetState(PlayerState::SPINNING);
+        m_Owner->SetCurrentSpinSpeed(Constants::Player::MIN_SPIN_SPEED);
     }
 
-    // ���N���b�N�F���ړ�����
-    if (m_Owner->m_GrabbedEnemy && PlayerController::IsGrabOrThrowAction()) {
+    if (m_Owner->GetGrabbedEnemy() && PlayerController::IsGrabOrThrowAction()) {
         Throw();
         return;
     }
 
-
-    if (!m_Owner->m_GrabbedEnemy) {
-        m_Owner->m_State = PlayerState::IDLE;
+    if (!m_Owner->GetGrabbedEnemy()) {
+        m_Owner->SetState(PlayerState::IDLE);
     }
 }
 
 // =================================================================
-// SPINNING�i�U��񂵁j��Ԃ̐퓬�X�V
+// SPINNING State Update
 // =================================================================
 void PlayerCombat::UpdateSpinning()
 {
-    // �X�s������
     float targetSpinSpeed = Constants::Player::MAX_SPIN_SPEED;
-    m_Owner->m_CurrentSpinSpeed += (targetSpinSpeed - m_Owner->m_CurrentSpinSpeed) * Constants::Player::SPIN_ACCELERATION;
+    float currentSpeed = m_Owner->GetCurrentSpinSpeed();
+    currentSpeed += (targetSpinSpeed - currentSpeed) * Constants::Player::SPIN_ACCELERATION;
+    m_Owner->SetCurrentSpinSpeed(currentSpeed);
 
-    m_Owner->m_Rotation.y += m_Owner->m_CurrentSpinSpeed;
-    if (m_Owner->m_Rotation.y > XM_2PI) m_Owner->m_Rotation.y -= XM_2PI;
+    XMFLOAT3 rot = m_Owner->GetRotation();
+    rot.y += currentSpeed;
+    if (rot.y > XM_2PI) rot.y -= XM_2PI;
+    m_Owner->SetRotation(rot);
 
     if (g_Camera) {
-        float dynamicShake = 0.01f + m_Owner->m_CurrentSpinSpeed * 0.15f;
+        float dynamicShake = 0.01f + currentSpeed * 0.15f;
         g_Camera->Shake(dynamicShake, 2);
     }
 
-    // �z������
-    if (m_Owner->m_HasVacuumItem) {
+    // Vacuum absorption effect
+    if (m_Owner->HasVacuumItem()) {
         float vacuumRadius = 8.0f;
         float vacuumForce = 0.03f;
 
         for (GameObject* obj : Manager::GetGameObjectList()) {
-            if (!obj || obj == m_Owner || obj == m_Owner->m_GrabbedEnemy) continue;
+            if (!obj || obj == m_Owner || obj == m_Owner->GetGrabbedEnemy()) continue;
 
             if (obj->GetObjectType() == ObjectType::Enemy) {
                 Enemy* enemy = static_cast<Enemy*>(obj);
                 if (enemy->GetEnemyState() == EnemyState::NORMAL || enemy->GetEnemyState() == EnemyState::CHASING) {
                     XMFLOAT3 enemyPos = enemy->GetPosition();
-                    XMFLOAT3 diff = m_Owner->m_Position - enemyPos;
+                    XMFLOAT3 diff = m_Owner->GetPosition() - enemyPos;
                     float distSq = MathHelper::LengthSq(diff);
 
                     if (distSq < vacuumRadius * vacuumRadius && distSq > 0.01f) {
                         float dist = sqrtf(distSq);
                         XMFLOAT3 dir = diff / dist;
 
-                        float spinDirSign = (m_Owner->m_AngularVelocity >= 0.0f) ? 1.0f : -1.0f;
+                        float spinDirSign = (m_Owner->GetAngularVelocity() >= 0.0f) ? 1.0f : -1.0f;
                         XMFLOAT3 tangent = XMFLOAT3(-dir.z, 0.0f, dir.x) * spinDirSign * 0.3f;
                         XMFLOAT3 force = (dir + tangent) * vacuumForce;
 
@@ -350,58 +342,57 @@ void PlayerCombat::UpdateSpinning()
         }
     }
 
-    // ���N���b�N�F������
     if (PlayerController::IsGrabOrThrowAction()) {
         Throw();
         return;
     }
 
-    // �E�N���b�N�F�͂ݏ�Ԃɖ߂�i�L�����Z���j
     if (PlayerController::IsSpinToggleAction()) {
-        m_Owner->m_State = PlayerState::GRABBED;
-        m_Owner->m_CurrentSpinSpeed = Constants::Player::MIN_SPIN_SPEED;
+        m_Owner->SetState(PlayerState::GRABBED);
+        m_Owner->SetCurrentSpinSpeed(Constants::Player::MIN_SPIN_SPEED);
     }
 
-
-    if (!m_Owner->m_GrabbedEnemy) {
-        m_Owner->m_State = PlayerState::IDLE;
-        m_Owner->m_CurrentSpinSpeed = Constants::Player::MIN_SPIN_SPEED;
+    if (!m_Owner->GetGrabbedEnemy()) {
+        m_Owner->SetState(PlayerState::IDLE);
+        m_Owner->SetCurrentSpinSpeed(Constants::Player::MIN_SPIN_SPEED);
     }
 }
 
 // =================================================================
-// �͂�ł���G�𓊂���΂�
+// Throw Object
 // =================================================================
 void PlayerCombat::Throw()
 {
-    if (m_Owner->m_GrabbedEnemy) {
+    if (m_Owner->GetGrabbedEnemy()) {
         float camYaw = g_Camera ? g_Camera->GetAngleY() : 0.0f;
-        m_Owner->m_Rotation.y = camYaw;
+        
+        XMFLOAT3 rot = m_Owner->GetRotation();
+        rot.y = camYaw;
+        m_Owner->SetRotation(rot);
 
-        XMFLOAT3 fwdF = XMFLOAT3(sinf(m_Owner->m_Rotation.y), 0.0f, cosf(m_Owner->m_Rotation.y));
+        XMFLOAT3 fwdF = XMFLOAT3(sinf(rot.y), 0.0f, cosf(rot.y));
 
         float baseThrowSpeed = Constants::Player::THROW_FORCE;
-        float speedBoost = abs(m_Owner->m_AngularVelocity) * 6.0f; 
+        float speedBoost = abs(m_Owner->GetAngularVelocity()) * 6.0f; 
         float totalSpeed = baseThrowSpeed + speedBoost;
 
         XMFLOAT3 throwVelocity = fwdF * totalSpeed;
 
-        if (m_Owner->m_HasGigantItem) {
+        if (m_Owner->HasGigantItem()) {
             throwVelocity.y = -0.3f - speedBoost * 0.6f;
         }
 
-        m_Owner->m_GrabbedEnemy->SetVelocity(throwVelocity);
-        m_Owner->m_GrabbedEnemy->SetEnemyState(EnemyState::FLYING);
+        m_Owner->GetGrabbedEnemy()->SetVelocity(throwVelocity);
+        m_Owner->GetGrabbedEnemy()->SetEnemyState(EnemyState::FLYING);
 
-        // �A�C�e�����ʂ̓K�p
-        if (m_Owner->m_HasVacuumItem) {
-            m_Owner->m_GrabbedEnemy->SetExplosive(true);
+        if (m_Owner->HasVacuumItem()) {
+            m_Owner->GetGrabbedEnemy()->SetExplosive(true);
         }
-        if (m_Owner->m_HasLightningItem) {
-            m_Owner->m_GrabbedEnemy->SetLightning(true);
+        if (m_Owner->HasLightningItem()) {
+            m_Owner->GetGrabbedEnemy()->SetLightning(true);
         }
 
-        // ���]���̓G���Ďˏo
+        // Throw vacuumed enemies as well
         for (GameObject* obj : Manager::GetGameObjectList()) {
             if (!obj) continue;
             if (obj->GetObjectType() != ObjectType::Enemy) continue;
@@ -416,54 +407,45 @@ void PlayerCombat::Throw()
             }
         }
 
-        // �t���O����
-        m_Owner->m_HasVacuumItem = false;
-        m_Owner->m_HasGigantItem = false;
-        m_Owner->m_HasLightningItem = false;
+        m_Owner->SetHasVacuumItem(false);
+        m_Owner->SetHasGigantItem(false);
+        m_Owner->SetHasLightningItem(false);
 
-        m_Owner->m_GrabbedEnemy = nullptr;
-        m_Owner->m_State = PlayerState::IDLE;
-        m_Owner->m_IsAutoSpinning = false;
+        m_Owner->SetGrabbedEnemy(nullptr);
+        m_Owner->SetState(PlayerState::IDLE);
+        m_Owner->SetAutoSpinning(false);
 
-        // �L�k���o
-        m_Owner->m_Scale.y = 0.5f;
-        m_Owner->m_Scale.x = 1.6f;
-        m_Owner->m_Scale.z = 1.6f;
+        m_Owner->SetScale(XMFLOAT3(1.6f, 0.5f, 1.6f));
 
-        // �J�����V�F�C�N
-        float throwShake = 0.08f + abs(m_Owner->m_AngularVelocity) * 1.8f;
+        float throwShake = 0.08f + abs(m_Owner->GetAngularVelocity()) * 1.8f;
         if (throwShake > 0.40f) throwShake = 0.40f;
         g_Camera->Shake(throwShake, 12);
     }
 }
 
 // =================================================================
-// ��e�_���[�W�K�p
+// Apply Damage
 // =================================================================
 void PlayerCombat::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
 {
-    // �f�o�b�O�p�̖��G���[�h�܂��͒ʏ�̖��G���Ԓ��̏ꍇ�̓_���[�W�𖳌���
-    if (Constants::Debug::INVINCIBLE_PLAYER || m_Owner->m_InvincibleTimer > 0 || m_Owner->m_HP <= 0) return;
+    if (Constants::Debug::INVINCIBLE_PLAYER || m_Owner->GetInvincibleTimer() > 0 || m_Owner->GetHP() <= 0) return;
 
-    m_Owner->m_HP -= damage;
-    if (m_Owner->m_HP < 0) m_Owner->m_HP = 0;
+    m_Owner->SetHP(m_Owner->GetHP() - damage);
+    if (m_Owner->GetHP() < 0) m_Owner->SetHP(0);
 
-    m_Owner->m_Scale.y = 0.5f;
-    m_Owner->m_Scale.x = 1.7f;
-    m_Owner->m_Scale.z = 1.7f;
+    m_Owner->SetScale(XMFLOAT3(1.7f, 0.5f, 1.7f));
 
-    m_Owner->m_DamageTimer = Constants::Player::DAMAGE_STUN_DURATION * 2; // 60�t���[��
-    m_Owner->m_InvincibleTimer = Constants::Player::INVINCIBLE_DURATION * 3; // 180�t���[��
+    m_Owner->SetDamageTimer(Constants::Player::DAMAGE_STUN_DURATION * 2);
+    m_Owner->SetInvincibleTimer(Constants::Player::INVINCIBLE_DURATION * 3);
 
-    if (m_Owner->m_GrabbedEnemy) {
-        m_Owner->m_GrabbedEnemy->SetEnemyState(EnemyState::NORMAL);
-        m_Owner->m_GrabbedEnemy->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
-        m_Owner->m_GrabbedEnemy = nullptr;
+    if (m_Owner->GetGrabbedEnemy()) {
+        m_Owner->GetGrabbedEnemy()->SetEnemyState(EnemyState::NORMAL);
+        m_Owner->GetGrabbedEnemy()->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
+        m_Owner->SetGrabbedEnemy(nullptr);
     }
-    m_Owner->m_State = PlayerState::IDLE;
+    m_Owner->SetState(PlayerState::IDLE);
 
-    // �m�b�N�o�b�N�v�Z
-    DirectX::XMFLOAT3 diff = m_Owner->m_Position - enemyPos;
+    DirectX::XMFLOAT3 diff = m_Owner->GetPosition() - enemyPos;
     diff.y = 0.0f;
     float dist = MathHelper::Length(diff);
     if (dist > 0.001f) {
@@ -474,7 +456,9 @@ void PlayerCombat::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
     }
 
     XMFLOAT3 knockback = DirectX::XMFLOAT3(diff.x * 0.35f, 0.0f, diff.z * 0.35f);
-    m_Owner->m_Movement->ApplyKnockback(knockback);
+    if (m_Owner->GetMovementModule()) {
+        m_Owner->GetMovementModule()->ApplyKnockback(knockback);
+    }
 
     if (g_Camera) {
         g_Camera->Shake(0.35f, 12);
@@ -483,11 +467,10 @@ void PlayerCombat::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
 }
 
 // =================================================================
-// �p���B�������̃J�E���^�[���s
+// Parry Counter
 // =================================================================
 void PlayerCombat::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
 {
-    // �T���h�o�b�O�G�̐���
     Enemy* sandbag = Manager::AddGameObject<Enemy>();
     if (sandbag) {
         XMFLOAT3 spawnPos = bulletPos;
@@ -497,25 +480,21 @@ void PlayerCombat::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
         sandbag->SetSandbag(true);
     }
 
-    // �������ό`
-    m_Owner->m_Scale.y = 1.3f;
-    m_Owner->m_Scale.x = 0.8f;
-    m_Owner->m_Scale.z = 0.8f;
-    m_Owner->m_Movement->SetScaleVelocity(-0.04f, 0.08f, -0.04f);
+    m_Owner->SetScale(XMFLOAT3(0.8f, 1.3f, 0.8f));
+    if (m_Owner->GetMovementModule()) {
+        m_Owner->GetMovementModule()->SetScaleVelocity(-0.04f, 0.08f, -0.04f);
+    }
 
-    // �ΉԃC�i�Y�}�O�Ղ̐���
-    XMFLOAT3 boltStart = m_Owner->m_Position;
+    XMFLOAT3 boltStart = m_Owner->GetPosition();
     boltStart.y += 0.3f;
     XMFLOAT3 boltEnd = bulletPos;
     boltEnd.y += 0.3f;
     m_Owner->AddLightningEffect(boltStart, boltEnd);
 
-    // �Ռ��g
     XMFLOAT3 shockPos = bulletPos;
     shockPos.y = -0.95f;
     ShockwaveSystem::AddShockwave(shockPos, 3.0f, 1.5f, 0.8f, 0.0f, 16, 0.0f, 0);
 
-    // �q�b�g���o
     Manager::AddHitStop(8);
     if (g_Camera) {
         g_Camera->Shake(0.2f, 10);
@@ -526,7 +505,7 @@ void PlayerCombat::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
 }
 
 // =================================================================
-// ���b�N�I���ΏےT���i�X���[���̂݁j
+// Find Lockon Target
 // =================================================================
 void PlayerCombat::FindLockOnTarget()
 {
@@ -541,7 +520,7 @@ void PlayerCombat::FindLockOnTarget()
     Enemy* bestTarget = nullptr;
     float maxCos = -1.0f;
     float maxDistance = 30.0f;
-    float minCos = 0.7071f; // cos(45�x)
+    float minCos = 0.7071f;
 
     for (GameObject* obj : Manager::GetGameObjectList()) {
         if (!obj || obj == m_Owner || obj->IsDestroy()) continue;
@@ -551,12 +530,12 @@ void PlayerCombat::FindLockOnTarget()
         Enemy* enemy = static_cast<Enemy*>(obj);
         EnemyState state = enemy->GetEnemyState();
         if (state == EnemyState::DEFEATED || state == EnemyState::GRABBED || state == EnemyState::VACUUMED) continue;
-        if (enemy == m_Owner->m_GrabbedEnemy) continue;
+        if (enemy == m_Owner->GetGrabbedEnemy()) continue;
 
         XMFLOAT3 enemyPos = enemy->GetPosition();
         XMVECTOR vEnemyPos = XMLoadFloat3(&enemyPos);
 
-        float dist = MathHelper::Length(enemyPos - m_Owner->m_Position);
+        float dist = MathHelper::Length(enemyPos - m_Owner->GetPosition());
         if (dist > maxDistance) continue;
 
         XMVECTOR vToEnemy = XMVector3Normalize(vEnemyPos - vCamPos);
@@ -570,10 +549,10 @@ void PlayerCombat::FindLockOnTarget()
         }
     }
 
-    if (bestTarget != m_Owner->m_LockOnTarget) {
-        m_Owner->m_LockOnTarget = bestTarget;
-        m_Owner->m_LockOnFrame = 0;
-    } else if (m_Owner->m_LockOnTarget != nullptr) {
-        m_Owner->m_LockOnFrame++;
+    if (bestTarget != m_Owner->GetLockOnTarget()) {
+        m_Owner->SetLockOnTarget(bestTarget);
+        m_Owner->SetLockOnFrame(0);
+    } else if (m_Owner->GetLockOnTarget() != nullptr) {
+        m_Owner->IncrementLockOnFrame();
     }
 }
