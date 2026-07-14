@@ -4,6 +4,7 @@
 #include "enemy_bullet.h"
 #include "math_helper.h"
 #include "collision.h"
+#include "spatial_grid.h"
 
 // ─────────────────────────────────────────────
 // 初期化
@@ -47,25 +48,25 @@ void AttackingEnemy::Update()
             // ─── ① 周囲の敵を迂回するための反発ベクトル（Steering Avoidance）の計算 ───
             XMFLOAT3 steer = toPlayer; // 基本はプレイヤーへの方向
 
-            for (GameObject* obj : Manager::GetGameObjectList())
+            // SpatialGrid で AVOID_RADIUS 以内の敵のみを取得（O(n)全査少）
+            std::vector<Enemy*> nearbyEnemies;
+            SpatialGrid::GetInstance().FindNearbyEnemies(m_Position, AVOID_RADIUS, nearbyEnemies);
+
+            for (Enemy* other : nearbyEnemies)
             {
-                if (!obj || obj == this || obj->IsDestroy()) continue;
+                if (!other || other == this || other->IsDestroy()) continue;
 
-                // 他の敵（サンドバックエネミー または 射撃エネミー）に対して反発する
-                if (obj->GetObjectType() == ObjectType::Enemy)
+                XMFLOAT3 otherPos = other->GetPosition();
+                XMFLOAT3 diff = m_Position - otherPos;
+                diff.y = 0.0f; // 水平面のみ考慮
+
+                float d = MathHelper::Length(diff);
+                if (d < AVOID_RADIUS && d > 0.001f)
                 {
-                    XMFLOAT3 otherPos = obj->GetPosition();
-                    XMFLOAT3 diff = m_Position - otherPos;
-                    diff.y = 0.0f; // 水平面のみ考慮
-
-                    float d = MathHelper::Length(diff);
-                    if (d < AVOID_RADIUS && d > 0.001f)
-                    {
-                        // 距離が近いほど、強い反発力を進行方向にブレンドする
-                        float strength = (AVOID_RADIUS - d) / AVOID_RADIUS;
-                        steer.x += (diff.x / d) * strength * AVOID_FORCE;
-                        steer.z += (diff.z / d) * strength * AVOID_FORCE;
-                    }
+                    // 距離が近いほど、強い反発力を進行方向にブレンドする
+                    float strength = (AVOID_RADIUS - d) / AVOID_RADIUS;
+                    steer.x += (diff.x / d) * strength * AVOID_FORCE;
+                    steer.z += (diff.z / d) * strength * AVOID_FORCE;
                 }
             }
 
@@ -123,20 +124,21 @@ void AttackingEnemy::Update()
                 // 衝突した相手が敵であるかチェックし、敵ならジャンプする
                 if (isGrounded)
                 {
-                    // 自身のAABBと衝突する敵を特定する
-                    for (GameObject* obj : Manager::GetGameObjectList())
+                    // SpatialGrid で近傍の敵のみを検索してAABB判定
+                    std::vector<Enemy*> nearbyForJump;
+                    SpatialGrid::GetInstance().FindNearbyEnemies(m_Position, AVOID_RADIUS * 2.0f, nearbyForJump);
+
+                    for (Enemy* other : nearbyForJump)
                     {
-                        if (!obj || obj == this || obj->IsDestroy()) continue;
-                        if (obj->GetObjectType() == ObjectType::Enemy)
+                        if (!other || other == this || other->IsDestroy()) continue;
+
+                        // AABB判定
+                        if (Collision::CheckAABB(this, nextPos, other))
                         {
-                            // AABB判定
-                            if (Collision::CheckAABB(this, nextPos, obj))
-                            {
-                                // 敵と衝突しているなら、ジャンプ初速を付与！
-                                vel.y = JUMP_FORCE;
-                                isGrounded = false;
-                                break;
-                            }
+                            // 敵と衝突しているなら、ジャンプ初速を付与！
+                            vel.y = JUMP_FORCE;
+                            isGrounded = false;
+                            break;
                         }
                     }
                 }

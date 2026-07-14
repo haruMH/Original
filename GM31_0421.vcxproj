@@ -165,6 +165,7 @@
     <ClCompile Include="gameplay_scene.cpp" />
     <ClCompile Include="clear_scene.cpp" />
     <ClCompile Include="gameover_scene.cpp" />
+    <ClCompile Include="spatial_grid.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -174,6 +175,7 @@
     <ClCompile Include="imgui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="spatial_grid.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="field.h" />
     <ClInclude Include="gameobject.h" />

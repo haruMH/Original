@@ -12,44 +12,8 @@
 #include "game_rule.h"
 #include "explosion_system.h"
 #include "score_popup.h"
+#include "spatial_grid.h"
 #include "boss_enemy.h"
-#include "game_constants.h"
-
-namespace {
-    // 空間分割用のグリッド構造体
-    struct CollisionGrid {
-        static constexpr float CELL_SIZE = Constants::Collision::GRID_CELL_SIZE;
-        static constexpr int GRID_COLS = Constants::Collision::GRID_COLS;
-        static constexpr int GRID_ROWS = Constants::Collision::GRID_ROWS;
-        static constexpr float GRID_MIN_X = Constants::Collision::GRID_MIN_X;
-        static constexpr float GRID_MIN_Z = Constants::Collision::GRID_MIN_Z;
-
-        std::vector<Enemy*> cells[GRID_ROWS][GRID_COLS];
-
-        void Clear() {
-            for (int r = 0; r < GRID_ROWS; ++r) {
-                for (int c = 0; c < GRID_COLS; ++c) {
-                    cells[r][c].clear();
-                }
-            }
-        }
-
-        void Register(Enemy* enemy) {
-            if (!enemy) return;
-            XMFLOAT3 pos = enemy->GetPosition();
-            int col = static_cast<int>(floorf((pos.x - GRID_MIN_X) / CELL_SIZE));
-            int row = static_cast<int>(floorf((pos.z - GRID_MIN_Z) / CELL_SIZE));
-
-            col = (std::max)(0, (std::min)(col, GRID_COLS - 1));
-            row = (std::max)(0, (std::min)(row, GRID_ROWS - 1));
-
-            cells[row][col].push_back(enemy);
-        }
-    };
-
-    // グリッドの実体
-    CollisionGrid g_CollisionGrid;
-}
 
 // namespace LightningConfig は削除され、Constants::Lightning (game_constants.h) に統合されました。
 
@@ -71,37 +35,30 @@ static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
         Enemy* nearest = nullptr;
         float nearestDistSq = chainRadius * chainRadius;
 
-        // グリッド座標を算出して近接セルのみを走査（半径8mに対しセルサイズ5mのため周囲2セル分を探索）
-        int centerCol = static_cast<int>(floorf((currentPos.x - CollisionGrid::GRID_MIN_X) / CollisionGrid::CELL_SIZE));
-        int centerRow = static_cast<int>(floorf((currentPos.z - CollisionGrid::GRID_MIN_Z) / CollisionGrid::CELL_SIZE));
+        // SpatialGrid の FindNearbyEnemies で周囲の敵を絞り込む
+        std::vector<Enemy*> candidates;
+        SpatialGrid::GetInstance().FindNearbyEnemies(currentPos, chainRadius, candidates);
 
-        for (int dr = -2; dr <= 2; ++dr) {
-            for (int dc = -2; dc <= 2; ++dc) {
-                int r = centerRow + dr;
-                int c = centerCol + dc;
-                if (r >= 0 && r < CollisionGrid::GRID_ROWS && c >= 0 && c < CollisionGrid::GRID_COLS) {
-                    for (Enemy* enemy : g_CollisionGrid.cells[r][c]) {
-                        if (!enemy || enemy->IsDestroy()) continue;
+        for (Enemy* enemy : candidates) {
+            if (!enemy || enemy->IsDestroy()) continue;
 
-                        // すでに撃破済み、または今回の連鎖リストに含まれている敵は除外
-                        EnemyState eState = enemy->GetEnemyState();
-                        if (eState == EnemyState::DEFEATED || eState == EnemyState::BLOWN_AWAY) continue;
-                        if (std::find(chainedEnemies.begin(), chainedEnemies.end(), enemy) != chainedEnemies.end()) continue;
+            // すでに撃破済み、または今回の連鎖リストに含まれている敵は除外
+            EnemyState eState = enemy->GetEnemyState();
+            if (eState == EnemyState::DEFEATED || eState == EnemyState::BLOWN_AWAY) continue;
+            if (std::find(chainedEnemies.begin(), chainedEnemies.end(), enemy) != chainedEnemies.end()) continue;
 
-                        XMFLOAT3 ePos = enemy->GetPosition();
-                        float dx = ePos.x - currentPos.x;
-                        float dy = ePos.y - currentPos.y;
-                        float dz = ePos.z - currentPos.z;
-                        float distSq = dx * dx + dy * dy + dz * dz;
+            XMFLOAT3 ePos = enemy->GetPosition();
+            float dx = ePos.x - currentPos.x;
+            float dy = ePos.y - currentPos.y;
+            float dz = ePos.z - currentPos.z;
+            float distSq = dx * dx + dy * dy + dz * dz;
 
-                        if (distSq < nearestDistSq) {
-                            nearestDistSq = distSq;
-                            nearest = enemy;
-                        }
-                    }
-                }
+            if (distSq < nearestDistSq) {
+                nearestDistSq = distSq;
+                nearest = enemy;
             }
         }
+
 
         if (nearest) {
             XMFLOAT3 nextPos = nearest->GetPosition();
@@ -287,7 +244,7 @@ static void HandlePlayerItemPickup(Player* player, const std::vector<GameObject*
 // ─────────────────────────────────────────────
 // プレイヤーのスピン中におけるなぎ払い判定
 // ─────────────────────────────────────────────
-static void HandleSpinSweep(Player* player, CollisionGrid& grid)
+static void HandleSpinSweep(Player* player, SpatialGrid& grid)
 {
     if (player->GetState() != PlayerState::SPINNING) return;
 
@@ -297,17 +254,16 @@ static void HandleSpinSweep(Player* player, CollisionGrid& grid)
     XMFLOAT3 gPos = grabbed->GetPosition();
     float gRadius = grabbed->GetRadius();
 
-    // 周囲9セルの敵とだけ衝突判定を行う
-    int centerCol = static_cast<int>(floorf((gPos.x - CollisionGrid::GRID_MIN_X) / CollisionGrid::CELL_SIZE));
-    int centerRow = static_cast<int>(floorf((gPos.z - CollisionGrid::GRID_MIN_Z) / CollisionGrid::CELL_SIZE));
+    // 周囲セルの敵とだけ衝突判定を行う（SpatialGrid::GetCell 経由）
+    int centerCol = static_cast<int>(floorf((gPos.x - SpatialGrid::GRID_MIN_X) / SpatialGrid::CELL_SIZE));
+    int centerRow = static_cast<int>(floorf((gPos.z - SpatialGrid::GRID_MIN_Z) / SpatialGrid::CELL_SIZE));
 
     for (int dr = -1; dr <= 1; ++dr) {
         for (int dc = -1; dc <= 1; ++dc) {
             int r = centerRow + dr;
             int c = centerCol + dc;
-            if (r < 0 || r >= CollisionGrid::GRID_ROWS || c < 0 || c >= CollisionGrid::GRID_COLS) continue;
 
-            for (Enemy* enemy : grid.cells[r][c]) {
+            for (Enemy* enemy : grid.GetCell(r, c)) {
                 if (!enemy || enemy->IsDestroy() || enemy == grabbed) continue;
 
                 // 対象エネミーがすでに倒されていたら除外
@@ -432,20 +388,19 @@ static bool HandleFlyingVsBoss(
 static void HandleFlyingVsEnemy(
     Enemy*          flying,
     Player*         player,
-    CollisionGrid&  grid,
+    SpatialGrid&    grid,
     bool&           explosionThisFrame)
 {
     XMFLOAT3 fPos = flying->GetPosition();
-    int centerCol = static_cast<int>(floorf((fPos.x - CollisionGrid::GRID_MIN_X) / CollisionGrid::CELL_SIZE));
-    int centerRow = static_cast<int>(floorf((fPos.z - CollisionGrid::GRID_MIN_Z) / CollisionGrid::CELL_SIZE));
+    int centerCol = static_cast<int>(floorf((fPos.x - SpatialGrid::GRID_MIN_X) / SpatialGrid::CELL_SIZE));
+    int centerRow = static_cast<int>(floorf((fPos.z - SpatialGrid::GRID_MIN_Z) / SpatialGrid::CELL_SIZE));
 
     for (int dr = -1; dr <= 1; ++dr) {
         for (int dc = -1; dc <= 1; ++dc) {
             int r = centerRow + dr;
             int c = centerCol + dc;
-            if (r < 0 || r >= CollisionGrid::GRID_ROWS || c < 0 || c >= CollisionGrid::GRID_COLS) continue;
 
-            for (Enemy* target : grid.cells[r][c]) {
+            for (Enemy* target : grid.GetCell(r, c)) {
                 if (target == flying || target->IsDestroy()) continue;
 
                 EnemyState targetState = target->GetEnemyState();
@@ -481,13 +436,14 @@ void CollisionSystem::Update()
     const std::vector<GameObject*>& walls   = Manager::GetCategoryList(ObjectType::Wall);
     const std::vector<GameObject*>& items   = Manager::GetCategoryList(ObjectType::Item);
 
-    g_CollisionGrid.Clear();
+    // 共有 SpatialGrid を今フレーム用にリセットし、全生存エネミーを登録する
+    SpatialGrid& grid = SpatialGrid::GetInstance();
+    grid.Clear();
 
-    // 敵オブジェクトをグリッドへ登録（通常エネミーのみ）
     for (GameObject* obj : enemies) {
         Enemy* enemy = static_cast<Enemy*>(obj);
         if (enemy && !enemy->IsDestroy() && enemy->GetObjectType() == ObjectType::Enemy) {
-            g_CollisionGrid.Register(enemy);
+            grid.Register(enemy);
         }
     }
 
@@ -495,7 +451,7 @@ void CollisionSystem::Update()
     HandlePlayerItemPickup(player, items);
 
     // ─── スピン中のなぎ払い判定 ───
-    HandleSpinSweep(player, g_CollisionGrid);
+    HandleSpinSweep(player, grid);
 
     // ─── 飛んでいる敵 → 他の敵・壁への連鎖衝突 ───
     std::vector<Enemy*> flyingEnemies;
@@ -538,6 +494,6 @@ void CollisionSystem::Update()
         if (HandleFlyingVsBoss(flying, player, explosionThisFrame)) continue;
 
         // --- 他の敵との衝突判定 ---
-        HandleFlyingVsEnemy(flying, player, g_CollisionGrid, explosionThisFrame);
+        HandleFlyingVsEnemy(flying, player, grid, explosionThisFrame);
     }
 }
