@@ -30,30 +30,30 @@ GameplayScene::~GameplayScene()
 }
 
 // =================================================================
-// ������
+// 
 // =================================================================
 void GameplayScene::Init()
 {
-    // �Q�[���v���C�{�҂̏�����
-    GameRule::Init(); // �X�R�A��G���A�Q�[���N���A��Ԃ̃��Z�b�g
+    // Q[vC{҂̏
+    GameRule::Init(); // XRAGAQ[NAԂ̃Zbg
     
-    Manager::m_HitStopFrames = 0;
-    Manager::m_SlowMotionTimer = 0;
-    Manager::m_SlowMotionDuration = 0;
+    Manager::SetHitStopFrames(0);
+    Manager::SetSlowMotionTimer(0);
+    Manager::SetSlowMotionDuration(0);
     m_ClearDelayTimer = 0;
 
-    // 1. �n�ʃI�u�W�F�N�g�̐���
+    // 1. nʃIuWFNg̐
     Manager::AddGameObject<Field>();
 
-    // 2. �v���C���[�I�u�W�F�N�g�̐���
+    // 2. vC[IuWFNg̐
     Player* player = Manager::AddGameObject<Player>();
     player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
 
-    // �{�X����J�n���ʏ킩��J�n���̕���
+    // {XJnʏ킩Jn̕
     if (Constants::Debug::START_FROM_BOSS) {
-        Manager::m_IsBossStage = true;
+        Manager::SetIsBossStage(true);
         
-        // �{�X�����̕ǂ𐶐�
+        // {X̕ǂ𐶐
         float roomSize = Constants::Stage::BOSS_ROOM_SIZE;
         Wall* wallN = Manager::AddGameObject<Wall>();
         wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
@@ -77,7 +77,7 @@ void GameplayScene::Init()
 
         GameRule::SetTotalEnemies(1);
     } else {
-        Manager::m_IsBossStage = false;
+        Manager::SetIsBossStage(false);
         
         // �ʏ�X�e�[�W�F�ǂ�G�G���A�̊O���ɔz�u
         Wall* wall = Manager::AddGameObject<Wall>();
@@ -121,7 +121,7 @@ void GameplayScene::Init()
     Item* itemLightning = Manager::AddGameObject<Item>();
     itemLightning->SetItemType(ItemType::LIGHTNING);
 
-    if (Manager::m_IsBossStage) {
+    if (Manager::IsBossStage()) {
         itemVacuum->SetPosition(XMFLOAT3(0.0f, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_BOSS_VACUUM_Z));
         itemGigant->SetPosition(XMFLOAT3(Constants::Stage::ITEM_BOSS_GIGANT_X, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_BOSS_GIGANT_Z));
         itemLightning->SetPosition(XMFLOAT3(Constants::Stage::ITEM_BOSS_LIGHTNING_X, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_BOSS_LIGHTNING_Z));
@@ -161,14 +161,14 @@ void GameplayScene::Update()
 void GameplayScene::UpdateGameplay()
 {
     // �X���[���[�V�����^�C�}�[�̍X�V
-    if (Manager::m_SlowMotionTimer > 0) {
-        Manager::m_SlowMotionTimer--;
+    if (Manager::GetSlowMotionTimer() > 0) {
+        Manager::SetSlowMotionTimer(Manager::GetSlowMotionTimer() - 1);
     }
 
     // �X���[���[�V�������͍X�V�p�x�� 1/5 �ɊԈ���
     bool updateOthers = true;
-    if (Manager::m_SlowMotionTimer > 0) {
-        updateOthers = (Manager::m_SlowMotionTimer % 5 == 0);
+    if (Manager::GetSlowMotionTimer() > 0) {
+        updateOthers = (Manager::GetSlowMotionTimer() % 5 == 0);
     }
 
     // �Ռ��g�V�X�e���̍X�V
@@ -180,16 +180,16 @@ void GameplayScene::UpdateGameplay()
     if (GameRule::IsGameClear()) return;
 
     // �q�b�g�X�g�b�v���͑��̍X�V��X�L�b�v
-    if (Manager::m_HitStopFrames > 0) {
-        Manager::m_HitStopFrames--;
+    if (Manager::GetHitStopFrames() > 0) {
+        Manager::SetHitStopFrames(Manager::GetHitStopFrames() - 1);
         return;
     }
 
     Player* player = Manager::GetGameObject<Player>();
 
-    // �S�I�u�W�F�N�g�̍X�V�Ɣj���̊Ǘ�
-    for (size_t i = 0; i < Manager::m_UpdateObjects.size(); i++) {
-        GameObject* obj = Manager::m_UpdateObjects[i];
+    // Update list iteration
+    for (size_t i = 0; i < Manager::GetUpdateObjectList().size(); i++) {
+        GameObject* obj = Manager::GetUpdateObjectList()[i];
         bool shouldUpdate = true;
 
         bool isGrabbedEnemy = (player && player->GetGrabbedEnemy() == obj);
@@ -228,11 +228,11 @@ void GameplayScene::UpdateGameplay()
         }
     }
 
-    // �X�e�[�W�N���A�E�i�s�x�̊Ď�
-    if (!Manager::m_IsBossStage) {
-        // �ʏ�X�e�[�W�F���u�G�̑S�ŊĎ�
+    // Stage clear checks
+    if (!Manager::IsBossStage()) {
+        // Normal stage: monitor all attacking enemies
         bool attackingEnemyExists = false; 
-        for (GameObject* obj : Manager::m_GameObjects) {
+        for (GameObject* obj : Manager::GetGameObjectList()) {
             if (obj && obj->GetObjectType() == ObjectType::Enemy) {
                 Enemy* enemy = static_cast<Enemy*>(obj);
                 if (enemy->IsAttackingEnemy() && enemy->GetEnemyState() != EnemyState::DEFEATED) {
@@ -246,10 +246,10 @@ void GameplayScene::UpdateGameplay()
             Manager::TransitionToBossStage();
         }
     } else {
-        // �{�X�X�e�[�W�F�{�X���j�̊Ď�
+        // Boss stage: monitor boss defeat
         if (!GameRule::IsGameClear()) {
             bool bossExists = false;
-            for (GameObject* obj : Manager::m_GameObjects) {
+            for (GameObject* obj : Manager::GetGameObjectList()) {
                 if (obj->GetObjectType() == ObjectType::Boss) {
                     Enemy* boss = static_cast<Enemy*>(obj);
                     if (boss->GetEnemyState() != EnemyState::DEFEATED) {

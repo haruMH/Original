@@ -34,12 +34,6 @@ enum class Scene {
 // シーンオブジェクト（IScene）のライフサイクル管理を担当します。
 class Manager
 {
-    // 各シーンクラスから静的メンバ（オブジェクトリスト等）への直接アクセスを許可します
-    friend class TitleScene;
-    friend class GameplayScene;
-    friend class ClearScene;
-    friend class GameOverScene;
-
 private:
     static std::vector<std::unique_ptr<GameObject>> m_ManagedObjects; // ライフサイクル管理用オブジェクトリスト
     static std::vector<GameObject*> m_GameObjects;     // 全オブジェクトリスト（描画・一括走査用）
@@ -163,15 +157,22 @@ public:
 
     // ヒットストップのフレーム設定.
     static void AddHitStop(int frames) { m_HitStopFrames = frames; }
+    static int  GetHitStopFrames() { return m_HitStopFrames; }
+    static void SetHitStopFrames(int frames) { m_HitStopFrames = frames; }
 
     // 現在ヒットストップ中かどうか.
     static bool IsHitStopping() { return m_HitStopFrames > 0; }
 
     // スローモーション（ウィッチタイム）制御用
     static void  StartSlowMotion(int duration) { m_SlowMotionTimer = duration; m_SlowMotionDuration = duration; }
+    static int   GetSlowMotionTimer() { return m_SlowMotionTimer; }
+    static void  SetSlowMotionTimer(int timer) { m_SlowMotionTimer = timer; }
+    static int   GetSlowMotionDuration() { return m_SlowMotionDuration; }
+    static void  SetSlowMotionDuration(int duration) { m_SlowMotionDuration = duration; }
     static float GetSlowMotionIntensity();
     static bool  IsSlowMotionActive() { return m_SlowMotionTimer > 0; }
     static bool  IsBossStage() { return m_IsBossStage; }
+    static void  SetIsBossStage(bool enable) { m_IsBossStage = enable; }
     static void  TransitionToBossStage();
     static void  ChangeScene(Scene nextScene);
     static Scene GetCurrentScene() { return m_CurrentScene; }
