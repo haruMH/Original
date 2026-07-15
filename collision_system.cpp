@@ -255,8 +255,8 @@ static void HandleSpinSweep(Player* player, SpatialGrid& grid)
     float gRadius = grabbed->GetRadius();
 
     // 周囲セルの敵とだけ衝突判定を行う（SpatialGrid::GetCell 経由）
-    int centerCol = static_cast<int>(floorf((gPos.x - SpatialGrid::GRID_MIN_X) / SpatialGrid::CELL_SIZE));
-    int centerRow = static_cast<int>(floorf((gPos.z - SpatialGrid::GRID_MIN_Z) / SpatialGrid::CELL_SIZE));
+    int centerCol = static_cast<int>(floorf((gPos.x - Constants::Collision::GRID_MIN_X) / Constants::Collision::GRID_CELL_SIZE));
+    int centerRow = static_cast<int>(floorf((gPos.z - Constants::Collision::GRID_MIN_Z) / Constants::Collision::GRID_CELL_SIZE));
 
     for (int dr = -1; dr <= 1; ++dr) {
         for (int dc = -1; dc <= 1; ++dc) {
@@ -392,8 +392,8 @@ static void HandleFlyingVsEnemy(
     bool&           explosionThisFrame)
 {
     XMFLOAT3 fPos = flying->GetPosition();
-    int centerCol = static_cast<int>(floorf((fPos.x - SpatialGrid::GRID_MIN_X) / SpatialGrid::CELL_SIZE));
-    int centerRow = static_cast<int>(floorf((fPos.z - SpatialGrid::GRID_MIN_Z) / SpatialGrid::CELL_SIZE));
+    int centerCol = static_cast<int>(floorf((fPos.x - Constants::Collision::GRID_MIN_X) / Constants::Collision::GRID_CELL_SIZE));
+    int centerRow = static_cast<int>(floorf((fPos.z - Constants::Collision::GRID_MIN_Z) / Constants::Collision::GRID_CELL_SIZE));
 
     for (int dr = -1; dr <= 1; ++dr) {
         for (int dc = -1; dc <= 1; ++dc) {

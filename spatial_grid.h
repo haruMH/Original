@@ -7,15 +7,9 @@ class Enemy;
 
 class SpatialGrid {
 public:
-    static constexpr float CELL_SIZE = Constants::Collision::GRID_CELL_SIZE;
-    static constexpr int GRID_COLS = Constants::Collision::GRID_COLS;
-    static constexpr int GRID_ROWS = Constants::Collision::GRID_ROWS;
-    static constexpr float GRID_MIN_X = Constants::Collision::GRID_MIN_X;
-    static constexpr float GRID_MIN_Z = Constants::Collision::GRID_MIN_Z;
-
     void Clear() {
-        for (int r = 0; r < GRID_ROWS; ++r) {
-            for (int c = 0; c < GRID_COLS; ++c) {
+        for (int r = 0; r < Constants::Collision::GRID_ROWS; ++r) {
+            for (int c = 0; c < Constants::Collision::GRID_COLS; ++c) {
                 m_Cells[r][c].clear();
             }
         }
@@ -25,7 +19,7 @@ public:
 
     const std::vector<Enemy*>& GetCell(int row, int col) const {
         static const std::vector<Enemy*> emptyCell;
-        if (row >= 0 && row < GRID_ROWS && col >= 0 && col < GRID_COLS) {
+        if (row >= 0 && row < Constants::Collision::GRID_ROWS && col >= 0 && col < Constants::Collision::GRID_COLS) {
             return m_Cells[row][col];
         }
         return emptyCell;
@@ -39,5 +33,5 @@ public:
     }
 
 private:
-    std::vector<Enemy*> m_Cells[GRID_ROWS][GRID_COLS];
+    std::vector<Enemy*> m_Cells[Constants::Collision::GRID_ROWS][Constants::Collision::GRID_COLS];
 };
