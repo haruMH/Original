@@ -16,6 +16,7 @@ struct ShockwaveEntry {
     int      Delay;        // 開始ディレイ（待機フレーム数）
     bool     PhysicsApplied; // 物理衝撃波が既に適用されたか
     float    Force;        // 物理衝撃波の威力
+    bool     Shrink;       // 収縮するエフェクトか
 };
 
 // =================================================================
@@ -59,6 +60,7 @@ public:
         float colorB,
         int duration = 24,
         float force = 1.0f,
-        int delay = 0
+        int delay = 0,
+        bool shrink = false
     );
 };

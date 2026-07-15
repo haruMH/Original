@@ -294,6 +294,14 @@ void BossEnemy::PerformPhaseAttack()
 // ─────────────────────────────────────────────
 void BossEnemy::PerformPhase1Attack()
 {
+    // 60, 140, 220, 300f の射撃タイミングの15f前に魔力チャージ（吸引）エフェクトを表示
+    if (m_PhaseAttackTimer == 45 || m_PhaseAttackTimer == 125 || 
+        m_PhaseAttackTimer == 205 || m_PhaseAttackTimer == 285) 
+    {
+        ShockwaveSystem::AddShockwave(m_Position, 8.0f, 1.5f, 0.0f, 2.0f, 15, 0.0f, 0, true);
+        ShockwaveSystem::AddShockwave(m_Position, 5.0f, 1.5f, 0.0f, 2.0f, 15, 0.0f, 0, true);
+    }
+
     // 60, 140, 220, 300f で発射 (計4回)
     if (m_PhaseAttackTimer == 60 || m_PhaseAttackTimer == 140 || 
         m_PhaseAttackTimer == 220 || m_PhaseAttackTimer == 300) 
@@ -312,11 +320,11 @@ void BossEnemy::PerformPhase1Attack()
         // 掃射回数ごとに弾幕の角度をずらして、安全地帯が毎回変わるようにする
         float startAngleOffset = 0.0f;
         if (m_PhaseAttackTimer == 140) {
-            startAngleOffset = (XM_2PI / numBullets) * 0.25f; // 隙間の1/4ずらす
+            startAngleOffset = (XM_2PI / numBullets) * 0.3f; // 隙間の1/4ずらす
         } else if (m_PhaseAttackTimer == 220) {
-            startAngleOffset = (XM_2PI / numBullets) * 0.50f; // 隙間の1/2ずらす
+            startAngleOffset = (XM_2PI / numBullets) * 0.6f; // 隙間の1/2ずらす
         } else if (m_PhaseAttackTimer == 300) {
-            startAngleOffset = (XM_2PI / numBullets) * 0.75f; // 隙間の3/4ずらす
+            startAngleOffset = (XM_2PI / numBullets) * 0.9f; // 隙間の3/4ずらす
         }
 
         for (int i = 0; i < numBullets; i++) {
@@ -351,8 +359,13 @@ void BossEnemy::PerformPhase2Attack()
 
     m_PhaseAttackTimer++;
 
-    // 1. 回転ラインマーカー棒（縄跳び）の回転角度 (毎フレーム 0.015ラジアンずつゆっくり回転)
-    float angle = m_PhaseAttackTimer * 0.015f;
+    // 予兆時間（最初の60フレーム）は回転させず、判定もスキップ
+    if (m_PhaseAttackTimer <= 60) {
+        return;
+    }
+
+    // 60フレーム以降から回転を開始
+    float angle = (m_PhaseAttackTimer - 60) * 0.015f;
 
     // プレイヤーへの衝突判定
     XMFLOAT3 pPos = player->GetPosition();
@@ -505,9 +518,9 @@ void BossEnemy::PerformPhase3Attack()
         m_PhaseTargetPos = player->GetPosition();
         m_PhaseTargetPos.y = -0.95f;
 
-        // 同心円の2重警告エフェクト（視認性強化）
-        ShockwaveSystem::AddShockwave(m_PhaseTargetPos, 5.0f, 2.5f, 0.0f, 0.0f, 50, 0.0f, 0);
-        ShockwaveSystem::AddShockwave(m_PhaseTargetPos, 3.5f, 2.5f, 0.0f, 0.0f, 35, 0.0f, 15);
+        // 収縮する赤い警告サークルエフェクト（視認性強化）
+        ShockwaveSystem::AddShockwave(m_PhaseTargetPos, 5.0f, 2.5f, 0.0f, 0.0f, 50, 0.0f, 0, true);
+        ShockwaveSystem::AddShockwave(m_PhaseTargetPos, 3.5f, 2.5f, 0.0f, 0.0f, 35, 0.0f, 15, true);
     }
 
     // 落雷A 発生（警告の50f後）
@@ -540,8 +553,8 @@ void BossEnemy::PerformPhase3Attack()
             randPos.y = -0.95f;
             randPos.z = ((float)rand() / RAND_MAX) * STAGE_HALF * 2.0f - STAGE_HALF;
 
-            // 警告エフェクト（40f猶予・やや小さい赤いリング）
-            ShockwaveSystem::AddShockwave(randPos, 3.0f, 2.0f, 0.0f, 0.0f, 40, 0.0f, 0);
+            // 警告エフェクト（40f猶予・収縮する赤いサークル）
+            ShockwaveSystem::AddShockwave(randPos, 3.0f, 2.0f, 0.0f, 0.0f, 40, 0.0f, 0, true);
 
             // 落雷B 発生（40f後に展開する衝撃波 + ビジュアル登録）
             ShockwaveSystem::AddShockwave(randPos, 3.0f, 2.0f, 0.0f, 0.0f, 15, 1.2f, 40);
@@ -621,33 +634,37 @@ void BossEnemy::DrawBarrierEffect()
 
     // 2. 縄跳びラインマーカービジュアル (フェーズ2)
     if (m_BossState == BossState::PHASE_TRANSITION && m_PhaseIndex == 2) {
-        float angle = m_PhaseAttackTimer * 0.015f;
-        
-        // 鮮やかなネオングリーンの自発光（エミッシブ）マテリアルを設定
-        MATERIAL guideMaterial;
-        ZeroMemory(&guideMaterial, sizeof(guideMaterial));
-        guideMaterial.Diffuse        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-        guideMaterial.Ambient        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-        guideMaterial.Specular       = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
-        guideMaterial.Emission       = XMFLOAT4(0.0f, 1.8f, 0.5f, 1.0f); // 鮮やかなネオングリーン
-        guideMaterial.Shininess      = 0.0f;
-        guideMaterial.TextureEnable  = FALSE; // 単色ネオン光
-        guideMaterial.RimPower       = 0.0f;
-        Renderer::SetMaterial(guideMaterial);
+        bool isWarning = (m_PhaseAttackTimer <= 60);
+        // 警告フェーズの間は点滅させる（10F周期で前半5Fのみ表示）
+        if (!isWarning || (m_PhaseAttackTimer % 10 < 5)) {
+            float angle = isWarning ? 0.0f : (m_PhaseAttackTimer - 60) * 0.015f;
+            
+            // 鮮やかなネオングリーンの自発光（エミッシブ）マテリアルを設定
+            MATERIAL guideMaterial;
+            ZeroMemory(&guideMaterial, sizeof(guideMaterial));
+            guideMaterial.Diffuse        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+            guideMaterial.Ambient        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+            guideMaterial.Specular       = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+            guideMaterial.Emission       = isWarning ? XMFLOAT4(3.0f, 0.0f, 0.0f, 1.0f) : XMFLOAT4(0.0f, 1.8f, 0.5f, 1.0f);
+            guideMaterial.Shininess      = 0.0f;
+            guideMaterial.TextureEnable  = FALSE; // 単色ネオン光
+            guideMaterial.RimPower       = 0.0f;
+            Renderer::SetMaterial(guideMaterial);
 
-        Renderer::SetupCubeDraw();
+            Renderer::SetupCubeDraw();
 
-        float angles[2] = { angle, angle + XM_PI };
-        for (int i = 0; i < 2; i++) {
-            // ボスの中心から前方30ユニット分に伸ばすワールド行列を作成
-            // 高さ Y = -0.6f (地面は -0.95f、プレイヤーの足元は Y=0 なのでジャンプで超えられる高さ)
-            XMMATRIX guideWorld = XMMatrixScaling(0.5f, 0.5f, 30.0f) * 
-                                  XMMatrixTranslation(0.0f, 0.0f, 15.0f) *
-                                  XMMatrixRotationRollPitchYaw(0.0f, angles[i], 0.0f) *
-                                  XMMatrixTranslation(m_Position.x, -0.6f, m_Position.z);
+            float angles[2] = { angle, angle + XM_PI };
+            for (int i = 0; i < 2; i++) {
+                // ボスの中心から前方30ユニット分に伸ばすワールド行列を作成
+                // 高さ Y = -0.6f (地面は -0.95f、プレイヤーの足元は Y=0 なのでジャンプで超えられる高さ)
+                XMMATRIX guideWorld = XMMatrixScaling(0.5f, 0.5f, 30.0f) * 
+                                      XMMatrixTranslation(0.0f, 0.0f, 15.0f) *
+                                      XMMatrixRotationRollPitchYaw(0.0f, angles[i], 0.0f) *
+                                      XMMatrixTranslation(m_Position.x, -0.6f, m_Position.z);
 
-            Renderer::SetWorldMatrix(guideWorld);
-            Renderer::GetDeviceContext()->Draw(36, 0);
+                Renderer::SetWorldMatrix(guideWorld);
+                Renderer::GetDeviceContext()->Draw(36, 0);
+            }
         }
     }
 

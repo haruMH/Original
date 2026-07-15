@@ -266,9 +266,15 @@ void ShockwaveSystem::Draw()
 
         float progress = 1.0f - (float)entry.Timer / (float)entry.MaxTimer; // 0.0 -> 1.0
         
-        // イージング（最初は速く、後半はゆっくり広がる）
-        float t = progress;
-        float easeProgress = 1.0f - (1.0f - t) * (1.0f - t); 
+        float easeProgress = 0.0f;
+        if (entry.Shrink) {
+            // 収縮（1.0 -> 0.0）
+            easeProgress = 1.0f - progress;
+        } else {
+            // イージング（最初は速く、後半はゆっくり広がる）
+            float t = progress;
+            easeProgress = 1.0f - (1.0f - t) * (1.0f - t); 
+        }
         
         float currentRadius = entry.MaxRadius * easeProgress;
         
@@ -305,7 +311,8 @@ void ShockwaveSystem::AddShockwave(
     float colorB,
     int duration,
     float force,
-    int delay
+    int delay,
+    bool shrink
 )
 {
     // 描画エフェクトの登録
@@ -320,6 +327,7 @@ void ShockwaveSystem::AddShockwave(
     entry.Delay          = delay;
     entry.PhysicsApplied = false;
     entry.Force          = force;
+    entry.Shrink         = shrink;
     m_Shockwaves.push_back(entry);
 
     // ディレイが0の場合のみ、即時に物理効果を適用する
