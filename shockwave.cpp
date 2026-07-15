@@ -301,7 +301,24 @@ void ShockwaveSystem::Draw()
 }
 
 // =================================================================
-// 衝撃波を追加し、周囲の敵への物理吹き飛ばしも適用する
+// 衝撃波を追加し、周囲の敵への物理吹き飛ばしも適用する - 従来版
+// =================================================================
+void ShockwaveSystem::AddShockwave(
+    const XMFLOAT3& pos, 
+    float maxRadius, 
+    float colorR, 
+    float colorG, 
+    float colorB,
+    int duration,
+    float force,
+    int delay
+)
+{
+    AddShockwave(pos, maxRadius, colorR, colorG, colorB, duration, force, delay, false);
+}
+
+// =================================================================
+// 衝撃波を追加し、周囲の敵への物理吹き飛ばしも適用する - 収縮オプション付き
 // =================================================================
 void ShockwaveSystem::AddShockwave(
     const XMFLOAT3& pos, 

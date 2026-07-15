@@ -51,7 +51,7 @@ public:
     // 毎フレーム描画処理（Renderer::End() の直前に呼ぶ）
     static void Draw();
 
-    // 衝撃波を発生させる（同時に周囲への物理吹き飛ばしもトリガーする）
+    // 衝撃波を発生させる（同時に周囲への物理吹き飛ばしもトリガーする） - 従来版
     static void AddShockwave(
         const XMFLOAT3& pos, 
         float maxRadius, 
@@ -60,7 +60,19 @@ public:
         float colorB,
         int duration = 24,
         float force = 1.0f,
-        int delay = 0,
-        bool shrink = false
+        int delay = 0
+    );
+
+    // 衝撃波を発生させる - 収縮オプション付き
+    static void AddShockwave(
+        const XMFLOAT3& pos, 
+        float maxRadius, 
+        float colorR, 
+        float colorG, 
+        float colorB,
+        int duration,
+        float force,
+        int delay,
+        bool shrink
     );
 };
