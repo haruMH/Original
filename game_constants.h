@@ -137,11 +137,11 @@ namespace Constants
     // 空間分割（コリジョングリッド）に関するパラメータ
     namespace Collision
     {
-        const float GRID_CELL_SIZE  = 5.0f;
-        const int   GRID_COLS       = 24;
-        const int   GRID_ROWS       = 24;
-        const float GRID_MIN_X      = -60.0f;
-        const float GRID_MIN_Z      = -60.0f;
+        constexpr float GRID_CELL_SIZE  = 5.0f;
+        constexpr int   GRID_COLS       = 24;
+        constexpr int   GRID_ROWS       = 24;
+        constexpr float GRID_MIN_X      = -60.0f;
+        constexpr float GRID_MIN_Z      = -60.0f;
     }
 
     // ステージ構築・配置に関するパラメータ

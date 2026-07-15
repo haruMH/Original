@@ -260,12 +260,12 @@ void GameplayScene::UpdateGameplay()
             }
 
             if (!bossExists) {
-                // �{�X�S�Ō�A�f�B���C������Ă��烊�U���g��ʂɑJ�ڂ���
+                // ボス撃破後、ディレイ時間を経てリザルト画面に遷移する
                 m_ClearDelayTimer++;
                 if (m_ClearDelayTimer >= Constants::Boss::CLEAR_DELAY_FRAMES) {
                     GameRule::SetGameClear(true);
                     Manager::ChangeScene(Scene::CLEAR);
-                    OutputDebugStringA("[GameRule] *** �{�X���j�I�Q�[���N���A! ***\n");
+                    OutputDebugStringA("[GameRule] *** ボス撃破！ゲームクリア！ ***\n");
                 }
             } else {
                 m_ClearDelayTimer = 0;
@@ -275,7 +275,7 @@ void GameplayScene::UpdateGameplay()
 }
 
 // =================================================================
-// �`��
+// 描画
 // =================================================================
 void GameplayScene::Draw()
 {
