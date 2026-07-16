@@ -56,6 +56,7 @@ void BossEnemy::Update()
     }
 
     if (m_EnemyState == EnemyState::DEFEATED || m_EnemyState == EnemyState::BLOWN_AWAY) {
+        m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f); // 撃破時はスケールを正常値に戻す
         Enemy::Update();
         return;
     }
@@ -76,6 +77,7 @@ void BossEnemy::Update()
                 phase.triggered = true;
                 m_PhaseAttackTimer = 0;
                 m_LightningVisualTimer = 0;
+                m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f); // 変形タメ中の移行に備え、スケールを安全にリセット
                 char dbg[128];
                 sprintf_s(dbg, "[BossEnemy] Phase %d Triggered!\n", phase.phaseIndex);
                 OutputDebugStringA(dbg);
@@ -292,6 +294,37 @@ void BossEnemy::PerformPhaseAttack()
 // ─────────────────────────────────────────────
 // フェーズ1特別攻撃: 360度サークル弾幕 (持続時間: 400フレーム)
 // ─────────────────────────────────────────────
+BossEnemy::Phase1ChargeInfo BossEnemy::GetPhase1ChargeInfo() const
+{
+    Phase1ChargeInfo info = {};
+    info.isCharging = false;
+    info.relativeTimer = 0;
+    info.angleOffset = 0.0f;
+
+    if (m_PhaseAttackTimer >= 45 && m_PhaseAttackTimer < 60) {
+        info.isCharging = true;
+        info.relativeTimer = m_PhaseAttackTimer - 45;
+        info.angleOffset = 0.0f;
+    } else if (m_PhaseAttackTimer >= 125 && m_PhaseAttackTimer < 140) {
+        info.isCharging = true;
+        info.relativeTimer = m_PhaseAttackTimer - 125;
+        info.angleOffset = (DirectX::XM_2PI / 24) * 0.3f;
+    } else if (m_PhaseAttackTimer >= 205 && m_PhaseAttackTimer < 220) {
+        info.isCharging = true;
+        info.relativeTimer = m_PhaseAttackTimer - 205;
+        info.angleOffset = (DirectX::XM_2PI / 24) * 0.6f;
+    } else if (m_PhaseAttackTimer >= 285 && m_PhaseAttackTimer < 300) {
+        info.isCharging = true;
+        info.relativeTimer = m_PhaseAttackTimer - 285;
+        info.angleOffset = (DirectX::XM_2PI / 24) * 0.9f;
+    }
+
+    return info;
+}
+
+// ─────────────────────────────────────────────
+// フェーズ1特別攻撃: 360度サークル弾幕 (持続時間: 400フレーム)
+// ─────────────────────────────────────────────
 void BossEnemy::PerformPhase1Attack()
 {
     // プレイヤーの高さに合わせる（頭上通過防止・チャージ波紋の発生高さにも使用）
@@ -303,33 +336,17 @@ void BossEnemy::PerformPhase1Attack()
     XMFLOAT3 bulletPos = m_Position;
     bulletPos.y = bulletY;
 
-    // 各射撃タイミング（60, 140, 220, 300f）の15f前に魔力チャージ（吸引）エフェクトを表示 ＆ ボスの体を縮める
-    bool isCharginThisFrame = false;
-    float chargeT = 0.0f;
-    int relativeTimer = 0;
+    // ヘルパーから一括してチャージ情報を取得（コードのコピペ・二重定義を防止）
+    Phase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
 
-    if (m_PhaseAttackTimer >= 45 && m_PhaseAttackTimer < 60) {
-        isCharginThisFrame = true;
-        relativeTimer = m_PhaseAttackTimer - 45;
-    } else if (m_PhaseAttackTimer >= 125 && m_PhaseAttackTimer < 140) {
-        isCharginThisFrame = true;
-        relativeTimer = m_PhaseAttackTimer - 125;
-    } else if (m_PhaseAttackTimer >= 205 && m_PhaseAttackTimer < 220) {
-        isCharginThisFrame = true;
-        relativeTimer = m_PhaseAttackTimer - 205;
-    } else if (m_PhaseAttackTimer >= 285 && m_PhaseAttackTimer < 300) {
-        isCharginThisFrame = true;
-        relativeTimer = m_PhaseAttackTimer - 285;
-    }
-
-    if (isCharginThisFrame) {
-        chargeT = relativeTimer / 15.0f; // 0.0 -> 1.0
+    if (chargeInfo.isCharging) {
+        float chargeT = chargeInfo.relativeTimer / 15.0f; // 0.0 -> 1.0
         // ボスをタメで少し縮ませる（Yを縮め、XZを太らせる）
-        m_Scale.y = 5.0f - 1.0f * sinf(chargeT * XM_PIDIV2); // 5.0 -> 4.0
-        m_Scale.x = m_Scale.z = 5.0f + 0.3f * sinf(chargeT * XM_PIDIV2); // 5.0 -> 5.3
+        m_Scale.y = 5.0f - 1.0f * sinf(chargeT * DirectX::XM_PIDIV2); // 5.0 -> 4.0
+        m_Scale.x = m_Scale.z = 5.0f + 0.3f * sinf(chargeT * DirectX::XM_PIDIV2); // 5.0 -> 5.3
 
         // 吸引開始フレーム（relativeTimer == 0）でエフェクトを追加
-        if (relativeTimer == 0) {
+        if (chargeInfo.relativeTimer == 0) {
             // 半径を 18.0f / 12.0f に拡大し、高さを弾幕に合わせる
             ShockwaveSystem::AddShockwave(bulletPos, 18.0f, 1.5f, 0.0f, 2.0f, 15, 0.0f, 0, true);
             ShockwaveSystem::AddShockwave(bulletPos, 12.0f, 1.5f, 0.0f, 2.0f, 15, 0.0f, 0, true);
@@ -751,29 +768,9 @@ void BossEnemy::DrawBarrierEffect()
 
     // 4. 弾幕予測レーザーライン（フェーズ1）
     if (m_BossState == BossState::PHASE_TRANSITION && m_PhaseIndex == 1) {
-        bool isCharginThisFrame = false;
-        int relativeTimer = 0;
-        float startAngleOffset = 0.0f;
+        Phase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
 
-        if (m_PhaseAttackTimer >= 45 && m_PhaseAttackTimer < 60) {
-            isCharginThisFrame = true;
-            relativeTimer = m_PhaseAttackTimer - 45;
-            startAngleOffset = 0.0f;
-        } else if (m_PhaseAttackTimer >= 125 && m_PhaseAttackTimer < 140) {
-            isCharginThisFrame = true;
-            relativeTimer = m_PhaseAttackTimer - 125;
-            startAngleOffset = (XM_2PI / 24) * 0.3f;
-        } else if (m_PhaseAttackTimer >= 205 && m_PhaseAttackTimer < 220) {
-            isCharginThisFrame = true;
-            relativeTimer = m_PhaseAttackTimer - 205;
-            startAngleOffset = (XM_2PI / 24) * 0.6f;
-        } else if (m_PhaseAttackTimer >= 285 && m_PhaseAttackTimer < 300) {
-            isCharginThisFrame = true;
-            relativeTimer = m_PhaseAttackTimer - 285;
-            startAngleOffset = (XM_2PI / 24) * 0.9f;
-        }
-
-        if (isCharginThisFrame) {
+        if (chargeInfo.isCharging) {
             float bulletY = -0.2f;
             Player* player = Manager::GetGameObject<Player>();
             if (player) {
@@ -784,7 +781,7 @@ void BossEnemy::DrawBarrierEffect()
 
             // 暗めの赤色の自発光（エミッシブ）マテリアルを設定
             // チャージが進むほど輝度が増す
-            float intensity = 0.5f + 1.5f * ((float)relativeTimer / 15.0f);
+            float intensity = 0.5f + 1.5f * ((float)chargeInfo.relativeTimer / 15.0f);
             MATERIAL laserMaterial;
             ZeroMemory(&laserMaterial, sizeof(laserMaterial));
             laserMaterial.Diffuse        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -801,7 +798,7 @@ void BossEnemy::DrawBarrierEffect()
             const int numLines = 24;
             const float LINE_LENGTH = 25.0f;
             for (int i = 0; i < numLines; i++) {
-                float angle = i * (XM_2PI / numLines) + startAngleOffset;
+                float angle = i * (XM_2PI / numLines) + chargeInfo.angleOffset;
                 
                 // ボス位置から放射状に極細の棒（X=0.03, Y=0.03, Z=LINE_LENGTH）を配置
                 XMMATRIX laserWorld = XMMatrixScaling(0.03f, 0.03f, LINE_LENGTH) *

@@ -57,6 +57,13 @@ private:
     void FireRapidShot();
 
     // 特別攻撃パターン
+    struct Phase1ChargeInfo {
+        bool  isCharging;
+        int   relativeTimer;
+        float angleOffset;
+    };
+    Phase1ChargeInfo GetPhase1ChargeInfo() const;
+
     void PerformPhaseAttack();
     void PerformPhase1Attack();
     void PerformPhase2Attack();
