@@ -748,6 +748,72 @@ void BossEnemy::DrawBarrierEffect()
                 [](const RandomLightning& r) { return r.timer <= 0; }),
             m_RandomLightnings.end());
     }
+
+    // 4. 弾幕予測レーザーライン（フェーズ1）
+    if (m_BossState == BossState::PHASE_TRANSITION && m_PhaseIndex == 1) {
+        bool isCharginThisFrame = false;
+        int relativeTimer = 0;
+        float startAngleOffset = 0.0f;
+
+        if (m_PhaseAttackTimer >= 45 && m_PhaseAttackTimer < 60) {
+            isCharginThisFrame = true;
+            relativeTimer = m_PhaseAttackTimer - 45;
+            startAngleOffset = 0.0f;
+        } else if (m_PhaseAttackTimer >= 125 && m_PhaseAttackTimer < 140) {
+            isCharginThisFrame = true;
+            relativeTimer = m_PhaseAttackTimer - 125;
+            startAngleOffset = (XM_2PI / 24) * 0.3f;
+        } else if (m_PhaseAttackTimer >= 205 && m_PhaseAttackTimer < 220) {
+            isCharginThisFrame = true;
+            relativeTimer = m_PhaseAttackTimer - 205;
+            startAngleOffset = (XM_2PI / 24) * 0.6f;
+        } else if (m_PhaseAttackTimer >= 285 && m_PhaseAttackTimer < 300) {
+            isCharginThisFrame = true;
+            relativeTimer = m_PhaseAttackTimer - 285;
+            startAngleOffset = (XM_2PI / 24) * 0.9f;
+        }
+
+        if (isCharginThisFrame) {
+            float bulletY = -0.2f;
+            Player* player = Manager::GetGameObject<Player>();
+            if (player) {
+                bulletY = player->GetPosition().y + 0.3f;
+            }
+            XMFLOAT3 bulletPos = m_Position;
+            bulletPos.y = bulletY;
+
+            // 暗めの赤色の自発光（エミッシブ）マテリアルを設定
+            // チャージが進むほど輝度が増す
+            float intensity = 0.5f + 1.5f * ((float)relativeTimer / 15.0f);
+            MATERIAL laserMaterial;
+            ZeroMemory(&laserMaterial, sizeof(laserMaterial));
+            laserMaterial.Diffuse        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+            laserMaterial.Ambient        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+            laserMaterial.Specular       = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+            laserMaterial.Emission       = XMFLOAT4(intensity * 1.5f, 0.0f, 0.0f, 1.0f); // 赤色ビーム
+            laserMaterial.Shininess      = 0.0f;
+            laserMaterial.TextureEnable  = FALSE;
+            laserMaterial.RimPower       = 0.0f;
+            Renderer::SetMaterial(laserMaterial);
+
+            Renderer::SetupCubeDraw();
+
+            const int numLines = 24;
+            const float LINE_LENGTH = 25.0f;
+            for (int i = 0; i < numLines; i++) {
+                float angle = i * (XM_2PI / numLines) + startAngleOffset;
+                
+                // ボス位置から放射状に極細の棒（X=0.03, Y=0.03, Z=LINE_LENGTH）を配置
+                XMMATRIX laserWorld = XMMatrixScaling(0.03f, 0.03f, LINE_LENGTH) *
+                                      XMMatrixTranslation(0.0f, 0.0f, LINE_LENGTH * 0.5f) *
+                                      XMMatrixRotationRollPitchYaw(0.0f, angle, 0.0f) *
+                                      XMMatrixTranslation(bulletPos.x, bulletPos.y, bulletPos.z);
+
+                Renderer::SetWorldMatrix(laserWorld);
+                Renderer::GetDeviceContext()->Draw(36, 0);
+            }
+        }
+    }
 }
 
 // ─────────────────────────────────────────────
