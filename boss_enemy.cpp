@@ -631,7 +631,9 @@ void BossEnemy::PerformPhase3Attack()
     {
         // ランダム落雷の着弾フレームでカメラシェイク
         if (g_Camera) g_Camera->Shake(0.2f, 5);
-        m_LightningVisualTimer = std::max(m_LightningVisualTimer, 8);
+        if (m_LightningVisualTimer < 8) {
+            m_LightningVisualTimer = 8;
+        }
     }
 
     if (m_LightningVisualTimer > 0) {
