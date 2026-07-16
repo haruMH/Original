@@ -56,7 +56,6 @@ void BossEnemy::Update()
     }
 
     if (m_EnemyState == EnemyState::DEFEATED || m_EnemyState == EnemyState::BLOWN_AWAY) {
-        m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f); // 撃破時はスケールを正常値に戻す
         Enemy::Update();
         return;
     }
@@ -337,7 +336,7 @@ void BossEnemy::PerformPhase1Attack()
     bulletPos.y = bulletY;
 
     // ヘルパーから一括してチャージ情報を取得（コードのコピペ・二重定義を防止）
-    Phase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
+    BossEnemy::Phase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
 
     if (chargeInfo.isCharging) {
         float chargeT = chargeInfo.relativeTimer / 15.0f; // 0.0 -> 1.0
@@ -768,7 +767,7 @@ void BossEnemy::DrawBarrierEffect()
 
     // 4. 弾幕予測レーザーライン（フェーズ1）
     if (m_BossState == BossState::PHASE_TRANSITION && m_PhaseIndex == 1) {
-        Phase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
+        BossEnemy::Phase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
 
         if (chargeInfo.isCharging) {
             float bulletY = -0.2f;

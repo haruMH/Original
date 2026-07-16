@@ -81,12 +81,12 @@ public:
         }
 
         // プレイヤーが生成された場合はキャッシュポインタに保存
-        if constexpr (std::is_same_v<ObjT, Player>) {
+        if (std::is_same<ObjT, Player>::value) {
             m_CachedPlayer = reinterpret_cast<Player*>(gameObject);
         }
 
         // ボスエネミーが生成された場合はキャッシュポインタに保存
-        if constexpr (std::is_same_v<ObjT, BossEnemy>) {
+        if (std::is_same<ObjT, BossEnemy>::value) {
             m_CachedBoss = reinterpret_cast<BossEnemy*>(gameObject);
         }
 
@@ -101,12 +101,12 @@ public:
     static TargetType* GetGameObject()
     {
         // Playerの場合は全探索せずキャッシュを即時返却して O(1) に最適化
-        if constexpr (std::is_same_v<TargetType, Player>) {
+        if (std::is_same<TargetType, Player>::value) {
             return reinterpret_cast<TargetType*>(m_CachedPlayer);
         }
 
         // BossEnemyの場合は全探索せずキャッシュを即時返却して O(1) に最適化
-        if constexpr (std::is_same_v<TargetType, BossEnemy>) {
+        if (std::is_same<TargetType, BossEnemy>::value) {
             return reinterpret_cast<TargetType*>(m_CachedBoss);
         }
 
