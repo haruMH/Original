@@ -294,27 +294,55 @@ void BossEnemy::PerformPhaseAttack()
 // ─────────────────────────────────────────────
 void BossEnemy::PerformPhase1Attack()
 {
-    // 60, 140, 220, 300f の射撃タイミングの15f前に魔力チャージ（吸引）エフェクトを表示
-    if (m_PhaseAttackTimer == 45 || m_PhaseAttackTimer == 125 || 
-        m_PhaseAttackTimer == 205 || m_PhaseAttackTimer == 285) 
-    {
-        ShockwaveSystem::AddShockwave(m_Position, 8.0f, 1.5f, 0.0f, 2.0f, 15, 0.0f, 0, true);
-        ShockwaveSystem::AddShockwave(m_Position, 5.0f, 1.5f, 0.0f, 2.0f, 15, 0.0f, 0, true);
+    // プレイヤーの高さに合わせる（頭上通過防止・チャージ波紋の発生高さにも使用）
+    float bulletY = -0.2f;
+    Player* player = Manager::GetGameObject<Player>();
+    if (player) {
+        bulletY = player->GetPosition().y + 0.3f;
+    }
+    XMFLOAT3 bulletPos = m_Position;
+    bulletPos.y = bulletY;
+
+    // 各射撃タイミング（60, 140, 220, 300f）の15f前に魔力チャージ（吸引）エフェクトを表示 ＆ ボスの体を縮める
+    bool isCharginThisFrame = false;
+    float chargeT = 0.0f;
+    int relativeTimer = 0;
+
+    if (m_PhaseAttackTimer >= 45 && m_PhaseAttackTimer < 60) {
+        isCharginThisFrame = true;
+        relativeTimer = m_PhaseAttackTimer - 45;
+    } else if (m_PhaseAttackTimer >= 125 && m_PhaseAttackTimer < 140) {
+        isCharginThisFrame = true;
+        relativeTimer = m_PhaseAttackTimer - 125;
+    } else if (m_PhaseAttackTimer >= 205 && m_PhaseAttackTimer < 220) {
+        isCharginThisFrame = true;
+        relativeTimer = m_PhaseAttackTimer - 205;
+    } else if (m_PhaseAttackTimer >= 285 && m_PhaseAttackTimer < 300) {
+        isCharginThisFrame = true;
+        relativeTimer = m_PhaseAttackTimer - 285;
+    }
+
+    if (isCharginThisFrame) {
+        chargeT = relativeTimer / 15.0f; // 0.0 -> 1.0
+        // ボスをタメで少し縮ませる（Yを縮め、XZを太らせる）
+        m_Scale.y = 5.0f - 1.0f * sinf(chargeT * XM_PIDIV2); // 5.0 -> 4.0
+        m_Scale.x = m_Scale.z = 5.0f + 0.3f * sinf(chargeT * XM_PIDIV2); // 5.0 -> 5.3
+
+        // 吸引開始フレーム（relativeTimer == 0）でエフェクトを追加
+        if (relativeTimer == 0) {
+            // 半径を 18.0f / 12.0f に拡大し、高さを弾幕に合わせる
+            ShockwaveSystem::AddShockwave(bulletPos, 18.0f, 1.5f, 0.0f, 2.0f, 15, 0.0f, 0, true);
+            ShockwaveSystem::AddShockwave(bulletPos, 12.0f, 1.5f, 0.0f, 2.0f, 15, 0.0f, 0, true);
+        }
+    } else {
+        // 通常時（発射時含む）は元のサイズに戻す
+        m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f);
     }
 
     // 60, 140, 220, 300f で発射 (計4回)
     if (m_PhaseAttackTimer == 60 || m_PhaseAttackTimer == 140 || 
         m_PhaseAttackTimer == 220 || m_PhaseAttackTimer == 300) 
     {
-        // プレイヤーの高さに合わせる（頭上通過防止）
-        float bulletY = -0.2f;
-        Player* player = Manager::GetGameObject<Player>();
-        if (player) {
-            bulletY = player->GetPosition().y + 0.3f;
-        }
-        XMFLOAT3 bulletPos = m_Position;
-        bulletPos.y = bulletY;
-
         const int numBullets = 24;
         
         // 掃射回数ごとに弾幕の角度をずらして、安全地帯が毎回変わるようにする
@@ -441,21 +469,42 @@ void BossEnemy::PerformPhase3Attack()
     Player* player = Manager::GetGameObject<Player>();
     if (!player) return;
 
+    // プレイヤーの高さに合わせる（頭上通過防止・チャージ波紋の発生高さにも使用）
+    float bulletY = player->GetPosition().y + 0.3f;
+    XMFLOAT3 bulletPos = m_Position;
+    bulletPos.y = bulletY;
+
+    // ─── 極大魔力チャージ（最初の60フレーム） ───
+    if (m_PhaseAttackTimer < 60) {
+        float t = m_PhaseAttackTimer / 60.0f; // 0.0 -> 1.0
+        // ボスの体を押しつぶすタメ演出（Yを縮め、XZを太らせる）
+        m_Scale.y = 5.0f - 1.8f * sinf(t * XM_PIDIV2); // 5.0f -> 3.2f
+        m_Scale.x = m_Scale.z = 5.0f + 0.6f * sinf(t * XM_PIDIV2); // 5.0f -> 5.6f
+
+        // 10フレーム目に超巨大吸引エフェクトを発生（持続50f、弾幕発射位置 bulletPos）
+        if (m_PhaseAttackTimer == 10) {
+            // 超巨大な収縮サークル（半径28.0f / 18.0f）
+            ShockwaveSystem::AddShockwave(bulletPos, 28.0f, 2.5f, 0.5f, 0.0f, 50, 0.0f, 0, true);
+            ShockwaveSystem::AddShockwave(bulletPos, 18.0f, 2.5f, 0.5f, 0.0f, 50, 0.0f, 0, true);
+        }
+        return; // チャージ中は射撃処理を行わない
+    }
+
+    // 60フレーム目に突入した瞬間、力を開放してカメラをシェイク＆ボスサイズ復元
+    if (m_PhaseAttackTimer == 60) {
+        m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f);
+        if (g_Camera) g_Camera->Shake(0.4f, 15);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
-    // 全方位弾幕（前半: 30〜300f） ─ 螺旋 ＋ 狙い撃ち 二層構造
-    //
-    // [層1] スパイラル: 6フレームに1回・8方向・毎ショット20度回転
-    // [層2] 狙い撃ち : 20フレームに1回・扇形3連弾（速い）
+    // 全方位弾幕（前半: 60〜330f） ─ 螺旋 ＋ 狙い撃ち 二層構造
+    // (チャージ期間追加のため、元の30〜300fからそれぞれ30fシフト)
     // ─────────────────────────────────────────────────────────────────────────
-    if (m_PhaseAttackTimer >= 30 && m_PhaseAttackTimer <= 300) {
+    if (m_PhaseAttackTimer >= 60 && m_PhaseAttackTimer <= 330) {
 
         // ── [層1] スパイラル弾幕（6fに1回・8方向） ──
-        if (m_PhaseAttackTimer % 10 == 0) {
-            float bulletY = player->GetPosition().y + 0.3f;
-            XMFLOAT3 bulletPos = m_Position;
-            bulletPos.y = bulletY;
-
-            int   shotIndex  = (m_PhaseAttackTimer - 30) / 6;
+        if ((m_PhaseAttackTimer - 60) % 10 == 0) {
+            int   shotIndex  = (m_PhaseAttackTimer - 60) / 6;
             float baseOffset = shotIndex * (XM_PI / 9.0f); // 毎ショット20度回転
 
             const int   BULLET_COUNT = 8;                  // 8方向（45度刻み）
@@ -475,14 +524,10 @@ void BossEnemy::PerformPhase3Attack()
         }
 
         // ── [層2] 狙い撃ち扇形3連弾（20fに1回） ──
-        if (m_PhaseAttackTimer % 20 == 0) {
+        if ((m_PhaseAttackTimer - 60) % 20 == 0) {
             float aimAngle = atan2f(
                 player->GetPosition().z - m_Position.z,
                 player->GetPosition().x - m_Position.x);
-
-            float bulletY = player->GetPosition().y + 0.3f;
-            XMFLOAT3 bulletPos = m_Position;
-            bulletPos.y = bulletY;
 
             float offsets[3] = { -0.087f, 0.0f, 0.087f }; // 中央 ＋ 左右5度
             for (int i = 0; i < 3; i++) {
