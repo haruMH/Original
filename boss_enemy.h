@@ -17,6 +17,13 @@ struct BossShockwave {
     bool  hasDamaged;  // すでにダメージを与えたか
 };
 
+// 弾幕予測および魔力チャージ情報の共有構造体 (フェーズ1用)
+struct BossPhase1ChargeInfo {
+    bool  isCharging;
+    int   relativeTimer;
+    float angleOffset;
+};
+
 // =================================================================
 // 巨大ボスエネミー (BossEnemy)
 // =================================================================
@@ -57,12 +64,7 @@ private:
     void FireRapidShot();
 
     // 特別攻撃パターン
-    struct Phase1ChargeInfo {
-        bool  isCharging;
-        int   relativeTimer;
-        float angleOffset;
-    };
-    Phase1ChargeInfo GetPhase1ChargeInfo() const;
+    BossPhase1ChargeInfo GetPhase1ChargeInfo() const;
 
     void PerformPhaseAttack();
     void PerformPhase1Attack();

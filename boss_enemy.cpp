@@ -293,9 +293,9 @@ void BossEnemy::PerformPhaseAttack()
 // ─────────────────────────────────────────────
 // フェーズ1特別攻撃: 360度サークル弾幕 (持続時間: 400フレーム)
 // ─────────────────────────────────────────────
-BossEnemy::Phase1ChargeInfo BossEnemy::GetPhase1ChargeInfo() const
+BossPhase1ChargeInfo BossEnemy::GetPhase1ChargeInfo() const
 {
-    Phase1ChargeInfo info = {};
+    BossPhase1ChargeInfo info = {};
     info.isCharging = false;
     info.relativeTimer = 0;
     info.angleOffset = 0.0f;
@@ -336,7 +336,7 @@ void BossEnemy::PerformPhase1Attack()
     bulletPos.y = bulletY;
 
     // ヘルパーから一括してチャージ情報を取得（コードのコピペ・二重定義を防止）
-    BossEnemy::Phase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
+    BossPhase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
 
     if (chargeInfo.isCharging) {
         float chargeT = chargeInfo.relativeTimer / 15.0f; // 0.0 -> 1.0
@@ -767,7 +767,7 @@ void BossEnemy::DrawBarrierEffect()
 
     // 4. 弾幕予測レーザーライン（フェーズ1）
     if (m_BossState == BossState::PHASE_TRANSITION && m_PhaseIndex == 1) {
-        BossEnemy::Phase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
+        BossPhase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
 
         if (chargeInfo.isCharging) {
             float bulletY = -0.2f;
