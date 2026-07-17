@@ -64,4 +64,8 @@ private:
 
     // テクスチャ配列の生成
     bool CreateTextureArray(ID3D11Device* device);
+
+    // カリング済み描画オブジェクトリストのキャッシュ（3-3 対応）
+    // Normalパスで構築したリストをOutlineパスで再利用し、重複カリング計算を回避する
+    std::vector<GameObject*> m_CachedDrawList;
 };

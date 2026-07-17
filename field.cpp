@@ -74,15 +74,9 @@ void Field::Init()
     m_Texture    = ResourceManager::GetTexture("grid.png");
     m_SkyTexture = ResourceManager::GetTexture("sky.png"); // 反射フォールバック用
 
-    // シェーダーの読み込み
-    // リリースビルド時は Assets/shader/ サブフォルダから読み込む
-#ifdef NDEBUG
-    Renderer::CreateVertexShader(&m_VertexShader, &m_VertexLayout, "Assets/shader/vertexShader.cso");
-    Renderer::CreatePixelShader(&m_PixelShader, "Assets/shader/pixelShader.cso");
-#else
-    Renderer::CreateVertexShader(&m_VertexShader, &m_VertexLayout, "vertexShader.cso");
-    Renderer::CreatePixelShader(&m_PixelShader, "pixelShader.cso");
-#endif
+    // シェーダーの読み込み（2-1 対応: Renderer::ResolveShaderPath でパス解決を一元化）
+    Renderer::CreateVertexShader(&m_VertexShader, &m_VertexLayout, Renderer::ResolveShaderPath("vertexShader.cso").c_str());
+    Renderer::CreatePixelShader(&m_PixelShader, Renderer::ResolveShaderPath("pixelShader.cso").c_str());
 }
 
 void Field::Uninit()

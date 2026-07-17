@@ -318,14 +318,4 @@ void Enemy::SetSandbag(bool enable)
     }
 }
 
-void SandbagAffix::Update(Enemy* enemy)
-{
-    if (enemy->GetEnemyState() == EnemyState::NORMAL) {
-        enemy->SetVelocity(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
-        m_Life--;
-        if (m_Life <= 0) {
-            enemy->Defeat();
-            enemy->SetEnemyState(EnemyState::DEFEATED);
-        }
-    }
-}
+

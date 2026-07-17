@@ -549,15 +549,9 @@ bool ScoreHUD::Init(ID3D11Device* device)
     sd.pSysMem = v;
     if (FAILED(device->CreateBuffer(&bd, &sd, &m_QuadVB))) return false;
 
-    // ─── シェーダーファイルの読み込み ───
-    // リリースビルド時は Assets/shader/ サブフォルダから読み込む
-#ifdef NDEBUG
-    Renderer::CreateVertexShader(&m_VS, &m_IL, "Assets/shader/vertexShader.cso");
-    Renderer::CreatePixelShader(&m_PS, "Assets/shader/ui_ps.cso");
-#else
-    Renderer::CreateVertexShader(&m_VS, &m_IL, "vertexShader.cso");
-    Renderer::CreatePixelShader(&m_PS, "ui_ps.cso");
-#endif
+    // ─── シェーダーファイルの読み込み（2-1 対応: Renderer::ResolveShaderPath でパス解決を一元化）───
+    Renderer::CreateVertexShader(&m_VS, &m_IL, Renderer::ResolveShaderPath("vertexShader.cso").c_str());
+    Renderer::CreatePixelShader(&m_PS, Renderer::ResolveShaderPath("ui_ps.cso").c_str());
 
     if (!m_VS || !m_PS || !m_IL) {
         OutputDebugStringA("[ScoreHUD] シェーダーの読み込みに失敗しました\n");

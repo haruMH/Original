@@ -28,18 +28,14 @@ void EnemyBullet::Init()
     m_IsPlayerOwned = false;
     m_EmissiveColor = XMFLOAT3(2.5f, 0.5f, 0.0f);
 
-    // �`��ɂ� enemy.png �𗬗p���A�C���X�^���X�`��ŕ`��
-    // �����[�X�r���h���� Assets/texture/ �T�u�t�H���_����ǂݍ���
-#ifdef NDEBUG
-    m_RenderComponent = RenderComponent("Assets/texture/enemy.png", MeshType::Cube, true);
-#else
+    // 描画には enemy.png を流用し、インスタンス描画で描画
+    // パス解決は ResourceManager::GetTexture 内部で一元処理される（2-7 対応）
     m_RenderComponent = RenderComponent("enemy.png", MeshType::Cube, true);
-#endif
 }
 
-// ������������������������������������������������������������������������������������������
-// �I������
-// ������������������������������������������������������������������������������������������
+// ─────────────────────────────────────────────
+// 終了処理
+// ─────────────────────────────────────────────
 void EnemyBullet::Uninit()
 {
 }
