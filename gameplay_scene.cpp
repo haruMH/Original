@@ -205,7 +205,7 @@ void GameplayScene::Update()
             Manager::ChangeScene(Scene::GAMEOVER);
             return;
         }
-        bool isLowHP = (player->GetHP() > 0 && player->GetHP() <= 3);
+        bool isLowHP = (player->GetHP() == 1);
         Manager::SetLowHPWarning(isLowHP);
     } else {
         Manager::SetLowHPWarning(false);

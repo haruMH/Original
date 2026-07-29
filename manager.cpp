@@ -190,9 +190,9 @@ void Manager::Update()
 
     if (m_IsLowHPWarning) {
         // 低HP時は、画面を赤くパルス（明滅）させる
-        m_LowHPPulseTime += 0.07f; // 脈動速度
-        // サイン波を用いてアルファ値を 0.05 ~ 0.25 の間で脈動させる
-        float pulseAlpha = 0.15f + 0.10f * sinf(m_LowHPPulseTime);
+        m_LowHPPulseTime += 0.15f; // 脈動速度（より高速に調整）
+        // サイン波を用いてアルファ値を 0.04 ~ 0.28 の間で脈動させる
+        float pulseAlpha = 0.16f + 0.12f * sinf(m_LowHPPulseTime);
         
         // 通常のフラッシュが走っていない場合は警告赤をセット
         if (m_FlashColor.w <= 0.0f) {
