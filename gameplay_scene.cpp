@@ -316,7 +316,11 @@ void GameplayScene::UpdateGameplay()
             }
         }
 
-        if (obj->GetObjectType() != ObjectType::Player && !isGrabbedEnemy && !isSandbag) {
+        MagneticBullet* magBullet = dynamic_cast<MagneticBullet*>(obj);
+        if (magBullet && !magBullet->IsLaunched()) {
+            shouldUpdate = true; // 射出前はスローモーション（タイムストップ・スロー）を無視して毎フレーム滑らかに動く
+        }
+        else if (obj->GetObjectType() != ObjectType::Player && !isGrabbedEnemy && !isSandbag) {
             shouldUpdate = updateOthers;
         }
 
