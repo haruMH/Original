@@ -1,4 +1,4 @@
-﻿#include "collision_system.h"
+#include "collision_system.h"
 #include <list>
 #include <algorithm> // std::find を使うため
 #include "manager.h"
@@ -20,7 +20,7 @@
 // ─────────────────────────────────────────────
 // チェインライトニング（電撃連鎖）の処理
 // ─────────────────────────────────────────────
-static void TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
+void CollisionSystem::TriggerChainLightning(const XMFLOAT3& startPos, Player* player)
 {
     XMFLOAT3 currentPos = startPos;
     
@@ -111,41 +111,9 @@ static bool ResolveFlyingEnemyImpact(
     Player*     player,
     bool&       explosionThisFrame)
 {
-    // ─── 1. 爆発属性の衝突 ───
-    if (!explosionThisFrame && flying->IsExplosive()) {
-        // 爆弾同士の衝突は爆発しない（呼び出し元でガード済みの場合もあるが念のため）
-        if (target->GetObjectType() == ObjectType::Enemy) {
-            Enemy* te = static_cast<Enemy*>(target);
-            if (te->IsExplosive()) return false;
-        }
-        ExplosionSystem::TriggerExplosion(flying->GetPosition());
-        flying->SetEnemyState(EnemyState::DEFEATED);
-        flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
-        explosionThisFrame = true;
-        return true;
-    }
-
-    // ─── 2. 電撃属性の衝突 ───
-    if (flying->IsLightning()) {
-        TriggerChainLightning(flying->GetPosition(), player);
-
-        HitInfo hitInfo;
-        hitInfo.hitSourcePos = flying->GetPosition();
-        hitInfo.setLightning = true;
-        hitInfo.popupColor = {0.0f, 1.5f, 2.5f};
-
-        if (target->GetObjectType() == ObjectType::Boss) {
-            hitInfo.damage = Constants::Lightning::CHAIN_DAMAGE;
-        } else {
-            hitInfo.damage = 1;
-            hitInfo.knockbackVel = XMFLOAT3(0.0f, 0.0f, 0.0f);
-        }
-        target->OnHit(hitInfo);
-
-        flying->SetEnemyState(EnemyState::DEFEATED);
-        flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
-        Manager::AddHitStop(10);
-        if (g_Camera) g_Camera->Shake(0.35f, 12);
+    // 属性（Affix）による多態的な衝突解決
+    std::shared_ptr<IEnemyAffix> affix = flying->GetAffix();
+    if (affix && affix->OnImpact(flying, target, player, explosionThisFrame)) {
         return true;
     }
 
@@ -333,7 +301,7 @@ static void HandleFlyingVsWall(
 
         bool triggeredLightning = false;
         if (flying->IsLightning()) {
-            TriggerChainLightning(flying->GetPosition(), player);
+            CollisionSystem::TriggerChainLightning(flying->GetPosition(), player);
             // 電撃属性は維持したまま撃破消滅へ移行し、スパークを散らし続ける
             triggeredLightning = true;
         }

@@ -1,7 +1,9 @@
-﻿#pragma once
+#pragma once
 #include <DirectXMath.h>
 
 class Enemy;
+class GameObject;
+class Player;
 
 // =================================================================
 // Enemy Affix Interface (基底インターフェース)
@@ -15,6 +17,9 @@ public:
     virtual bool IsExplosive() const { return false; }
     virtual bool IsLightning() const { return false; }
     virtual bool IsSandbag()   const { return false; }
+
+    // 衝突時の多態的な処理。衝突を処理した場合は true、デフォルト通常衝突にする場合は false
+    virtual bool OnImpact(Enemy* flying, GameObject* target, Player* player, bool& explosionThisFrame) { return false; }
 };
 
 // --- Explosive Affix ---
@@ -37,6 +42,7 @@ public:
     DirectX::XMFLOAT3 GetEmissive() const override;
 
     bool IsExplosive() const override { return true; }
+    bool OnImpact(Enemy* flying, GameObject* target, Player* player, bool& explosionThisFrame) override;
 };
 
 // --- Lightning Affix ---
@@ -49,6 +55,7 @@ public:
         return {0.0f, 1.8f, 2.5f};
     }
     bool IsLightning() const override { return true; }
+    bool OnImpact(Enemy* flying, GameObject* target, Player* player, bool& explosionThisFrame) override;
 };
 
 // --- Sandbag Affix ---
