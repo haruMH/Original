@@ -442,7 +442,7 @@ void Manager::TransitionToBossStage()
     // ボスエネミーの生成
     LOG_INFO("[Manager] ボスエネミーの生成を開始します...\n");
     BossEnemy* boss = AddGameObject<BossEnemy>();
-    boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f));
+    boss->SetPosition(XMFLOAT3(0.0f, 15.0f, 10.0f)); // 上空から登場させるため初期Y座標を15.0fに変更
     LOG_INFO("[Manager] ボスエネミー生成完了\n");
 
     // ボス戦用のアイテム生成

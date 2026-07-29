@@ -11,6 +11,7 @@ private:
     GameObject* m_BossTarget = nullptr; // 磁力中心のボス
     float m_Angle = 0.0f;               // 周回角度（ラジアン）
     float m_CurrentRadius = 0.0f;       // 現在の半径
+    float m_CurrentYOffset = 0.0f;      // 現在の高さオフセット
 
     // 旋回運動パラメータ
     float m_TargetRadius = 3.5f;        // 安定時の周回半径

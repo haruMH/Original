@@ -189,6 +189,7 @@ public:
 
     // ボス登場カットシーン制御
     static bool IsCutsceneActive() { return m_IsCutsceneActive; }
+    static int  GetCutsceneTimer() { return m_CutsceneTimer; }
     static void TriggerBossSpawnCutscene();
 
     // 画面フラッシュ / 瀕死赤パルス制御

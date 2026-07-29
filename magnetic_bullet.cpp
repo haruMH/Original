@@ -37,6 +37,7 @@ void MagneticBullet::Setup(GameObject* boss, float startAngle, float startRadius
     m_RotSpeed = rotSpeed;
     m_AttractFactor = attractFactor;
     m_YOffset = yOffset;
+    m_CurrentYOffset = startRadius * 0.5f + yOffset; // 頭上螺旋降下のための初期高さ設定
 }
 
 void MagneticBullet::Launch(XMFLOAT3 targetPos)
@@ -72,14 +73,15 @@ void MagneticBullet::Update()
         m_Angle += m_RotSpeed;
         if (m_Angle > XM_2PI) m_Angle -= XM_2PI;
 
-        // 2. 半径の更新（螺旋状に徐々に目標半径へ収束）
+        // 2. 半径と高さオフセットの更新（螺旋状に徐々に目標値へ収束）
         m_CurrentRadius += (m_TargetRadius - m_CurrentRadius) * m_AttractFactor;
+        m_CurrentYOffset += (m_YOffset - m_CurrentYOffset) * m_AttractFactor;
 
         // 3. 奇妙な軌道（うねり・緩急）の適用
         // 半径に高速な脈動（うねり）を加える
         float wavyRadius = m_CurrentRadius + 1.2f * sinf(m_Angle * 3.0f);
         // 高さ（YOffset）にも独自の上下ウェーブを加える
-        float wavyY = m_YOffset + 0.8f * sinf(m_Angle * 2.0f);
+        float wavyY = m_CurrentYOffset + 0.8f * sinf(m_Angle * 2.0f);
         // 角度を少し非線形に変調させて、回転速度に緩急をつける
         float skewedAngle = m_Angle + 0.3f * cosf(m_Angle * 2.0f);
 
