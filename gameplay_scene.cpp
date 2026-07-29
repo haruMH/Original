@@ -192,6 +192,10 @@ void GameplayScene::Init()
         itemGigant->SetPosition(XMFLOAT3(Constants::Stage::ITEM_NORMAL_GIGANT_X, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_NORMAL_GIGANT_Z));
         itemLightning->SetPosition(XMFLOAT3(Constants::Stage::ITEM_NORMAL_LIGHTNING_X, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_NORMAL_LIGHTNING_Z));
     }
+
+    if (Constants::Debug::START_FROM_BOSS) {
+        Manager::TriggerBossSpawnCutscene();
+    }
 }
 
 // =================================================================
