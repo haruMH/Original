@@ -166,6 +166,7 @@
     <ClCompile Include="shockwave.cpp" />
     <ClCompile Include="attacking_enemy.cpp" />
     <ClCompile Include="enemy_bullet.cpp" />
+    <ClCompile Include="magnetic_bullet.cpp" />
     <ClCompile Include="boss_enemy.cpp" />
     <ClCompile Include="title_scene.cpp" />
     <ClCompile Include="gameplay_scene.cpp" />
@@ -211,6 +212,7 @@
     <ClInclude Include="shockwave.h" />
     <ClInclude Include="attacking_enemy.h" />
     <ClInclude Include="enemy_bullet.h" />
+    <ClInclude Include="magnetic_bullet.h" />
     <ClInclude Include="boss_enemy.h" />
     <ClInclude Include="scene_interface.h" />
     <ClInclude Include="title_scene.h" />

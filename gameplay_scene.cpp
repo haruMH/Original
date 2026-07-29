@@ -18,6 +18,7 @@
 #include "input.h"
 #include "math_helper.h"
 #include "attacking_enemy.h"
+#include "magnetic_bullet.h"
 
 using namespace DirectX;
 
@@ -87,12 +88,44 @@ void GameplayScene::Init()
             target.y += 2.5f; // 巨大ボスの中心高さ(胸元)を注視点にする
             g_Camera->SetCutsceneMode(true, eye, target);
         }
+
+        // 磁力旋回弾の生成 (等間隔に8個)
+        BossEnemy* boss = Manager::GetGameObject<BossEnemy>();
+        if (boss) {
+            const int BULLET_COUNT = 8;
+            for (int i = 0; i < BULLET_COUNT; ++i) {
+                float startAngle = (XM_2PI / BULLET_COUNT) * i;
+                MagneticBullet* bullet = Manager::AddGameObject<MagneticBullet>();
+                if (bullet) {
+                    bullet->Setup(
+                        boss,
+                        startAngle,
+                        16.0f,  // 初期半径 (ボスの外側から螺旋で吸い寄せられる)
+                        3.5f,   // 目標周回半径
+                        0.05f,  // 回転速度
+                        0.02f,  // 吸引力
+                        2.5f    // ボスの胸元の高さオフセット
+                    );
+                }
+            }
+        }
     });
 
     EventSystem::Subscribe<BossBattleStartEvent>([](const BossBattleStartEvent& ev) {
         if (g_Camera) {
             g_Camera->SetCutsceneMode(false);
             g_Camera->Shake(0.5f, 15); // 戦闘開始時の咆哮の余韻シェイク
+        }
+
+        // 生存している磁力弾をすべてプレイヤーに向かって一斉射出
+        Player* player = Manager::GetGameObject<Player>();
+        if (player) {
+            XMFLOAT3 playerPos = player->GetPosition();
+            for (MagneticBullet* bullet : Manager::GetGameObjects<MagneticBullet>()) {
+                if (bullet && !bullet->IsLaunched()) {
+                    bullet->Launch(playerPos);
+                }
+            }
         }
     });
 
