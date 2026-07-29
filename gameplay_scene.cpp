@@ -82,10 +82,9 @@ void GameplayScene::Init()
     EventSystem::Subscribe<BossSpawnEvent>([](const BossSpawnEvent& ev) {
         if (g_Camera) {
             XMFLOAT3 eye = ev.bossPosition;
-            eye.y += 6.0f;  // ボスの巨大さ(スケール5)に合わせて十分な高さに配置
-            eye.z -= 17.0f; // ボスがはみ出さないように十分な距離(17m)まで手前に引く
-            XMFLOAT3 target = ev.bossPosition;
-            target.y += 2.5f; // 巨大ボスの中心高さ(胸元)を注視点にする
+            eye.y += 7.0f;  // ボスの中心(Y=4.0f)の上方7mにカメラを配置 (高さ11m)
+            eye.z -= 22.0f; // ボスの巨大スケールに合わせて十分引き離す (22m)
+            XMFLOAT3 target = ev.bossPosition; // ボスの中心(Y=4.0f)を注視
             g_Camera->SetCutsceneMode(true, eye, target);
         }
 
@@ -104,7 +103,7 @@ void GameplayScene::Init()
                         3.5f,   // 目標周回半径
                         0.05f,  // 回転速度
                         0.02f,  // 吸引力
-                        2.5f    // ボスの胸元の高さオフセット
+                        0.0f    // ボスの中心(胸元)を周回するため高さオフセットは0.0f
                     );
                 }
             }
