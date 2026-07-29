@@ -240,3 +240,68 @@ void EnemyBullet::Draw()
     ID3D11ShaderResourceView* tex = ResourceManager::GetTexture("enemy.png");
     Renderer::DrawCube(worldMatrix, tex);
 }
+
+// ─────────────────────────────────────────────
+// メモリプール管理の実装
+// ─────────────────────────────────────────────
+void* EnemyBullet::m_PoolMemory = nullptr;
+bool* EnemyBullet::m_UsedList = nullptr;
+
+void EnemyBullet::InitPool()
+{
+    if (m_PoolMemory) return; // 二重初期化防止
+    m_PoolMemory = ::operator new(sizeof(EnemyBullet) * POOL_SIZE);
+    m_UsedList = new bool[POOL_SIZE];
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        m_UsedList[i] = false;
+    }
+}
+
+void EnemyBullet::UninitPool()
+{
+    if (m_PoolMemory) {
+        ::operator delete(m_PoolMemory);
+        m_PoolMemory = nullptr;
+    }
+    if (m_UsedList) {
+        delete[] m_UsedList;
+        m_UsedList = nullptr;
+    }
+}
+
+void* EnemyBullet::operator new(size_t size)
+{
+    if (!m_PoolMemory) {
+        InitPool();
+    }
+
+    if (size != sizeof(EnemyBullet)) {
+        return ::operator new(size);
+    }
+
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        if (!m_UsedList[i]) {
+            m_UsedList[i] = true;
+            return static_cast<char*>(m_PoolMemory) + (i * sizeof(EnemyBullet));
+        }
+    }
+
+    return ::operator new(size);
+}
+
+void EnemyBullet::operator delete(void* p)
+{
+    if (!p) return;
+
+    if (m_PoolMemory) {
+        ptrdiff_t offset = static_cast<char*>(p) - static_cast<char*>(m_PoolMemory);
+        ptrdiff_t index = offset / sizeof(EnemyBullet);
+
+        if (index >= 0 && index < static_cast<ptrdiff_t>(POOL_SIZE) && (offset % sizeof(EnemyBullet) == 0)) {
+            m_UsedList[index] = false;
+            return;
+        }
+    }
+
+    ::operator delete(p);
+}

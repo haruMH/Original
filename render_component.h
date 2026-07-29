@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <string>
+#include <string_view>
 
 // 描画するメッシュの形状タイプ
 enum class MeshType {
@@ -22,6 +23,6 @@ struct RenderComponent {
         : textureKey(""), meshType(MeshType::Cube), visible(true) {}
 
     // 初期化用コンストラクタ
-    RenderComponent(const std::string& texKey, MeshType type = MeshType::Cube, bool isVisible = true)
+    RenderComponent(std::string_view texKey, MeshType type = MeshType::Cube, bool isVisible = true)
         : textureKey(texKey), meshType(type), visible(isVisible) {}
 };

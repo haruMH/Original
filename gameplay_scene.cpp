@@ -1,4 +1,7 @@
 ﻿#include "gameplay_scene.h"
+#include "event_system.h"
+#include "event_types.h"
+#include "score_popup.h"
 #include "manager.h"
 #include "player.h"
 #include "enemy.h"
@@ -34,6 +37,22 @@ GameplayScene::~GameplayScene()
 // =================================================================
 void GameplayScene::Init()
 {
+    // イベント購読の登録
+    EventSystem::Subscribe<PlayerHitEvent>([](const PlayerHitEvent& ev) {
+        if (g_Camera) g_Camera->Shake(0.35f, 12);
+        Manager::AddHitStop(5);
+    });
+
+    EventSystem::Subscribe<EnemyDefeatedEvent>([](const EnemyDefeatedEvent& ev) {
+        GameRule::OnEnemyDefeated(ev.scoreValue);
+        ScorePopupSystem::AddPopup(ev.position.x, ev.position.y, ev.position.z, ev.scoreValue, ev.popupColor.x, ev.popupColor.y, ev.popupColor.z);
+    });
+
+    EventSystem::Subscribe<BossHitEvent>([](const BossHitEvent& ev) {
+        Manager::AddHitStop(12);
+        if (g_Camera) g_Camera->Shake(0.40f, 12);
+    });
+
     // Q[vC{҂̏
     GameRule::Init(); // XRAGAQ[NAԂ̃Zbg
     
@@ -137,6 +156,7 @@ void GameplayScene::Init()
 // =================================================================
 void GameplayScene::Uninit()
 {
+    EventSystem::Clear(); // イベントリスナーのクリア
 }
 
 // =================================================================

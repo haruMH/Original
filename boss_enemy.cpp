@@ -1,4 +1,6 @@
 ﻿#include "boss_enemy.h"
+#include "event_system.h"
+#include "event_types.h"
 #include "renderer.h"
 #include "resource_manager.h"
 #include "math_helper.h"
@@ -230,8 +232,10 @@ void BossEnemy::ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePo
     m_HP -= damage;
     m_DamageFlashTimer = 15;
 
-    Manager::AddHitStop(12);
-    if (g_Camera) g_Camera->Shake(0.40f, 12);
+    BossHitEvent hitEvent;
+    hitEvent.damage = damage;
+    hitEvent.hitSourcePos = hitSourcePos;
+    EventSystem::Publish<BossHitEvent>(hitEvent);
 
     // 巨大なので少しだけノックバック
     XMFLOAT3 diff = m_Position - hitSourcePos;

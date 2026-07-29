@@ -61,6 +61,7 @@ void Manager::Init()
     Renderer::Init();
     Input::Init();
     GameRule::Init();
+    EnemyBullet::InitPool(); // 弾薬メモリプールの初期化
     m_HitStopFrames = 0;
     m_SlowMotionTimer = 0;
     m_SlowMotionDuration = 0;
@@ -145,6 +146,7 @@ void Manager::Uninit()
 
     Input::Uninit();
     ResourceManager::Uninit();
+    EnemyBullet::UninitPool(); // 弾薬メモリプールの解放
     Renderer::Uninit();
 }
 

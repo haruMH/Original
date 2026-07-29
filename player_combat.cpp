@@ -1,4 +1,6 @@
-﻿#include "player_combat.h"
+#include "player_combat.h"
+#include "event_system.h"
+#include "event_types.h"
 #include "player.h"
 #include "player_movement.h"
 #include "math_helper.h"
@@ -466,10 +468,10 @@ void PlayerCombat::OnHit(const HitInfo& info)
         m_Owner->GetMovementModule()->ApplyKnockback(knockback);
     }
 
-    if (g_Camera) {
-        g_Camera->Shake(0.35f, 12);
-    }
-    Manager::AddHitStop(5);
+    PlayerHitEvent hitEvent;
+    hitEvent.damage = info.damage;
+    hitEvent.hitSourcePos = info.hitSourcePos;
+    EventSystem::Publish<PlayerHitEvent>(hitEvent);
 }
 
 // =================================================================

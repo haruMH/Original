@@ -76,6 +76,9 @@ $files = @(
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\wall.cpp",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\enemy_affix.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\enemy_affix.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\event_system.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\event_system.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\event_types.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\.agents\AGENTS.md"
 )
 

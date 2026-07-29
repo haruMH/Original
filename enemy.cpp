@@ -1,4 +1,6 @@
 ﻿#include "enemy.h"
+#include "event_system.h"
+#include "event_types.h"
 #include "enemy_affix.h"
 #include "renderer.h"
 #include "resource_manager.h"
@@ -247,11 +249,13 @@ void Enemy::Defeat(float colorR, float colorG, float colorB)
     if (m_IsDefeatedCounted) return;
     m_IsDefeatedCounted = true;
 
-    // スコア加算とUIのテイクインクリメント
-    GameRule::OnEnemyDefeated(m_ScoreValue);
-
-    // スコアポップアップ表示
-    ScorePopupSystem::AddPopup(m_Position.x, m_Position.y + 1.0f, m_Position.z, m_ScoreValue, colorR, colorG, colorB);
+    // イベントの発行
+    EnemyDefeatedEvent defEvent;
+    defEvent.scoreValue = m_ScoreValue;
+    defEvent.position = m_Position;
+    defEvent.position.y += 1.0f; // ポップアップの高さオフセット
+    defEvent.popupColor = DirectX::XMFLOAT3(colorR, colorG, colorB);
+    EventSystem::Publish<EnemyDefeatedEvent>(defEvent);
 }
 
 XMFLOAT3 Enemy::GetEmissive() const
