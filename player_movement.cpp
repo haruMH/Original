@@ -1,4 +1,4 @@
-﻿#include "player_movement.h"
+#include "player_movement.h"
 #include "player.h"
 #include "player_controller.h"
 #include "math_helper.h"
@@ -136,7 +136,10 @@ void PlayerMovement::Update()
             if (hitTarget) {
                 if (hitTarget->GetObjectType() == ObjectType::Boss) {
                     BossEnemy* bossE = static_cast<BossEnemy*>(hitTarget);
-                    bossE->ApplyBossDamage(3, m_Owner->GetPosition());
+                    HitInfo hitInfo;
+                    hitInfo.damage = 3;
+                    hitInfo.hitSourcePos = m_Owner->GetPosition();
+                    bossE->OnHit(hitInfo);
                 } else {
                     XMFLOAT3 pushDir = hitTarget->GetPosition() - m_Owner->GetPosition();
                     pushDir.y = 0.0f;

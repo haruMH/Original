@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "gameobject.h"
 #include <vector>
 #include <list>
@@ -113,8 +113,6 @@ public:
     // 投擲
     void   Throw();
 
-    // 被弾ダメージ適用
-    void ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos);
     void OnHit(const HitInfo& info) override;
 
     // ステータス取得

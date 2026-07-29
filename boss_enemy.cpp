@@ -1,4 +1,4 @@
-﻿#include "boss_enemy.h"
+#include "boss_enemy.h"
 #include "renderer.h"
 #include "resource_manager.h"
 #include "math_helper.h"
@@ -464,7 +464,10 @@ void BossEnemy::PerformPhase2Attack()
             proj, perpDist, dist);
         OutputDebugStringA(dbgBuf);
 
-        player->ApplyDamage(1, m_Position);
+        HitInfo hitInfo;
+        hitInfo.damage = 1;
+        hitInfo.hitSourcePos = m_Position;
+        player->OnHit(hitInfo);
         if (g_Camera) g_Camera->Shake(0.25f, 8);
     }
 
@@ -595,9 +598,10 @@ void BossEnemy::PerformPhase3Attack()
         float dx  = pPos.x - m_PhaseTargetPos.x;
         float dz  = pPos.z - m_PhaseTargetPos.z;
         float dst = sqrtf(dx * dx + dz * dz);
-        if (dst < Constants::Boss::STRIKE_DAMAGE_RADIUS && !player->IsInvincible()) {
-            player->ApplyDamage(Constants::Boss::STRIKE_DAMAGE, m_PhaseTargetPos);
-        }
+            HitInfo hitInfo;
+            hitInfo.damage = Constants::Boss::STRIKE_DAMAGE;
+            hitInfo.hitSourcePos = m_PhaseTargetPos;
+            player->OnHit(hitInfo);
         if (g_Camera) g_Camera->Shake(0.3f, 8);
     }
 

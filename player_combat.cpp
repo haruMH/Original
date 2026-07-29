@@ -1,4 +1,4 @@
-﻿#include "player_combat.h"
+#include "player_combat.h"
 #include "player.h"
 #include "player_movement.h"
 #include "math_helper.h"
@@ -141,7 +141,10 @@ void PlayerCombat::UpdateIdle()
             
             if (target->GetObjectType() == ObjectType::Boss) {
                 BossEnemy* boss = static_cast<BossEnemy*>(target);
-                boss->ApplyBossDamage(3, m_Owner->GetPosition());
+                HitInfo hitInfo;
+                hitInfo.damage = 3;
+                hitInfo.hitSourcePos = m_Owner->GetPosition();
+                boss->OnHit(hitInfo);
             } else {
                 XMFLOAT3 pushVel = XMFLOAT3(dir.x * 1.8f, 0.6f, dir.z * 1.8f);
                 target->SetVelocity(pushVel);
@@ -221,7 +224,10 @@ void PlayerCombat::UpdateIdle()
                 
                 if (target->GetObjectType() == ObjectType::Boss) {
                     BossEnemy* boss = static_cast<BossEnemy*>(target);
-                    boss->ApplyBossDamage(4, m_Owner->GetPosition());
+                    HitInfo hitInfo;
+                    hitInfo.damage = 4;
+                    hitInfo.hitSourcePos = m_Owner->GetPosition();
+                    boss->OnHit(hitInfo);
                 } else {
                     XMFLOAT3 pushVel = XMFLOAT3(dir.x * 1.6f, 0.6f, dir.z * 1.6f);
                     target->SetVelocity(pushVel);
@@ -426,11 +432,11 @@ void PlayerCombat::Throw()
 // =================================================================
 // Apply Damage
 // =================================================================
-void PlayerCombat::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
+void PlayerCombat::OnHit(const HitInfo& info)
 {
     if (Constants::Debug::INVINCIBLE_PLAYER || m_Owner->GetInvincibleTimer() > 0 || m_Owner->GetHP() <= 0) return;
 
-    m_Owner->SetHP(m_Owner->GetHP() - damage);
+    m_Owner->SetHP(m_Owner->GetHP() - info.damage);
     if (m_Owner->GetHP() < 0) m_Owner->SetHP(0);
 
     m_Owner->SetScale(XMFLOAT3(1.7f, 0.5f, 1.7f));
@@ -445,7 +451,7 @@ void PlayerCombat::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
     }
     m_Owner->SetState(PlayerState::IDLE);
 
-    DirectX::XMFLOAT3 diff = m_Owner->GetPosition() - enemyPos;
+    DirectX::XMFLOAT3 diff = m_Owner->GetPosition() - info.hitSourcePos;
     diff.y = 0.0f;
     float dist = MathHelper::Length(diff);
     if (dist > 0.001f) {

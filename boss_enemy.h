@@ -1,4 +1,6 @@
-﻿#pragma once
+#pragma once
+#include <directxmath.h>
+#include <d3d11.h>
 #include "enemy.h"
 #include <vector>
 
@@ -71,13 +73,13 @@ private:
     void PerformPhase2Attack();
     void PerformPhase3Attack();
     void DrawBarrierEffect();
+    void ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePos);
 
 public:
     void Init() override;
     void Update() override;
     void Draw() override;
 
-    void ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePos);
     void OnHit(const HitInfo& info) override;
     int  GetHP() const { return m_HP; }
     int  GetMaxHP() const { return m_MaxHP; }

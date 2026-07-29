@@ -1,4 +1,4 @@
-﻿#include "player.h"
+#include "player.h"
 #include "player_movement.h"
 #include "player_combat.h"
 #include "player_visual.h"
@@ -206,14 +206,9 @@ void Player::Throw()
     if (m_Combat) m_Combat->Throw();
 }
 
-void Player::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
-{
-    if (m_Combat) m_Combat->ApplyDamage(damage, enemyPos);
-}
-
 void Player::OnHit(const HitInfo& info)
 {
-    ApplyDamage(info.damage, info.hitSourcePos);
+    if (m_Combat) m_Combat->OnHit(info);
 }
 
 void Player::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
