@@ -1,4 +1,4 @@
-#include "boss_enemy.h"
+﻿#include "boss_enemy.h"
 #include "renderer.h"
 #include "resource_manager.h"
 #include "math_helper.h"
@@ -281,12 +281,22 @@ void BossEnemy::ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePo
 void BossEnemy::PerformPhaseAttack()
 {
     m_PhaseAttackTimer++;
-    if (m_PhaseIndex == 1) {
-        PerformPhase1Attack();
-    } else if (m_PhaseIndex == 2) {
-        PerformPhase2Attack();
-    } else if (m_PhaseIndex == 3) {
-        PerformPhase3Attack();
+
+    // フェーズ攻撃関数のテーブル (データ駆動)
+    typedef void (BossEnemy::*PhaseAttackFunc)();
+    static const PhaseAttackFunc PHASE_ATTACK_TABLE[] = {
+        nullptr, // 0番目は未使用 (m_PhaseIndex が 1-indexed のため)
+        &BossEnemy::PerformPhase1Attack,
+        &BossEnemy::PerformPhase2Attack,
+        &BossEnemy::PerformPhase3Attack
+    };
+
+    const int numPhases = sizeof(PHASE_ATTACK_TABLE) / sizeof(PHASE_ATTACK_TABLE[0]);
+    if (m_PhaseIndex >= 1 && m_PhaseIndex < numPhases) {
+        PhaseAttackFunc func = PHASE_ATTACK_TABLE[m_PhaseIndex];
+        if (func) {
+            (this->*func)();
+        }
     }
 }
 

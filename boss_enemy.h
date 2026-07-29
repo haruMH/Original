@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <directxmath.h>
 #include <d3d11.h>
 #include "enemy.h"

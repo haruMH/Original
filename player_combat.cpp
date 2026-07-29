@@ -1,4 +1,4 @@
-#include "player_combat.h"
+﻿#include "player_combat.h"
 #include "player.h"
 #include "player_movement.h"
 #include "math_helper.h"

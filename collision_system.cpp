@@ -1,9 +1,10 @@
-#include "collision_system.h"
+﻿#include "collision_system.h"
 #include <list>
 #include <algorithm> // std::find を使うため
 #include "manager.h"
 #include "player.h"
 #include "enemy.h"
+#include "enemy_affix.h"
 #include "item.h"
 #include "wall.h"
 #include "camera.h"
