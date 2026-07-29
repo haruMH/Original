@@ -75,11 +75,19 @@ void MagneticBullet::Update()
         // 2. 半径の更新（螺旋状に徐々に目標半径へ収束）
         m_CurrentRadius += (m_TargetRadius - m_CurrentRadius) * m_AttractFactor;
 
-        // 3. 座標の決定
+        // 3. 奇妙な軌道（うねり・緩急）の適用
+        // 半径に高速な脈動（うねり）を加える
+        float wavyRadius = m_CurrentRadius + 1.2f * sinf(m_Angle * 3.0f);
+        // 高さ（YOffset）にも独自の上下ウェーブを加える
+        float wavyY = m_YOffset + 0.8f * sinf(m_Angle * 2.0f);
+        // 角度を少し非線形に変調させて、回転速度に緩急をつける
+        float skewedAngle = m_Angle + 0.3f * cosf(m_Angle * 2.0f);
+
+        // 4. 座標の決定
         XMFLOAT3 bossPos = m_BossTarget->GetPosition();
-        m_Position.x = bossPos.x + m_CurrentRadius * cosf(m_Angle);
-        m_Position.y = bossPos.y + m_YOffset;
-        m_Position.z = bossPos.z + m_CurrentRadius * sinf(m_Angle);
+        m_Position.x = bossPos.x + wavyRadius * cosf(skewedAngle);
+        m_Position.y = bossPos.y + wavyY;
+        m_Position.z = bossPos.z + wavyRadius * sinf(skewedAngle);
     }
     else {
         // === 射出状態：プレイヤーに向かって直線的に高速移動 ===

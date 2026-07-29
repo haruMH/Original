@@ -21,8 +21,8 @@ private:
     // 射出状態パラメータ
     bool             m_IsLaunched = false; // 射出されたか
     DirectX::XMFLOAT3 m_Direction = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f); // 射出方向
-    float            m_LaunchSpeed = 0.25f; // 射出後の移動速度
-    int              m_Life = 240;          // 射出後の寿命 (フレーム数)
+    float            m_LaunchSpeed = 0.12f; // 射出後の移動速度
+    int              m_Life = 300;          // 射出後の寿命 (フレーム数)
     DirectX::XMFLOAT3 m_EmissiveColor;      // 自己発光カラー
 
 public:
