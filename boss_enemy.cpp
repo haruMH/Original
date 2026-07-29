@@ -53,22 +53,7 @@ void BossEnemy::Init()
 // ─────────────────────────────────────────────
 void BossEnemy::Update()
 {
-    if (Manager::IsCutsceneActive()) {
-        // カットシーン中：上空から着地目標へ滑らかに降下する処理のみを実行
-        int timer = Manager::GetCutsceneTimer(); // 180 -> 0
-        if (timer >= 120) {
-            // 最初の60フレームで Y=25.0f から Y=4.0f（めり込まない着地位置）に降下 (イーズアウト)
-            float t = (180 - timer) / 60.0f;
-            if (t > 1.0f) t = 1.0f;
-            float easeT = sinf(t * DirectX::XM_PIDIV2); // イーズアウトサインカーブ
-            
-            m_Position.y = 25.0f + (4.0f - 25.0f) * easeT;
-        } else {
-            // 残りの時間は地面 (Y=4.0f) に着地している
-            m_Position.y = 4.0f;
-        }
-        return;
-    }
+    if (Manager::IsCutsceneActive()) return;
 
     if (m_DamageFlashTimer > 0) {
         m_DamageFlashTimer--;

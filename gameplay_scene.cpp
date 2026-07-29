@@ -167,7 +167,7 @@ void GameplayScene::Init()
 
         // �{�X�G�l�~�[�̐���
         BossEnemy* boss = Manager::AddGameObject<BossEnemy>();
-        boss->SetPosition(XMFLOAT3(0.0f, 15.0f, Constants::Stage::BOSS_SPAWN_OFFSET_Z)); // 上空から登場させるため初期Y座標を15.0fに変更
+        boss->SetPosition(XMFLOAT3(0.0f, 1.5f, Constants::Stage::BOSS_SPAWN_OFFSET_Z));
 
         GameRule::SetTotalEnemies(1);
     } else {
