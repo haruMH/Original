@@ -34,3 +34,14 @@ struct PlayerParriedEvent
 {
     DirectX::XMFLOAT3 position;        // パリィが発生した座標
 };
+
+// 5. ボスが登場（カットシーン開始）した時のイベント
+struct BossSpawnEvent
+{
+    DirectX::XMFLOAT3 bossPosition;    // ボスのスポーン位置
+};
+
+// 6. ボス登場カットシーンが終了し、戦闘が開始された時のイベント
+struct BossBattleStartEvent
+{
+};

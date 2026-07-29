@@ -21,6 +21,8 @@
 #include "score_popup.h"
 #include "score_hud.h"
 #include "shockwave.h"
+#include "event_system.h"
+#include "event_types.h"
 
 // DirectX 名前空間の使用
 using namespace DirectX;
@@ -56,6 +58,9 @@ float                  Manager::m_FlashFadeSpeed = 0.05f;
 bool                   Manager::m_IsLowHPWarning = false;
 float                  Manager::m_LowHPPulseTime = 0.0f;
 
+bool                   Manager::m_IsCutsceneActive = false;
+int                    Manager::m_CutsceneTimer = 0;
+
 Camera*                g_Camera = nullptr;
 
 // ─────────────────────────────────────────────
@@ -67,6 +72,8 @@ void Manager::Init()
     Input::Init();
     GameRule::Init();
     EnemyBullet::InitPool(); // 弾薬メモリプールの初期化
+    m_IsCutsceneActive = false;
+    m_CutsceneTimer = 0;
     m_HitStopFrames = 0;
     m_SlowMotionTimer = 0;
     m_SlowMotionDuration = 0;
@@ -188,9 +195,55 @@ void Manager::Update()
         if (m_FlashColor.w < 0.0f) m_FlashColor.w = 0.0f;
     }
 
+    // ボス登場カットシーンのタイムライン更新
+    if (m_IsCutsceneActive) {
+        m_CutsceneTimer--;
+
+        // 1. スローモーション（ウィッチタイム）の持続
+        // カットシーン中は、ボスとプレイヤー以外の動きを0.3倍速のスローモーションにする
+        if (m_CutsceneTimer > 30) {
+            m_SlowMotionTimer = 2; // 毎フレーム 2 を代入してスロー状態を維持
+            m_SlowMotionDuration = 10;
+        }
+
+        // 2. タイムラインごとのイベントトリガー
+        if (m_CutsceneTimer == 180) {
+            // 開始時: 白フラッシュ（フェード速度はゆっくり 0.02f）
+            TriggerFlash(XMFLOAT4(1.0f, 1.0f, 1.0f, 0.8f), 0.02f);
+        }
+        else if (m_CutsceneTimer == 120) {
+            // ボス咆哮・着地時: 足元に巨大でゆっくり広がる赤い衝撃波を発生（ダメージなし、force=0）
+            BossEnemy* boss = GetGameObject<BossEnemy>();
+            if (boss) {
+                XMFLOAT3 bossPos = boss->GetPosition();
+                // 衝撃波の発生（半径 15.0f, 赤, 継続 60フレーム, 吹き飛ばし力 0.0f, ディレイ 0, 収縮なし）
+                ShockwaveSystem::AddShockwave(bossPos, 15.0f, 2.5f, 0.2f, 0.0f, 60, 0.0f, 0, false);
+            }
+            // 咆哮に合わせて、画面全体を「ゆったりとした警告赤パルス」で明滅させるために警告状態をON
+            m_IsLowHPWarning = true;
+            m_LowHPPulseTime = 0.0f; // パルス角度をリセット
+        }
+        else if (m_CutsceneTimer == 40) {
+            // 咆哮終了: 赤パルス明滅をOFFにする
+            m_IsLowHPWarning = false;
+            // 通常画面に戻るフェード
+            TriggerFlash(XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f), 0.05f);
+        }
+        else if (m_CutsceneTimer <= 0) {
+            // カットシーン終了
+            m_IsCutsceneActive = false;
+            m_IsLowHPWarning = false;
+            m_SlowMotionTimer = 0; // スローモーション解除
+            
+            // 戦闘開始イベントを発行
+            BossBattleStartEvent startEvent;
+            EventSystem::Publish<BossBattleStartEvent>(startEvent);
+        }
+    }
+
     if (m_IsLowHPWarning) {
-        // 低HP時は、画面を赤くパルス（明滅）させる
-        m_LowHPPulseTime += 0.15f; // 脈動速度（より高速に調整）
+        // 低HP時は、画面を赤くパルス（明滅）させる（カットシーン時はゆっくり、通常プレイのHP1時は高速）
+        m_LowHPPulseTime += m_IsCutsceneActive ? 0.06f : 0.15f; 
         // サイン波を用いてアルファ値を 0.04 ~ 0.28 の間で脈動させる
         float pulseAlpha = 0.16f + 0.12f * sinf(m_LowHPPulseTime);
         
@@ -406,12 +459,28 @@ void Manager::TransitionToBossStage()
     itemLightning->SetPosition(XMFLOAT3(4.0f, 0.5f, -15.0f));
     itemLightning->SetItemType(ItemType::LIGHTNING);
     
-    // ボス戦開幕の演出：巨大な衝撃波をプレイヤーとボスの間に走らせる
-    ShockwaveSystem::AddShockwave(XMFLOAT3(0.0f, -0.95f, 5.0f), 15.0f, 0.0f, 2.0f, 4.0f, 40, 0.0f, 0);
-
-    // カメラをボスに向けて強めにシェイク
-    if (g_Camera) g_Camera->Shake(0.6f, 20);
+    // ボス登場カットシーンのトリガー
+    TriggerBossSpawnCutscene();
     LOG_INFO("[Manager] TransitionToBossStage - 正常終了\n");
+}
+
+// ─────────────────────────────────────────────
+// ボス登場カットシーンのトリガー
+// ─────────────────────────────────────────────
+void Manager::TriggerBossSpawnCutscene()
+{
+    m_IsCutsceneActive = true;
+    m_CutsceneTimer = 180; // 3秒間 (60fps)
+
+    // イベント発行
+    BossSpawnEvent spawnEvent;
+    BossEnemy* boss = GetGameObject<BossEnemy>();
+    if (boss) {
+        spawnEvent.bossPosition = boss->GetPosition();
+    } else {
+        spawnEvent.bossPosition = XMFLOAT3(0.0f, 1.5f, 10.0f);
+    }
+    EventSystem::Publish<BossSpawnEvent>(spawnEvent);
 }
 
 // ─────────────────────────────────────────────

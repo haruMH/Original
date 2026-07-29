@@ -1,10 +1,13 @@
 ﻿#include "player_controller.h"
 #include "input.h"
+#include "manager.h"
 
 using namespace DirectX;
 
 XMFLOAT3 PlayerController::GetMoveDirection(float camYaw)
 {
+    if (Manager::IsCutsceneActive()) return XMFLOAT3(0.0f, 0.0f, 0.0f);
+
     // カメラの向きに合わせた移動方向ベクトルの算出
     XMMATRIX camRotY = XMMatrixRotationY(camYaw);
     XMVECTOR camForward = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), camRotY);
@@ -26,24 +29,28 @@ XMFLOAT3 PlayerController::GetMoveDirection(float camYaw)
 
 bool PlayerController::IsGrabOrThrowAction()
 {
+    if (Manager::IsCutsceneActive()) return false;
     // 左クリック(VK_LBUTTON = 0x01)
     return Input::GetKeyTrigger(KEY_GRAB_THROW);
 }
 
 bool PlayerController::IsSpinToggleAction()
 {
+    if (Manager::IsCutsceneActive()) return false;
     // 右クリック または シフトキー
     return Input::GetKeyTrigger(KEY_SPIN_TOGGLE) || Input::GetKeyTrigger(KEY_DASH);
 }
 
 bool PlayerController::IsDashAction()
 {
+    if (Manager::IsCutsceneActive()) return false;
     // シフトキーが押されたか判定（トリガー）
     return Input::GetKeyTrigger(KEY_DASH);
 }
 
 bool PlayerController::IsGuardAction()
 {
+    if (Manager::IsCutsceneActive()) return false;
     // 右クリックが押されているか判定（ホールド）
     return Input::GetKeyPress(KEY_GUARD);
 }

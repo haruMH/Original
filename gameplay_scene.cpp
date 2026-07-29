@@ -78,6 +78,24 @@ void GameplayScene::Init()
         Manager::AddHitStop(15);      // 手応えヒットストップ
     });
 
+    EventSystem::Subscribe<BossSpawnEvent>([](const BossSpawnEvent& ev) {
+        if (g_Camera) {
+            XMFLOAT3 eye = ev.bossPosition;
+            eye.y += 2.0f; // ボスの高さに合わせて少し上に
+            eye.z -= 6.0f; // プレイヤー側（手前）にカメラを引く
+            XMFLOAT3 target = ev.bossPosition;
+            target.y += 1.2f; // ボスの胸元あたりを注視
+            g_Camera->SetCutsceneMode(true, eye, target);
+        }
+    });
+
+    EventSystem::Subscribe<BossBattleStartEvent>([](const BossBattleStartEvent& ev) {
+        if (g_Camera) {
+            g_Camera->SetCutsceneMode(false);
+            g_Camera->Shake(0.5f, 15); // 戦闘開始時の咆哮の余韻シェイク
+        }
+    });
+
     // Q[vC{҂̏
     GameRule::Init(); // XRAGAQ[NAԂ̃Zbg
     

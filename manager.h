@@ -62,6 +62,10 @@ private:
     static bool              m_IsLowHPWarning;
     static float             m_LowHPPulseTime;
 
+    // ボス登場カットシーン制御用
+    static bool m_IsCutsceneActive;
+    static int  m_CutsceneTimer;
+
 public:
     // 初期化と終了処理
     static void Init();
@@ -182,6 +186,10 @@ public:
     static void  TransitionToBossStage();
     static void  ChangeScene(Scene nextScene);
     static Scene GetCurrentScene() { return m_CurrentScene; }
+
+    // ボス登場カットシーン制御
+    static bool IsCutsceneActive() { return m_IsCutsceneActive; }
+    static void TriggerBossSpawnCutscene();
 
     // 画面フラッシュ / 瀕死赤パルス制御
     static void TriggerFlash(DirectX::XMFLOAT4 color, float fadeSpeed = 0.05f);

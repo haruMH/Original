@@ -53,6 +53,8 @@ void BossEnemy::Init()
 // ─────────────────────────────────────────────
 void BossEnemy::Update()
 {
+    if (Manager::IsCutsceneActive()) return;
+
     if (m_DamageFlashTimer > 0) {
         m_DamageFlashTimer--;
     }
