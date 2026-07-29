@@ -47,6 +47,9 @@ public:
     // pass: 描画パス（通常、シャドウ、アウトライン）
     void RenderCubeInstances(ID3D11DeviceContext* context, const std::vector<GameObject*>& objects, RenderPass pass = RenderPass::Normal);
 
+    // カリング結果キャッシュのクリア
+    void ClearCache();
+
 private:
     ID3D11Buffer*       m_InstanceBuffer = nullptr;       // 動的インスタンスバッファ（スロット1用）
     ID3D11InputLayout*  m_InstancedInputLayout = nullptr;  // インスタンス描画専用インプットレイアウト

@@ -565,9 +565,15 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
     textureArray->Release();
     context->Release();
     for (auto* r : resources) r->Release();
-    for (auto* t : textures) t->Release();
-
     log << "[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV." << std::endl;
     return true;
+}
+
+// ─────────────────────────────────────────────
+// カリング結果キャッシュのクリア
+// ─────────────────────────────────────────────
+void RenderSystem::ClearCache()
+{
+    m_CachedDrawList.clear();
 }
 

@@ -121,6 +121,7 @@ void Manager::Uninit()
     // 衝撃波システムの終了処理
     ShockwaveSystem::Uninit();
 
+    m_RenderSystem.ClearCache();
     m_RenderSystem.Uninit();
 
     // 登録されているゲームオブジェクトの破棄
@@ -182,6 +183,8 @@ void Manager::Update()
 // ─────────────────────────────────────────────
 void Manager::Draw()
 {
+    m_RenderSystem.ClearCache(); // キャッシュクリア
+
     XMMATRIX cameraView = Renderer::GetViewMatrix();
     XMMATRIX cameraProj = Renderer::GetProjectionMatrix();
 
@@ -325,6 +328,7 @@ void Manager::TransitionToBossStage()
         RegisterCategory(obj);
     }
     LOG_INFO("[Manager] オブジェクト破棄クリーンアップ完了 (破棄数: %d)\n", destroyedCount);
+    m_RenderSystem.ClearCache();
 
     // ボス部屋の壁を生成
     LOG_INFO("[Manager] ボス部屋の壁を生成します...\n");
@@ -410,6 +414,7 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     m_CachedPlayer = nullptr;
     m_CachedBoss = nullptr;
     ClearCategoryLists(); // カテゴリ別キャッシュリストも必ずクリアする（ダングリングポインタ防止）
+    m_RenderSystem.ClearCache();
 
     if (g_Camera) {
         g_Camera->Uninit();
@@ -535,4 +540,6 @@ void Manager::DestroyObjectsIf()
                 return obj == nullptr || obj->IsDestroy();
             }),
         m_UpdateObjects.end());
+
+    m_RenderSystem.ClearCache();
 }
