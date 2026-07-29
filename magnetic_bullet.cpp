@@ -37,7 +37,7 @@ void MagneticBullet::Setup(GameObject* boss, float startAngle, float startRadius
     m_RotSpeed = rotSpeed;
     m_AttractFactor = attractFactor;
     m_YOffset = yOffset;
-    m_CurrentYOffset = startRadius * 0.5f + yOffset; // 頭上螺旋降下のための初期高さ設定
+    m_CurrentYOffset = startRadius * 0.3f + yOffset; // 頭上螺旋降下のための初期高さ設定（半径の30%上から開始）
 }
 
 void MagneticBullet::Launch(XMFLOAT3 targetPos)
@@ -75,7 +75,8 @@ void MagneticBullet::Update()
 
         // 2. 半径と高さオフセットの更新（螺旋状に徐々に目標値へ収束）
         m_CurrentRadius += (m_TargetRadius - m_CurrentRadius) * m_AttractFactor;
-        m_CurrentYOffset += (m_YOffset - m_CurrentYOffset) * m_AttractFactor;
+        // Y方向は半径より5倍速く収束させることでカットシーン中にボスの中心高さに落ち着かせる
+        m_CurrentYOffset += (m_YOffset - m_CurrentYOffset) * (m_AttractFactor * 5.0f);
 
         // 3. 奇妙な軌道（うねり・緩急）の適用
         // 半径に高速な脈動（うねり）を加える
