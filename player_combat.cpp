@@ -1,4 +1,4 @@
-#include "player_combat.h"
+﻿#include "player_combat.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "player.h"
@@ -503,10 +503,9 @@ void PlayerCombat::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
     shockPos.y = -0.95f;
     ShockwaveSystem::AddShockwave(shockPos, 3.0f, 1.5f, 0.8f, 0.0f, 16, 0.0f, 0);
 
-    Manager::AddHitStop(8);
-    if (g_Camera) {
-        g_Camera->Shake(0.2f, 10);
-    }
+    PlayerParriedEvent parriedEvent;
+    parriedEvent.position = bulletPos;
+    EventSystem::Publish<PlayerParriedEvent>(parriedEvent);
 
     Manager::StartSlowMotion(90);
     m_Owner->DisableWarpSlash();

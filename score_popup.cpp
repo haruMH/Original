@@ -6,8 +6,8 @@
 // =================================================================
 // 静的メンバ変数の実体定義
 // =================================================================
-std::list<ScorePopupEntry>
-    ScorePopupSystem::m_Popups;
+ScorePopupEntry
+    ScorePopupSystem::m_Popups[ScorePopupSystem::POOL_SIZE];
 
 std::unordered_map<int, ID3D11ShaderResourceView*>
     ScorePopupSystem::m_TextureCache;
@@ -187,6 +187,11 @@ bool ScorePopupSystem::Init(ID3D11Device* device)
     dsd.DepthFunc      = D3D11_COMPARISON_LESS_EQUAL;
     device->CreateDepthStencilState(&dsd, &m_DepthState);
 
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        m_Popups[i].Used = false;
+        m_Popups[i].Texture = nullptr;
+    }
+
     OutputDebugStringA("[ScorePopupSystem] 初期化完了\n");
     return true;
 }
@@ -197,13 +202,13 @@ bool ScorePopupSystem::Init(ID3D11Device* device)
 void ScorePopupSystem::Uninit()
 {
     // 生存中のポップアップのテクスチャ参照を解放する
-    for (auto& entry : m_Popups) {
-        if (entry.Texture) {
-            entry.Texture->Release();
-            entry.Texture = nullptr;
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        if (m_Popups[i].Used && m_Popups[i].Texture) {
+            m_Popups[i].Texture->Release();
+            m_Popups[i].Texture = nullptr;
         }
+        m_Popups[i].Used = false;
     }
-    m_Popups.clear();
 
     // テクスチャキャッシュを解放する
     for (auto& pair : m_TextureCache) {
@@ -224,22 +229,22 @@ void ScorePopupSystem::Uninit()
 // ─────────────────────────────────────────────────────────────────
 void ScorePopupSystem::Update()
 {
-    for (auto it = m_Popups.begin(); it != m_Popups.end(); ) {
-        it->Timer--;
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        if (!m_Popups[i].Used) continue;
+
+        m_Popups[i].Timer--;
 
         // Y方向に一定速度で浮き上がらせる（イーズアウト: 最初速く後半ゆっくり）
-        float progress = 1.0f - (float)it->Timer / (float)it->MaxTimer; // 0.0→1.0
-        it->OffsetY = 2.2f * (1.0f - (1.0f - progress) * (1.0f - progress));
+        float progress = 1.0f - (float)m_Popups[i].Timer / (float)m_Popups[i].MaxTimer; // 0.0→1.0
+        m_Popups[i].OffsetY = 2.2f * (1.0f - (1.0f - progress) * (1.0f - progress));
 
         // タイムアップしたポップアップを削除する
-        if (it->Timer <= 0) {
-            if (it->Texture) {
-                it->Texture->Release();
-                it->Texture = nullptr;
+        if (m_Popups[i].Timer <= 0) {
+            if (m_Popups[i].Texture) {
+                m_Popups[i].Texture->Release();
+                m_Popups[i].Texture = nullptr;
             }
-            it = m_Popups.erase(it);
-        } else {
-            ++it;
+            m_Popups[i].Used = false;
         }
     }
 }
@@ -249,7 +254,14 @@ void ScorePopupSystem::Update()
 // ─────────────────────────────────────────────────────────────────
 void ScorePopupSystem::Draw()
 {
-    if (m_Popups.empty()) return;
+    bool hasActive = false;
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        if (m_Popups[i].Used) {
+            hasActive = true;
+            break;
+        }
+    }
+    if (!hasActive) return;
     if (!m_VS || !m_PS || !m_QuadVB || !m_IL || !m_DepthState) return;
 
     ID3D11DeviceContext* ctx = Renderer::GetDeviceContext();
@@ -288,8 +300,9 @@ void ScorePopupSystem::Draw()
     );
 
     // ─── 各ポップアップを描画する ───
-    for (const auto& entry : m_Popups) {
-        if (!entry.Texture) continue;
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        const auto& entry = m_Popups[i];
+        if (!entry.Used || !entry.Texture) continue;
 
         // スケールアニメーション（ポップインの演出）
         int age = entry.MaxTimer - entry.Timer;
@@ -386,20 +399,43 @@ void ScorePopupSystem::AddPopup(float x, float y, float z, int score,
 
     if (!tex) return;
 
-    // ポップアップは独立した参照カウントを持つ（AddRef してから登録する）
+    // 空きエントリーを検索
+    int targetIndex = -1;
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        if (!m_Popups[i].Used) {
+            targetIndex = static_cast<int>(i);
+            break;
+        }
+    }
+
+    // 空きがない場合は最も Timer が少ないものを再利用
+    if (targetIndex == -1) {
+        int minTimer = 999;
+        for (size_t i = 0; i < POOL_SIZE; ++i) {
+            if (m_Popups[i].Timer < minTimer) {
+                minTimer = m_Popups[i].Timer;
+                targetIndex = static_cast<int>(i);
+            }
+        }
+        if (targetIndex != -1 && m_Popups[targetIndex].Texture) {
+            m_Popups[targetIndex].Texture->Release();
+            m_Popups[targetIndex].Texture = nullptr;
+        }
+    }
+
+    if (targetIndex == -1) return;
+
     tex->AddRef();
 
-    ScorePopupEntry entry = {};
-    entry.WorldX   = x;
-    entry.WorldY   = y;
-    entry.WorldZ   = z;
-    entry.Timer    = 90;   // 1.5秒間（60fps 基準）
-    entry.MaxTimer = 90;
-    entry.OffsetY  = 0.0f;
-    entry.EmitR    = emitR;
-    entry.EmitG    = emitG;
-    entry.EmitB    = emitB;
-    entry.Texture  = tex;
-
-    m_Popups.push_back(entry);
+    m_Popups[targetIndex].WorldX   = x;
+    m_Popups[targetIndex].WorldY   = y;
+    m_Popups[targetIndex].WorldZ   = z;
+    m_Popups[targetIndex].Timer    = 90;   // 1.5秒間
+    m_Popups[targetIndex].MaxTimer = 90;
+    m_Popups[targetIndex].OffsetY  = 0.0f;
+    m_Popups[targetIndex].EmitR    = emitR;
+    m_Popups[targetIndex].EmitG    = emitG;
+    m_Popups[targetIndex].EmitB    = emitB;
+    m_Popups[targetIndex].Texture  = tex;
+    m_Popups[targetIndex].Used     = true;
 }

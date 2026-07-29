@@ -39,6 +39,7 @@ struct POSTEFFECT {
     float Threshold;
     float BlurIntensity;
     float SlowMotionIntensity; // スローモーション中のカラー彩度・色調補正度
+    XMFLOAT4 FlashColor;       // 画面フラッシュ / 調色カラー (RGB: 色, A: 強度)
 };
 
 // 水面シェーダー用定数バッファ構造体 (VS)

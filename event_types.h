@@ -28,3 +28,9 @@ struct BossHitEvent
     int damage;                        // ダメージ量
     DirectX::XMFLOAT3 hitSourcePos;    // 攻撃の起点となった座標
 };
+
+// 4. プレイヤーがパリィ（反射）に成功した時のイベント
+struct PlayerParriedEvent
+{
+    DirectX::XMFLOAT3 position;        // パリィが発生した座標
+};

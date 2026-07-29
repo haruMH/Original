@@ -17,6 +17,7 @@ struct ShockwaveEntry {
     bool     PhysicsApplied; // 物理衝撃波が既に適用されたか
     float    Force;        // 物理衝撃波の威力
     bool     Shrink;       // 収縮するエフェクトか
+    bool     Used;         // 使用中フラグ (メモリプール用)
 };
 
 // =================================================================
@@ -24,7 +25,8 @@ struct ShockwaveEntry {
 // =================================================================
 class ShockwaveSystem {
 private:
-    static std::list<ShockwaveEntry> m_Shockwaves;
+    static const size_t POOL_SIZE = 32;
+    static ShockwaveEntry m_Shockwaves[POOL_SIZE];
 
     // GPU リソース
     static ID3D11Buffer*            m_QuadVB;       // 地面に水平なクアッド頂点バッファ

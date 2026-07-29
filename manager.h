@@ -56,6 +56,12 @@ private:
 
     static void ExecuteChangeScene(Scene nextScene); // 実際のシーン遷移実行
 
+    // 画面フラッシュ/警告パルス制御用
+    static DirectX::XMFLOAT4 m_FlashColor;
+    static float             m_FlashFadeSpeed;
+    static bool              m_IsLowHPWarning;
+    static float             m_LowHPPulseTime;
+
 public:
     // 初期化と終了処理
     static void Init();
@@ -176,4 +182,9 @@ public:
     static void  TransitionToBossStage();
     static void  ChangeScene(Scene nextScene);
     static Scene GetCurrentScene() { return m_CurrentScene; }
+
+    // 画面フラッシュ / 瀕死赤パルス制御
+    static void TriggerFlash(DirectX::XMFLOAT4 color, float fadeSpeed = 0.05f);
+    static void SetLowHPWarning(bool active) { m_IsLowHPWarning = active; }
+    static DirectX::XMFLOAT4 GetFlashColor() { return m_FlashColor; }
 };

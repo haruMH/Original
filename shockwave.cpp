@@ -9,7 +9,7 @@
 // =================================================================
 // 静的メンバ変数の実体定義
 // =================================================================
-std::list<ShockwaveEntry> ShockwaveSystem::m_Shockwaves;
+ShockwaveEntry ShockwaveSystem::m_Shockwaves[ShockwaveSystem::POOL_SIZE];
 
 ID3D11Buffer*            ShockwaveSystem::m_QuadVB     = nullptr;
 ID3D11VertexShader*      ShockwaveSystem::m_VS         = nullptr;
@@ -184,6 +184,10 @@ bool ShockwaveSystem::Init(ID3D11Device* device)
     m_Texture = CreateRingTexture(device);
     if (!m_Texture) return false;
 
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        m_Shockwaves[i].Used = false;
+    }
+
     OutputDebugStringA("[ShockwaveSystem] Init Succeeded\n");
     return true;
 }
@@ -193,7 +197,9 @@ bool ShockwaveSystem::Init(ID3D11Device* device)
 // =================================================================
 void ShockwaveSystem::Uninit()
 {
-    m_Shockwaves.clear();
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        m_Shockwaves[i].Used = false;
+    }
 
     if (m_Texture)    { m_Texture->Release();    m_Texture    = nullptr; }
     if (m_DepthState) { m_DepthState->Release(); m_DepthState = nullptr; }
@@ -208,24 +214,23 @@ void ShockwaveSystem::Uninit()
 // =================================================================
 void ShockwaveSystem::Update()
 {
-    for (auto it = m_Shockwaves.begin(); it != m_Shockwaves.end(); ) {
-        if (it->Delay > 0) {
-            it->Delay--;
-            ++it;
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        if (!m_Shockwaves[i].Used) continue;
+
+        if (m_Shockwaves[i].Delay > 0) {
+            m_Shockwaves[i].Delay--;
             continue;
         }
 
         // ディレイが終了した瞬間（Delay == 0）、かつ物理未適用のフレームに物理効果を適用
-        if (it->Delay == 0 && !it->PhysicsApplied) {
-            ApplyShockwavePhysics(it->Position, it->MaxRadius, it->Force);
-            it->PhysicsApplied = true;
+        if (m_Shockwaves[i].Delay == 0 && !m_Shockwaves[i].PhysicsApplied) {
+            ApplyShockwavePhysics(m_Shockwaves[i].Position, m_Shockwaves[i].MaxRadius, m_Shockwaves[i].Force);
+            m_Shockwaves[i].PhysicsApplied = true;
         }
 
-        it->Timer--;
-        if (it->Timer <= 0) {
-            it = m_Shockwaves.erase(it);
-        } else {
-            ++it;
+        m_Shockwaves[i].Timer--;
+        if (m_Shockwaves[i].Timer <= 0) {
+            m_Shockwaves[i].Used = false;
         }
     }
 }
@@ -235,7 +240,14 @@ void ShockwaveSystem::Update()
 // =================================================================
 void ShockwaveSystem::Draw()
 {
-    if (m_Shockwaves.empty()) return;
+    bool hasActive = false;
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        if (m_Shockwaves[i].Used && m_Shockwaves[i].Delay <= 0) {
+            hasActive = true;
+            break;
+        }
+    }
+    if (!hasActive) return;
     if (!m_VS || !m_PS || !m_QuadVB || !m_IL || !m_DepthState || !m_Texture) return;
 
     ID3D11DeviceContext* ctx = Renderer::GetDeviceContext();
@@ -255,8 +267,9 @@ void ShockwaveSystem::Draw()
     Renderer::SetTexture(m_Texture);
 
     // --- 各衝撃波を描画する ---
-    for (const auto& entry : m_Shockwaves) {
-        if (entry.Delay > 0) continue; // ディレイ中の波紋は描画しない
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        const auto& entry = m_Shockwaves[i];
+        if (!entry.Used || entry.Delay > 0) continue; // ディレイ中や未使用の波紋は描画しない
 
         float progress = 1.0f - (float)entry.Timer / (float)entry.MaxTimer; // 0.0 -> 1.0
         
@@ -326,25 +339,46 @@ void ShockwaveSystem::AddShockwave(
     bool shrink
 )
 {
+    // 空きエントリーを検索
+    int targetIndex = -1;
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        if (!m_Shockwaves[i].Used) {
+            targetIndex = static_cast<int>(i);
+            break;
+        }
+    }
+
+    // 空きがない場合は最も Timer が少ないものを再利用
+    if (targetIndex == -1) {
+        int minTimer = 999;
+        for (size_t i = 0; i < POOL_SIZE; ++i) {
+            if (m_Shockwaves[i].Timer < minTimer) {
+                minTimer = m_Shockwaves[i].Timer;
+                targetIndex = static_cast<int>(i);
+            }
+        }
+    }
+
+    if (targetIndex == -1) return;
+
     // 描画エフェクトの登録
-    ShockwaveEntry entry = {};
-    entry.Position       = pos;
-    entry.Timer          = duration;
-    entry.MaxTimer       = duration;
-    entry.MaxRadius      = maxRadius;
-    entry.ColorR         = colorR;
-    entry.ColorG         = colorG;
-    entry.ColorB         = colorB;
-    entry.Delay          = delay;
-    entry.PhysicsApplied = false;
-    entry.Force          = force;
-    entry.Shrink         = shrink;
-    m_Shockwaves.push_back(entry);
+    m_Shockwaves[targetIndex].Position       = pos;
+    m_Shockwaves[targetIndex].Timer          = duration;
+    m_Shockwaves[targetIndex].MaxTimer       = duration;
+    m_Shockwaves[targetIndex].MaxRadius      = maxRadius;
+    m_Shockwaves[targetIndex].ColorR         = colorR;
+    m_Shockwaves[targetIndex].ColorG         = colorG;
+    m_Shockwaves[targetIndex].ColorB         = colorB;
+    m_Shockwaves[targetIndex].Delay          = delay;
+    m_Shockwaves[targetIndex].PhysicsApplied = false;
+    m_Shockwaves[targetIndex].Force          = force;
+    m_Shockwaves[targetIndex].Shrink         = shrink;
+    m_Shockwaves[targetIndex].Used           = true;
 
     // ディレイが0の場合のみ、即時に物理効果を適用する
     if (delay == 0) {
         ApplyShockwavePhysics(pos, maxRadius, force);
-        m_Shockwaves.back().PhysicsApplied = true;
+        m_Shockwaves[targetIndex].PhysicsApplied = true;
     }
 }
 

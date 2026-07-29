@@ -41,16 +41,41 @@ void GameplayScene::Init()
     EventSystem::Subscribe<PlayerHitEvent>([](const PlayerHitEvent& ev) {
         if (g_Camera) g_Camera->Shake(0.35f, 12);
         Manager::AddHitStop(5);
+        Manager::TriggerFlash(XMFLOAT4(1.0f, 0.0f, 0.0f, 0.4f), 0.04f); // 被弾時に赤いフラッシュ
     });
 
-    EventSystem::Subscribe<EnemyDefeatedEvent>([](const EnemyDefeatedEvent& ev) {
-        GameRule::OnEnemyDefeated(ev.scoreValue);
-        ScorePopupSystem::AddPopup(ev.position.x, ev.position.y, ev.position.z, ev.scoreValue, ev.popupColor.x, ev.popupColor.y, ev.popupColor.z);
+    EventSystem::Subscribe<EnemyDefeatedEvent>([this](const EnemyDefeatedEvent& ev) {
+        m_ComboTimer = 120; // 2秒間コンボ維持
+        m_ComboCount++;
+
+        int finalScore = ev.scoreValue;
+        if (m_ComboCount >= 3) {
+            // 3コンボ以上でスコア倍率を適用 (x1.3, x1.4...)
+            float multiplier = 1.0f + (m_ComboCount * 0.1f);
+            finalScore = static_cast<int>(ev.scoreValue * multiplier);
+        }
+
+        GameRule::OnEnemyDefeated(finalScore);
+        ScorePopupSystem::AddPopup(ev.position.x, ev.position.y, ev.position.z, finalScore, ev.popupColor.x, ev.popupColor.y, ev.popupColor.z);
+
+        if (m_ComboCount >= 3) {
+            // コンボ数を金色ポップアップで通知
+            ScorePopupSystem::AddPopup(ev.position.x, ev.position.y + 0.8f, ev.position.z, m_ComboCount, 2.5f, 1.8f, 0.0f);
+            Manager::AddHitStop(3); // コンボ時の手応えヒットストップ
+            if (g_Camera) g_Camera->Shake(0.15f, 6);
+        }
     });
 
     EventSystem::Subscribe<BossHitEvent>([](const BossHitEvent& ev) {
         Manager::AddHitStop(12);
         if (g_Camera) g_Camera->Shake(0.40f, 12);
+        Manager::TriggerFlash(XMFLOAT4(1.0f, 0.8f, 0.0f, 0.3f), 0.05f); // ボス被弾時に黄色閃光
+    });
+
+    EventSystem::Subscribe<PlayerParriedEvent>([](const PlayerParriedEvent& ev) {
+        Manager::TriggerFlash(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.02f); // パリィ成功時に真っ白閃光
+        Manager::StartSlowMotion(90); // 1.5秒のスローモーション (彩度補正ON)
+        Manager::AddHitStop(15);      // 手応えヒットストップ
     });
 
     // Q[vC{҂̏
@@ -160,18 +185,33 @@ void GameplayScene::Uninit()
 }
 
 // =================================================================
-// ���t���[���X�V����
+// t[XV
 // =================================================================
 void GameplayScene::Update()
 {
-    // �v���C���[�̐����m�F
-    Player* player = Manager::GetGameObject<Player>();
-    if (player && player->GetHP() <= 0) {
-        Manager::ChangeScene(Scene::GAMEOVER);
-        return;
+    // 1. コンボタイマーの更新
+    if (m_ComboTimer > 0) {
+        m_ComboTimer--;
+        if (m_ComboTimer <= 0) {
+            m_ComboCount = 0; // コンボ切れ
+        }
     }
 
-    // �Q�[���v���C�{�҂̕����E�X�V���W�b�N����s
+    // 2. プレイヤーのHP監視による瀕死警告（赤パルス）ON/OFF
+    Player* player = Manager::GetGameObject<Player>();
+    if (player) {
+        if (player->GetHP() <= 0) {
+            Manager::SetLowHPWarning(false);
+            Manager::ChangeScene(Scene::GAMEOVER);
+            return;
+        }
+        bool isLowHP = (player->GetHP() > 0 && player->GetHP() <= 3);
+        Manager::SetLowHPWarning(isLowHP);
+    } else {
+        Manager::SetLowHPWarning(false);
+    }
+
+    // Q[vC{҂̕EXVWbNs
     UpdateGameplay();
 }
 

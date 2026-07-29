@@ -51,6 +51,11 @@ bool                   Manager::m_SceneTransitionRequested = false;
 
 IScene*                Manager::m_ActiveScene = nullptr;
 
+XMFLOAT4               Manager::m_FlashColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+float                  Manager::m_FlashFadeSpeed = 0.05f;
+bool                   Manager::m_IsLowHPWarning = false;
+float                  Manager::m_LowHPPulseTime = 0.0f;
+
 Camera*                g_Camera = nullptr;
 
 // ─────────────────────────────────────────────
@@ -65,6 +70,10 @@ void Manager::Init()
     m_HitStopFrames = 0;
     m_SlowMotionTimer = 0;
     m_SlowMotionDuration = 0;
+    m_FlashColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+    m_FlashFadeSpeed = 0.05f;
+    m_IsLowHPWarning = false;
+    m_LowHPPulseTime = 0.0f;
     m_CachedPlayer = nullptr;
     m_CachedBoss = nullptr;
     m_ActiveScene = nullptr;
@@ -172,6 +181,30 @@ void Manager::Update()
     }
 
     if (g_Camera) g_Camera->Update();
+
+    // 画面フラッシュと低HP警告赤パルスの更新
+    if (m_FlashColor.w > 0.0f) {
+        m_FlashColor.w -= m_FlashFadeSpeed;
+        if (m_FlashColor.w < 0.0f) m_FlashColor.w = 0.0f;
+    }
+
+    if (m_IsLowHPWarning) {
+        // 低HP時は、画面を赤くパルス（明滅）させる
+        m_LowHPPulseTime += 0.07f; // 脈動速度
+        // サイン波を用いてアルファ値を 0.05 ~ 0.25 の間で脈動させる
+        float pulseAlpha = 0.15f + 0.10f * sinf(m_LowHPPulseTime);
+        
+        // 通常のフラッシュが走っていない場合は警告赤をセット
+        if (m_FlashColor.w <= 0.0f) {
+            m_FlashColor = XMFLOAT4(1.0f, 0.0f, 0.0f, pulseAlpha);
+        } else {
+            // 通常フラッシュが優先され、警告赤をブレンドしてマージ
+            m_FlashColor.x = m_FlashColor.x + (1.0f - m_FlashColor.x) * pulseAlpha;
+            m_FlashColor.w = (std::max)(m_FlashColor.w, pulseAlpha);
+        }
+    } else {
+        m_LowHPPulseTime = 0.0f;
+    }
 
     // 遅延シーン遷移リクエストがある場合は実行する
     if (m_SceneTransitionRequested) {
@@ -462,6 +495,15 @@ float Manager::GetSlowMotionIntensity()
     if (m_SlowMotionTimer <= 0) return 0.0f;
     if (m_SlowMotionTimer > 30) return 1.0f;
     return (float)m_SlowMotionTimer / 30.0f;
+}
+
+// ─────────────────────────────────────────────
+// 画面フラッシュの発動
+// ─────────────────────────────────────────────
+void Manager::TriggerFlash(XMFLOAT4 color, float fadeSpeed)
+{
+    m_FlashColor = color;
+    m_FlashFadeSpeed = fadeSpeed;
 }
 
 // ─────────────────────────────────────────────

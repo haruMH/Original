@@ -566,6 +566,7 @@ void Renderer::End() {
     m_DeviceContext->PSSetShaderResources(1, 1, &m_LumSRV);
     pe.Mode = 3;
     pe.SlowMotionIntensity = Manager::GetSlowMotionIntensity();
+    pe.FlashColor = Manager::GetFlashColor();
     m_DeviceContext->UpdateSubresource(m_PostBuffer, 0, NULL, &pe, 0, 0);
     m_DeviceContext->Draw(3, 0);
 
