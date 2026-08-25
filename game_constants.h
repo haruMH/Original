@@ -139,6 +139,28 @@ namespace Constants
             
             const ColorRGB PANEL_BG         = { 20, 10, 30 };    // ボスHPバーパネル全体の背景カラー（深紫色）
         }
+
+        namespace PlayerHP
+        {
+            // バーのサイズと画面パラメータ
+            const float BAR_WIDTH           = 400.0f;   // プレイヤーHPバーの横幅
+            const float BAR_HEIGHT          = 60.0f;    // プレイヤーHPバーの高さ
+            const float SCREEN_POS_X        = 220.0f;   // 画面上のX中心座標
+            const float SCREEN_POS_Y        = 45.0f;    // 画面上のY中心座標
+
+            // HPバー配色定義
+            const ColorRGB HP_HIGH          = { 0, 230, 255 };   // 高HP時のカラー（シアン/青緑）
+            const ColorRGB HP_MID           = { 255, 200, 0 };   // 中HP時のカラー（黄色）
+            const ColorRGB HP_LOW           = { 255, 50, 50 };   // 低HP時のカラー（赤）
+            
+            const ColorRGB BAR_BG           = { 20, 30, 45 };    // HPゲージの空部分のカラー
+            const ColorRGB BAR_BORDER       = { 40, 140, 200 };  // HPゲージの枠線カラー
+            
+            const ColorRGB TEXT_HP          = { 230, 240, 255 }; // HP数値テキスト（5 / 5など）のカラー
+            const ColorRGB TEXT_LABEL       = { 50, 200, 255 };  // "PLAYER"ラベルテキストのカラー
+            
+            const ColorRGB PANEL_BG         = { 10, 20, 35 };    // プレイヤーHPバーパネル全体の背景カラー（深青色）
+        }
     }
 
     // 空間分割（コリジョングリッド）に関するパラメータ

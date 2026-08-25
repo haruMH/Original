@@ -20,9 +20,11 @@ ID3D11ShaderResourceView* ScoreHUD::m_TitleTexture    = nullptr;
 ID3D11ShaderResourceView* ScoreHUD::m_ClearTexture    = nullptr;
 ID3D11ShaderResourceView* ScoreHUD::m_GameOverTexture = nullptr;
 ID3D11ShaderResourceView* ScoreHUD::m_BossHPTexture   = nullptr;
+ID3D11ShaderResourceView* ScoreHUD::m_PlayerHPTexture = nullptr;
 
 int   ScoreHUD::m_LastScore   = 0;
 int   ScoreHUD::m_LastHP      = 5;
+int   ScoreHUD::m_LastMaxHP   = 5;
 int   ScoreHUD::m_LastBossHP    = -1;
 int   ScoreHUD::m_LastBossMaxHP = -1;
 float ScoreHUD::m_ScaleEffect = 1.0f;
@@ -33,8 +35,7 @@ float ScoreHUD::m_ScaleEffect = 1.0f;
 // ─────────────────────────────────────────────────────────────────
 ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
     ID3D11Device* device,
-    int score,
-    int hp
+    int score
 )
 {
     const int W = 512, H = 64;
@@ -74,7 +75,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
     SetTextColor(hdc, RGB(255, 255, 255)); // 白色で描画
 
     wchar_t buf[64];
-    swprintf_s(buf, L"SCORE: %06d  LIFE: %d", score, hp);
+    swprintf_s(buf, L"SCORE: %06d", score);
 
     RECT rc = { 0, 0, W, H };
     DrawTextW(hdc, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
@@ -267,6 +268,170 @@ ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
     }
 
     // ─── D3D11 テクスチャの生成 ───
+    D3D11_TEXTURE2D_DESC td = {};
+    td.Width            = W;
+    td.Height           = H;
+    td.MipLevels        = 1;
+    td.ArraySize        = 1;
+    td.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+    td.SampleDesc.Count = 1;
+    td.Usage            = D3D11_USAGE_IMMUTABLE;
+    td.BindFlags        = D3D11_BIND_SHADER_RESOURCE;
+
+    D3D11_SUBRESOURCE_DATA initData = {};
+    initData.pSysMem     = rgba.data();
+    initData.SysMemPitch = W * 4;
+
+    ID3D11Texture2D* tex = nullptr;
+    HRESULT hr = device->CreateTexture2D(&td, &initData, &tex);
+
+    ID3D11ShaderResourceView* srv = nullptr;
+    if (SUCCEEDED(hr) && tex) {
+        device->CreateShaderResourceView(tex, nullptr, &srv);
+        tex->Release();
+    }
+
+    SelectObject(hdc, oldFont);
+    SelectObject(hdc, oldBmp);
+    DeleteObject(hFontLabel);
+    DeleteObject(hFontHP);
+    DeleteObject(hBmp);
+    DeleteDC(hdc);
+
+    return srv;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// GDI を使用してプレイヤーHPバー用のテクスチャを生成する
+// 画面上部にプレイヤー名/ステータス + カラーゲージを描画
+// ─────────────────────────────────────────────────────────────────
+ID3D11ShaderResourceView* ScoreHUD::CreatePlayerHPTexture(
+    ID3D11Device* device,
+    int hp,
+    int maxHp
+)
+{
+    const int W = static_cast<int>(Constants::UI::PlayerHP::BAR_WIDTH);
+    const int H = static_cast<int>(Constants::UI::PlayerHP::BAR_HEIGHT);
+
+    // ─── GDI DIB セクションの作成 ───
+    BITMAPINFO bmi = {};
+    bmi.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth       = W;
+    bmi.bmiHeader.biHeight      = -H;   // トップダウン
+    bmi.bmiHeader.biPlanes      = 1;
+    bmi.bmiHeader.biBitCount    = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    BYTE* bits = nullptr;
+    HDC hdc     = CreateCompatibleDC(nullptr);
+    HBITMAP hBmp = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, (void**)&bits, nullptr, 0);
+    HGDIOBJ oldBmp = SelectObject(hdc, hBmp);
+    memset(bits, 0, W * H * 4);
+
+    // ─── 輝度バックグラウンド（深青色の半透明パネル） ───
+    HBRUSH bgBrush = CreateSolidBrush(RGB(Constants::UI::PlayerHP::PANEL_BG.R, Constants::UI::PlayerHP::PANEL_BG.G, Constants::UI::PlayerHP::PANEL_BG.B));
+    RECT bgRect = { 0, 0, W, H };
+    FillRect(hdc, &bgRect, bgBrush);
+    DeleteObject(bgBrush);
+
+    // ─── "PLAYER" ラベルテキスト ───
+    HFONT hFontLabel = CreateFontW(
+        22, 0, 0, 0, FW_HEAVY,
+        FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Impact"
+    );
+    HGDIOBJ oldFont = SelectObject(hdc, hFontLabel);
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, RGB(Constants::UI::PlayerHP::TEXT_LABEL.R, Constants::UI::PlayerHP::TEXT_LABEL.G, Constants::UI::PlayerHP::TEXT_LABEL.B));
+    RECT rcLabel = { 8, 4, 120, 26 };
+    DrawTextW(hdc, L"PLAYER", -1, &rcLabel, DT_LEFT | DT_SINGLELINE);
+
+    // ─── HP 数値テキスト ───
+    HFONT hFontHP = CreateFontW(
+        18, 0, 0, 0, FW_BOLD,
+        FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Arial"
+    );
+    SelectObject(hdc, hFontHP);
+    SetTextColor(hdc, RGB(Constants::UI::PlayerHP::TEXT_HP.R, Constants::UI::PlayerHP::TEXT_HP.G, Constants::UI::PlayerHP::TEXT_HP.B));
+    wchar_t hpBuf[32];
+    swprintf_s(hpBuf, L"%d / %d", hp, maxHp);
+    RECT rcHP = { W - 110, 4, W - 8, 26 };
+    DrawTextW(hdc, hpBuf, -1, &rcHP, DT_RIGHT | DT_SINGLELINE);
+
+    // ─── HPゲージ背景（ダークブルー） ───
+    const int barLeft   = 8;
+    const int barTop    = 28;
+    const int barRight  = W - 8;
+    const int barBottom = H - 6;
+    HBRUSH barBgBrush = CreateSolidBrush(RGB(Constants::UI::PlayerHP::BAR_BG.R, Constants::UI::PlayerHP::BAR_BG.G, Constants::UI::PlayerHP::BAR_BG.B));
+    RECT barBgRect = { barLeft, barTop, barRight, barBottom };
+    FillRect(hdc, &barBgRect, barBgBrush);
+    DeleteObject(barBgBrush);
+
+    // ─── HPゲージ内側（高HP: シアン、中HP: 黄、低HP: 赤） ───
+    if (maxHp > 0 && hp > 0) {
+        float ratio = (float)hp / (float)maxHp;
+        if (ratio > 1.0f) ratio = 1.0f;
+        int fillRight = barLeft + (int)((barRight - barLeft) * ratio);
+
+        int rCol = 0, gCol = 0, bCol = 0;
+        if (ratio > 0.5f) {
+            float t = (ratio - 0.5f) * 2.0f;
+            rCol = (int)(Constants::UI::PlayerHP::HP_MID.R * (1.0f - t) + Constants::UI::PlayerHP::HP_HIGH.R * t);
+            gCol = (int)(Constants::UI::PlayerHP::HP_MID.G * (1.0f - t) + Constants::UI::PlayerHP::HP_HIGH.G * t);
+            bCol = (int)(Constants::UI::PlayerHP::HP_MID.B * (1.0f - t) + Constants::UI::PlayerHP::HP_HIGH.B * t);
+        } else {
+            float t = ratio * 2.0f;
+            rCol = (int)(Constants::UI::PlayerHP::HP_LOW.R * (1.0f - t) + Constants::UI::PlayerHP::HP_MID.R * t);
+            gCol = (int)(Constants::UI::PlayerHP::HP_LOW.G * (1.0f - t) + Constants::UI::PlayerHP::HP_MID.G * t);
+            bCol = (int)(Constants::UI::PlayerHP::HP_LOW.B * (1.0f - t) + Constants::UI::PlayerHP::HP_MID.B * t);
+        }
+        rCol = (rCol < 0) ? 0 : (rCol > 255 ? 255 : rCol);
+        gCol = (gCol < 0) ? 0 : (gCol > 255 ? 255 : gCol);
+        bCol = (bCol < 0) ? 0 : (bCol > 255 ? 255 : bCol);
+
+        HBRUSH hpBrush = CreateSolidBrush(RGB(rCol, gCol, bCol));
+        RECT fillRect = { barLeft, barTop, fillRight, barBottom };
+        FillRect(hdc, &fillRect, hpBrush);
+        DeleteObject(hpBrush);
+
+        // 上部のホワイト/ライトシアンハイライト線
+        HBRUSH hlBrush = CreateSolidBrush(RGB(220, 245, 255));
+        RECT hlRect = { barLeft, barTop, fillRight, barTop + 3 };
+        FillRect(hdc, &hlRect, hlBrush);
+        DeleteObject(hlBrush);
+    }
+
+    // ─── ゲージ枠線 ───
+    HPEN borderPen = CreatePen(PS_SOLID, 2, RGB(Constants::UI::PlayerHP::BAR_BORDER.R, Constants::UI::PlayerHP::BAR_BORDER.G, Constants::UI::PlayerHP::BAR_BORDER.B));
+    HGDIOBJ oldPen = SelectObject(hdc, borderPen);
+    HBRUSH nullBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
+    HGDIOBJ oldBrush = SelectObject(hdc, nullBrush);
+    Rectangle(hdc, barLeft, barTop, barRight, barBottom);
+    SelectObject(hdc, oldPen);
+    SelectObject(hdc, oldBrush);
+    DeleteObject(borderPen);
+
+    GdiFlush();
+
+    // ─── アルファ変換 ───
+    std::vector<BYTE> rgba(W * H * 4);
+    for (int i = 0; i < W * H; i++) {
+        BYTE b = bits[i * 4 + 0];
+        BYTE g = bits[i * 4 + 1];
+        BYTE r = bits[i * 4 + 2];
+        BYTE alpha = (r == 0 && g == 0 && b == 0) ? 0 : 255;
+        
+        rgba[i * 4 + 0] = r;
+        rgba[i * 4 + 1] = g;
+        rgba[i * 4 + 2] = b;
+        rgba[i * 4 + 3] = alpha;
+    }
+
     D3D11_TEXTURE2D_DESC td = {};
     td.Width            = W;
     td.Height           = H;
@@ -568,11 +733,14 @@ bool ScoreHUD::Init(ID3D11Device* device)
     // ─── 初期テクスチャ（スコア0、HP5）の生成 ───
     m_LastScore = GameRule::GetScore();
     m_LastHP = 5;
+    m_LastMaxHP = 5;
     Player* player = Manager::GetGameObject<Player>();
     if (player) {
-        m_LastHP = player->GetHP();
+        m_LastHP    = player->GetHP();
+        m_LastMaxHP = player->GetMaxHP();
     }
-    m_Texture = CreateHUDTexture(device, m_LastScore, m_LastHP);
+    m_Texture         = CreateHUDTexture(device, m_LastScore);
+    m_PlayerHPTexture = CreatePlayerHPTexture(device, m_LastHP, m_LastMaxHP);
     m_ScaleEffect = 1.0f;
 
     OutputDebugStringA("[ScoreHUD] 初期化が正常に完了しました\n");
@@ -589,6 +757,7 @@ void ScoreHUD::Uninit()
     if (m_ClearTexture) { m_ClearTexture->Release(); m_ClearTexture = nullptr; }
     if (m_GameOverTexture) { m_GameOverTexture->Release(); m_GameOverTexture = nullptr; }
     if (m_BossHPTexture)   { m_BossHPTexture->Release();   m_BossHPTexture   = nullptr; }
+    if (m_PlayerHPTexture) { m_PlayerHPTexture->Release(); m_PlayerHPTexture = nullptr; }
     if (m_DepthState) { m_DepthState->Release(); m_DepthState = nullptr; }
     if (m_IL)         { m_IL->Release();         m_IL         = nullptr; }
     if (m_PS)         { m_PS->Release();         m_PS         = nullptr; }
@@ -608,25 +777,36 @@ void ScoreHUD::Update()
             m_TitleTexture = CreateTitleTexture(Renderer::GetDevice());
         }
     } else if (currentScene == Scene::GAMEPLAY) {
-        // スコアとHP変化の監視
-        int currentScore = GameRule::GetScore();
-        int currentHP = m_LastHP;
+        // プレイヤーHP変化の監視
+        int curPlayerHP = m_LastHP;
+        int curPlayerMaxHP = m_LastMaxHP;
         Player* player = Manager::GetGameObject<Player>();
         if (player) {
-            currentHP = player->GetHP();
+            curPlayerHP    = player->GetHP();
+            curPlayerMaxHP = player->GetMaxHP();
         }
 
-        if (currentScore != m_LastScore || currentHP != m_LastHP || !m_Texture) {
-            // スコアまたはHPが変わったらテクスチャを再構築
+        if (curPlayerHP != m_LastHP || curPlayerMaxHP != m_LastMaxHP || !m_PlayerHPTexture) {
+            if (m_PlayerHPTexture) {
+                m_PlayerHPTexture->Release();
+                m_PlayerHPTexture = nullptr;
+            }
+            m_PlayerHPTexture = CreatePlayerHPTexture(Renderer::GetDevice(), curPlayerHP, curPlayerMaxHP);
+            m_LastHP    = curPlayerHP;
+            m_LastMaxHP = curPlayerMaxHP;
+        }
+
+        // スコア変化の監視
+        int currentScore = GameRule::GetScore();
+        if (currentScore != m_LastScore || !m_Texture) {
             if (m_Texture) {
                 m_Texture->Release();
                 m_Texture = nullptr;
             }
-            m_Texture = CreateHUDTexture(Renderer::GetDevice(), currentScore, currentHP);
+            m_Texture = CreateHUDTexture(Renderer::GetDevice(), currentScore);
             m_LastScore = currentScore;
-            m_LastHP = currentHP;
 
-            // スケールポップ効果を発動（少し大きくなる）
+            // スケールポップ効果を発動
             m_ScaleEffect = 1.25f;
         }
 
@@ -680,9 +860,15 @@ void ScoreHUD::Update()
         m_GameOverTexture->Release();
         m_GameOverTexture = nullptr;
     }
-    if (currentScene != Scene::GAMEPLAY && m_Texture) {
-        m_Texture->Release();
-        m_Texture = nullptr;
+    if (currentScene != Scene::GAMEPLAY) {
+        if (m_Texture) {
+            m_Texture->Release();
+            m_Texture = nullptr;
+        }
+        if (m_PlayerHPTexture) {
+            m_PlayerHPTexture->Release();
+            m_PlayerHPTexture = nullptr;
+        }
     }
 }
 
@@ -730,59 +916,90 @@ void ScoreHUD::Draw()
         break;
     }
 
-    if (!texToDraw || !m_QuadVB || !m_VS || !m_PS || !m_IL || !m_DepthState) return;
+    if (!m_QuadVB || !m_VS || !m_PS || !m_IL || !m_DepthState) return;
 
     ID3D11DeviceContext* ctx = Renderer::GetDeviceContext();
 
-    // ─── レンダーステートの設定 ───
-    ctx->OMSetDepthStencilState(m_DepthState, 0);
-    ctx->VSSetShader(m_VS, nullptr, 0);
-    ctx->PSSetShader(m_PS, nullptr, 0);
-    ctx->IASetInputLayout(m_IL);
-    ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-
-    UINT stride = 60u; // VERTEX_3D のストライドサイズ
-    UINT offset = 0;
-    ctx->IASetVertexBuffers(0, 1, &m_QuadVB, &stride, &offset);
-
     // ─── 2D正射影行列の設定 ───
-    // カメラのビュー・プロジェクション行列を一時保存
     XMMATRIX oldView = Renderer::GetViewMatrix();
     XMMATRIX oldProj = Renderer::GetProjectionMatrix();
 
-    // 2D正射影用のビュー/プロジェクション行列を設定
     XMMATRIX view2D = XMMatrixIdentity();
     XMMATRIX proj2D = XMMatrixOrthographicOffCenterLH(0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 0.0f, 0.0f, 1.0f);
-    Renderer::SetViewMatrix(view2D);
-    Renderer::SetProjectionMatrix(proj2D);
 
-    // ─── ワールド行列の算出 ───
-    XMMATRIX world = XMMatrixScaling(w, h, 1.0f) * XMMatrixTranslation(posX, posY, 0.0f);
-    Renderer::SetWorldMatrix(world);
+    // 1. スコア/タイトル/リザルトHUDの描画
+    if (texToDraw) {
+        ctx->OMSetDepthStencilState(m_DepthState, 0);
+        ctx->VSSetShader(m_VS, nullptr, 0);
+        ctx->PSSetShader(m_PS, nullptr, 0);
+        ctx->IASetInputLayout(m_IL);
+        ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
-    // ─── マテリアル・テクスチャの設定 ───
-    MATERIAL mat = {};
-    mat.Diffuse  = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    mat.Emission = emissionColor;
-    mat.TextureEnable = FALSE;
-    Renderer::SetMaterial(mat);
+        UINT stride = 60u;
+        UINT offset = 0;
+        ctx->IASetVertexBuffers(0, 1, &m_QuadVB, &stride, &offset);
 
-    Renderer::SetTexture(texToDraw);
+        Renderer::SetViewMatrix(view2D);
+        Renderer::SetProjectionMatrix(proj2D);
 
-    // ─── 描画 ───
-    ctx->Draw(4, 0);
+        XMMATRIX world = XMMatrixScaling(w, h, 1.0f) * XMMatrixTranslation(posX, posY, 0.0f);
+        Renderer::SetWorldMatrix(world);
 
-    // ─── 後処理（行列とトポロジーを元に戻す）───
-    Renderer::SetViewMatrix(oldView);
-    Renderer::SetProjectionMatrix(oldProj);
-    ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        MATERIAL mat = {};
+        mat.Diffuse  = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        mat.Emission = emissionColor;
+        mat.TextureEnable = FALSE;
+        Renderer::SetMaterial(mat);
 
-    // ─── ボスHPバーの別途描画（ボスステージ中のみ、画面下部中央）───
-    if (currentScene == Scene::GAMEPLAY && m_BossHPTexture && m_QuadVB && m_VS && m_PS && m_IL) {
+        Renderer::SetTexture(texToDraw);
+        ctx->Draw(4, 0);
+
+        Renderer::SetViewMatrix(oldView);
+        Renderer::SetProjectionMatrix(oldProj);
+        ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    }
+
+    // 2. プレイヤーHPバーの描画（ゲームプレイ中のみ、画面左上）
+    if (currentScene == Scene::GAMEPLAY && m_PlayerHPTexture) {
+        const float pBarW = Constants::UI::PlayerHP::BAR_WIDTH;
+        const float pBarH = Constants::UI::PlayerHP::BAR_HEIGHT;
+        const float pBarX = Constants::UI::PlayerHP::SCREEN_POS_X;
+        const float pBarY = Constants::UI::PlayerHP::SCREEN_POS_Y;
+
+        ctx->OMSetDepthStencilState(m_DepthState, 0);
+        ctx->VSSetShader(m_VS, nullptr, 0);
+        ctx->PSSetShader(m_PS, nullptr, 0);
+        ctx->IASetInputLayout(m_IL);
+        ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+        UINT strideP = 60u;
+        UINT offsetP = 0;
+        ctx->IASetVertexBuffers(0, 1, &m_QuadVB, &strideP, &offsetP);
+
+        Renderer::SetViewMatrix(view2D);
+        Renderer::SetProjectionMatrix(proj2D);
+
+        XMMATRIX worldPlayer = XMMatrixScaling(pBarW, pBarH, 1.0f) * XMMatrixTranslation(pBarX, pBarY, 0.0f);
+        Renderer::SetWorldMatrix(worldPlayer);
+
+        MATERIAL matPlayer = {};
+        matPlayer.Diffuse       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        matPlayer.Emission      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+        matPlayer.TextureEnable = TRUE;
+        Renderer::SetMaterial(matPlayer);
+        Renderer::SetTexture(m_PlayerHPTexture);
+        ctx->Draw(4, 0);
+
+        Renderer::SetViewMatrix(oldView);
+        Renderer::SetProjectionMatrix(oldProj);
+        ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    }
+
+    // 3. ボスHPバーの別途描画（ボスステージ中のみ、画面下部中央）
+    if (currentScene == Scene::GAMEPLAY && m_BossHPTexture) {
         const float bossBarW = Constants::UI::BossHP::BAR_WIDTH;
         const float bossBarH = Constants::UI::BossHP::BAR_HEIGHT;
         const float bossBarX = (float)SCREEN_WIDTH * 0.5f;
-        const float bossBarY = (float)SCREEN_HEIGHT - bossBarH * 0.5f - Constants::UI::BossHP::SCREEN_MARGIN_Y; // 画面下部からのマージン適用
+        const float bossBarY = (float)SCREEN_HEIGHT - bossBarH * 0.5f - Constants::UI::BossHP::SCREEN_MARGIN_Y;
 
         ctx->OMSetDepthStencilState(m_DepthState, 0);
         ctx->VSSetShader(m_VS, nullptr, 0);
@@ -793,19 +1010,15 @@ void ScoreHUD::Draw()
         UINT offset2 = 0;
         ctx->IASetVertexBuffers(0, 1, &m_QuadVB, &stride2, &offset2);
 
-        XMMATRIX view2D2 = XMMatrixIdentity();
-        XMMATRIX proj2D2 = XMMatrixOrthographicOffCenterLH(0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 0.0f, 0.0f, 1.0f);
-        Renderer::SetViewMatrix(view2D2);
-        Renderer::SetProjectionMatrix(proj2D2);
+        Renderer::SetViewMatrix(view2D);
+        Renderer::SetProjectionMatrix(proj2D);
 
         XMMATRIX worldBoss = XMMatrixScaling(bossBarW, bossBarH, 1.0f) * XMMatrixTranslation(bossBarX, bossBarY, 0.0f);
         Renderer::SetWorldMatrix(worldBoss);
 
-        // ボスHPバーはカラーテクスチャなのでEmissionは使わず、ディフューズで描画
-        // ui_ps.hlsl側でTextureEnable=TRUEのときはテクスチャ色をそのまま出力します
         MATERIAL matBoss = {};
         matBoss.Diffuse       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-        matBoss.Emission      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f); // Emissionなし
+        matBoss.Emission      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
         matBoss.TextureEnable = TRUE;
         Renderer::SetMaterial(matBoss);
         Renderer::SetTexture(m_BossHPTexture);
