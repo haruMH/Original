@@ -109,6 +109,13 @@ namespace Constants
         const int   THROW_SANDBAG_DAMAGE    = 6;        // サンドバッグをボスに投げつけた時のダメージ
     }
 
+    // 磁力旋回弾に関するパラメータ
+    namespace MagneticBullet
+    {
+        const int   DAMAGE      = 1;    // プレイヤーに接触した際のダメージ量
+        const float KNOCKBACK   = 0.2f; // 接触時のノックバック速度
+    }
+
     // UI・画面表示に関するパラメータ
     namespace UI
     {
