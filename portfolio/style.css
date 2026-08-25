@@ -1,0 +1,668 @@
+﻿/* 
+  style.css
+  就活向けゲームプログラマーポートフォリオ用の共通CSSデザインシステム
+  テーマ：Cyber-Core & Clean Premium (ダークテーマ・ネオンアクセント)
+*/
+
+/* =================================================================
+   1. 基本設定 & CSS変数定義
+   ================================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --bg-base: #0a0d16;
+    --bg-surface: rgba(20, 27, 45, 0.6);
+    --bg-surface-hover: rgba(28, 38, 62, 0.85);
+    
+    --color-primary: #3b82f6;       /* エレクトリックブルー */
+    --color-primary-glow: rgba(59, 130, 246, 0.4);
+    --color-accent: #06b6d4;        /* ネオンシアン */
+    --color-accent-glow: rgba(6, 182, 212, 0.4);
+    --color-success: #10b981;       /* エメラルドグリーン */
+    
+    --text-main: #f3f4f6;
+    --text-muted: #9ca3af;
+    --text-dark: #4b5563;
+    
+    --border-color: rgba(255, 255, 255, 0.08);
+    --border-color-glow: rgba(6, 182, 212, 0.3);
+    
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'Fira Code', Consolas, Monaco, monospace;
+    
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+}
+
+body {
+    overflow-x: hidden;
+}
+
+/* =================================================================
+   2. バックグラウンド装飾
+   ================================================================= */
+.bg-glow-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -2;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.bg-glow-1 {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, rgba(0,0,0,0) 70%);
+    top: -10%;
+    left: -10%;
+    filter: blur(80px);
+}
+
+.bg-glow-2 {
+    position: absolute;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, rgba(0,0,0,0) 70%);
+    bottom: -10%;
+    right: -10%;
+    filter: blur(100px);
+}
+
+.grid-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-size: 40px 40px;
+    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* =================================================================
+   3. レイアウト & セクション
+   ================================================================= */
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+section {
+    padding: 100px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.section-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 50px;
+    display: inline-block;
+    background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    position: relative;
+}
+
+.section-title::after {
+    content: '';
+    position: absolute;
+    width: 40%;
+    height: 4px;
+    background: linear-gradient(to right, var(--color-accent), transparent);
+    bottom: -10px;
+    left: 0;
+    border-radius: 2px;
+}
+
+/* =================================================================
+   4. ヘッダー / ナビゲーション
+   ================================================================= */
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 100;
+    background: rgba(10, 13, 22, 0.8);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 70px;
+    max-width: 1150px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.logo {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1.2rem;
+    text-decoration: none;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logo span {
+    color: var(--color-accent);
+}
+
+.nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: var(--transition-smooth);
+}
+
+.nav-links a:hover {
+    color: var(--color-accent);
+    text-shadow: 0 0 10px var(--color-accent-glow);
+}
+
+/* =================================================================
+   5. ヒーローセクション (Hero)
+   ================================================================= */
+#hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding-top: 100px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.hero-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 800px;
+}
+
+.hero-tag {
+    font-family: var(--font-mono);
+    color: var(--color-accent);
+    font-size: 1rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hero-tag::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--color-accent);
+    box-shadow: 0 0 8px var(--color-accent);
+}
+
+.hero-title {
+    font-size: 3.8rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -1px;
+}
+
+.hero-title span {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-desc {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin-top: 10px;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 16px;
+    margin-top: 24px;
+}
+
+/* ボタン共通 */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 28px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: var(--transition-smooth);
+    cursor: pointer;
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+    color: #ffffff;
+    box-shadow: 0 4px 14px var(--color-primary-glow);
+}
+
+.btn-primary:hover {
+    background-color: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--text-muted);
+    transform: translateY(-2px);
+}
+
+/* =================================================================
+   6. 作品詳細 / 実績 (Projects)
+   ================================================================= */
+.project-showcase {
+    background: var(--bg-surface);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+.project-header {
+    display: flex;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.project-tab {
+    padding: 20px 30px;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.project-tab.active {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: inset 0 -3px 0 var(--color-accent);
+}
+
+.project-tab:hover:not(.active) {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.project-tab span {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--color-accent);
+}
+
+.project-body {
+    padding: 40px;
+}
+
+.project-content {
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
+
+.project-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.project-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 40px;
+}
+
+@media (max-width: 900px) {
+    .project-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.media-container {
+    background-color: #05070a;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    aspect-ratio: 16/9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.media-placeholder {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 24px;
+}
+
+.media-placeholder svg {
+    margin-bottom: 12px;
+    color: var(--color-primary);
+}
+
+.tech-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.tag {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--color-accent);
+}
+
+.project-info h3 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.project-info p {
+    color: var(--text-muted);
+    margin-bottom: 24px;
+}
+
+.project-features {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.project-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 0.95rem;
+}
+
+.project-features li svg {
+    color: var(--color-success);
+    flex-shrink: 0;
+    margin-top: 3px;
+}
+
+/* =================================================================
+   7. 技術設計・コード解説 (Code Architecture)
+   ================================================================= */
+.architecture-container {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.arch-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 30px;
+}
+
+.arch-card h4 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.arch-card h4 span {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    background: rgba(6, 182, 212, 0.1);
+    border: 1px solid var(--border-color-glow);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--color-accent);
+}
+
+.code-snippet {
+    background: #05070a;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: #e5e7eb;
+    margin-top: 16px;
+}
+
+.code-keyword { color: #f472b6; }
+.code-type { color: #60a5fa; }
+.code-comment { color: #9ca3af; font-style: italic; }
+
+/* =================================================================
+   8. 技術スキル (Skills)
+   ================================================================= */
+.skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+}
+
+.skill-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    transition: var(--transition-smooth);
+}
+
+.skill-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(6, 182, 212, 0.25);
+    box-shadow: 0 10px 20px rgba(6, 182, 212, 0.05);
+}
+
+.skill-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.skill-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.skill-level {
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    color: var(--color-accent);
+}
+
+.skill-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.skill-bar-fill {
+    height: 100%;
+    background: linear-gradient(to right, var(--color-primary), var(--color-accent));
+    border-radius: 3px;
+}
+
+.skill-comment {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* =================================================================
+   9. 自己紹介 (About Me)
+   ================================================================= */
+.about-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 50px;
+    align-items: center;
+}
+
+@media (max-width: 800px) {
+    .about-layout {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+}
+
+.profile-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.profile-image-placeholder {
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: #ffffff;
+    box-shadow: 0 0 20px var(--color-primary-glow);
+}
+
+.profile-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.profile-title {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--color-accent);
+    margin-bottom: 16px;
+}
+
+.profile-meta {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-color);
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.about-text h4 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.about-text p {
+    color: var(--text-muted);
+    margin-bottom: 20px;
+}
+
+/* =================================================================
+   10. フッター (Footer)
+   ================================================================= */
+footer {
+    padding: 40px 0;
+    background: #05070a;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    color: var(--text-dark);
+}
+
+.footer-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.footer-links {
+    display: flex;
+    gap: 20px;
+}
+
+.footer-links a {
+    color: var(--text-dark);
+    text-decoration: none;
+    transition: var(--transition-smooth);
+}
+
+.footer-links a:hover {
+    color: var(--text-muted);
+}

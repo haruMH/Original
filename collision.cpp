@@ -1,6 +1,7 @@
 ﻿#include "collision.h"
 #include "field.h"
 #include "enemy.h"
+#include "player.h"
 #include "math_helper.h"
 #include <cmath>
 
@@ -52,9 +53,17 @@ bool Collision::CheckAABBCollision(const GameObject* self, const DirectX::XMFLOA
 {
     if (!self) return false;
 
+    // プレイヤーが現在掴んでいる敵は、自身との衝突判定から自動的に除外する（移動時のガクガク引っかかるバグを防ぐ）
+    const Enemy* grabbedEnemy = nullptr;
+    if (self->GetObjectType() == ObjectType::Player) {
+        const Player* player = static_cast<const Player*>(self);
+        grabbedEnemy = player->GetGrabbedEnemy();
+    }
+
     for (GameObject* obj : objList) {
         if (obj == self) continue;
         if (ignoreObj && obj == *ignoreObj) continue;       // 既に掴んでいる敵は衝突除外
+        if (grabbedEnemy && obj == grabbedEnemy) continue;  // 掴んでいる敵との衝突を自動除外
         if (obj->GetObjectType() == ObjectType::Field) continue; // 地面は除外
         if (obj->IsDestroy()) continue;
 
@@ -91,7 +100,10 @@ void Collision::ResolveGrabPhysics(GameObject* parent, GameObject* child, float 
     DirectX::XMFLOAT3 scaleC = child->GetScale();
 
     // parent の正面方向（Z軸方向）の半径と、child の背面方向（Z軸方向）の半径を計算
-    // ※もし立方体なら size.z * scale.z * 0.5f が「中心から外界までの距離」になります
+    // ※プレイヤーのアニメーション用伸縮（もちもち変形）による振動を防ぐため、プレイヤーのスケールは(1.0f,1.0f,1.0f)に固定して計算します。
+    if (parent->GetObjectType() == ObjectType::Player) {
+        scaleP = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    }
     float parentRadiusZ = (sizeP.z * scaleP.z) * 0.5f;
     float childRadiusZ = (sizeC.z * scaleC.z) * 0.5f;
 

@@ -151,6 +151,26 @@ void Camera::Update()
         }
     }
 
+    // --- カットシーン補間の更新 ---
+    if (m_IsCutsceneMode) {
+        m_InterpolationFactor += (1.0f - m_InterpolationFactor) * 0.1f; // 滑らかに 1.0 へ
+    } else {
+        m_InterpolationFactor += (0.0f - m_InterpolationFactor) * 0.1f; // 滑らかに 0.0 へ
+    }
+
+    if (m_InterpolationFactor > 0.001f) {
+        XMVECTOR vNormalPos = XMLoadFloat3(&m_Position);
+        XMVECTOR vNormalTarget = XMLoadFloat3(&m_Target);
+        XMVECTOR vCutscenePos = XMLoadFloat3(&m_CutsceneEye);
+        XMVECTOR vCutsceneTarget = XMLoadFloat3(&m_CutsceneTarget);
+
+        XMVECTOR vBlendedPos = XMVectorLerp(vNormalPos, vCutscenePos, m_InterpolationFactor);
+        XMVECTOR vBlendedTarget = XMVectorLerp(vNormalTarget, vCutsceneTarget, m_InterpolationFactor);
+
+        XMStoreFloat3(&m_Position, vBlendedPos);
+        XMStoreFloat3(&m_Target, vBlendedTarget);
+    }
+
     // --- カメラシェイク（振動）の適用 ---
     XMFLOAT3 finalPosition = m_Position;
     XMFLOAT3 finalTarget = m_Target;

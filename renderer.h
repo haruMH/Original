@@ -1,5 +1,6 @@
-#pragma once
+﻿#pragma once
 #include "main.h"
+#include <string>
 
 struct VERTEX_3D {
     XMFLOAT3 Position;
@@ -38,6 +39,7 @@ struct POSTEFFECT {
     float Threshold;
     float BlurIntensity;
     float SlowMotionIntensity; // スローモーション中のカラー彩度・色調補正度
+    XMFLOAT4 FlashColor;       // 画面フラッシュ / 調色カラー (RGB: 色, A: 強度)
 };
 
 // 水面シェーダー用定数バッファ構造体 (VS)
@@ -191,6 +193,9 @@ public:
     static bool IsShadowMode() { return m_IsShadowMode; }
     static void CreateVertexShader(ID3D11VertexShader** vs, ID3D11InputLayout** il, const char* name);
     static void CreatePixelShader(ID3D11PixelShader** ps, const char* name);
+    // シェーダーファイルのパスを構成に合わせて解決する（2-1 対応）
+    // 呼び出し元は常にベース名（例: "vertexShader.cso"）を渡すだけでよい
+    static std::string ResolveShaderPath(const std::string& fileName);
     static void CreateTexture(const char* name, ID3D11ShaderResourceView** tex);
     static void SetTexture(ID3D11ShaderResourceView* tex);
     static void SetNormalMap(ID3D11ShaderResourceView* tex);

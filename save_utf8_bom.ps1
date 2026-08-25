@@ -2,6 +2,27 @@
 # すべての新規追加ファイルをBOM付きUTF-8に変換して、MSVCのコンパイルエラー（C4819、C2065等）を解消します。
 
 $files = @(
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\portfolio\index.html",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\portfolio\style.css",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\portfolio\script.js",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\scene_interface.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\title_scene.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\title_scene.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\gameplay_scene.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\gameplay_scene.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\clear_scene.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\clear_scene.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\gameover_scene.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\gameover_scene.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\shadertest_scene.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\shadertest_scene.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\game_constants.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\player_movement.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\player_movement.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\player_combat.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\player_combat.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\player_visual.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\player_visual.cpp",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\collision.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\collision.cpp",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\camera.h",
@@ -52,7 +73,15 @@ $files = @(
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\field.h",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\field.cpp",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\wall.h",
-    "c:\Users\HARU17\Desktop\GM31\DX11_Original\wall.cpp"
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\wall.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\enemy_affix.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\enemy_affix.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\event_system.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\event_system.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\event_types.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\magnetic_bullet.h",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\magnetic_bullet.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\.agents\AGENTS.md"
 )
 
 foreach ($file in $files) {

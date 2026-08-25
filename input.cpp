@@ -64,8 +64,8 @@ void Input::Update() {
     POINT point;
     GetCursorPos(&point); // スクリーン座標でのマウス位置取得
 
-    // ロックが必要か判定（ウィンドウがアクティブで、かつm_MouseLockedがtrueで、テストシーンではない場合のみロック）
-    bool shouldLock = isWindowActive && m_MouseLocked && (Manager::GetCurrentScene() != Scene::SHADER_TEST);
+    // ロックが必要か判定（ウィンドウがアクティブで、かつm_MouseLockedがtrueの場合のみロック）
+    bool shouldLock = isWindowActive && m_MouseLocked;
 
     if (!shouldLock) {
         m_MouseMoveX = 0;

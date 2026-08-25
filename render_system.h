@@ -47,6 +47,9 @@ public:
     // pass: 描画パス（通常、シャドウ、アウトライン）
     void RenderCubeInstances(ID3D11DeviceContext* context, const std::vector<GameObject*>& objects, RenderPass pass = RenderPass::Normal);
 
+    // カリング結果キャッシュのクリア
+    void ClearCache();
+
 private:
     ID3D11Buffer*       m_InstanceBuffer = nullptr;       // 動的インスタンスバッファ（スロット1用）
     ID3D11InputLayout*  m_InstancedInputLayout = nullptr;  // インスタンス描画専用インプットレイアウト
@@ -64,4 +67,8 @@ private:
 
     // テクスチャ配列の生成
     bool CreateTextureArray(ID3D11Device* device);
+
+    // カリング済み描画オブジェクトリストのキャッシュ（3-3 対応）
+    // Normalパスで構築したリストをOutlineパスで再利用し、重複カリング計算を回避する
+    std::vector<GameObject*> m_CachedDrawList;
 };

@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <d3d11.h>
 
@@ -11,7 +12,7 @@ private:
 
 public:
     // 指定されたファイル名のテクスチャを取得（未ロードの場合はロードしてキャッシュする）
-    static ID3D11ShaderResourceView* GetTexture(const std::string& fileName);
+    static ID3D11ShaderResourceView* GetTexture(std::string_view fileName);
     
     // 全てのリソースを解放
     static void Uninit();

@@ -58,32 +58,57 @@ namespace MathHelper {
         return DirectX::XMFLOAT3(Lerp(a.x, b.x, t), Lerp(a.y, b.y, t), Lerp(a.z, b.z, t));
     }
 
+    // 角度補間用 LerpAngle（最短ルートで角度を補間します）
+    inline float LerpAngle(float current, float target, float t) {
+        float diff = target - current;
+        while (diff < -DirectX::XM_PI) diff += DirectX::XM_2PI;
+        while (diff > DirectX::XM_PI)  diff -= DirectX::XM_2PI;
+        return current + diff * t;
+    }
+
     // ベクトルの長さ（ノルム）
     inline float Length(const DirectX::XMFLOAT3& v) {
-        return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+        DirectX::XMVECTOR vec = DirectX::XMLoadFloat3(&v);
+        DirectX::XMVECTOR len = DirectX::XMVector3Length(vec);
+        return DirectX::XMVectorGetX(len);
     }
 
     // ベクトルの長さの二乗（平方根計算を避けるため高速）
     inline float LengthSq(const DirectX::XMFLOAT3& v) {
-        return v.x * v.x + v.y * v.y + v.z * v.z;
+        DirectX::XMVECTOR vec = DirectX::XMLoadFloat3(&v);
+        DirectX::XMVECTOR lenSq = DirectX::XMVector3LengthSq(vec);
+        return DirectX::XMVectorGetX(lenSq);
     }
 
     // ベクトルの正規化。長さがゼロに近い場合はゼロベクトルを返す
     inline DirectX::XMFLOAT3 Normalize(const DirectX::XMFLOAT3& v) {
-        float len = Length(v);
-        if (len > 0.0001f) return v / len;
+        DirectX::XMVECTOR vec = DirectX::XMLoadFloat3(&v);
+        DirectX::XMVECTOR lenVec = DirectX::XMVector3Length(vec);
+        float len = DirectX::XMVectorGetX(lenVec);
+        if (len > 0.0001f) {
+            DirectX::XMFLOAT3 result;
+            DirectX::XMStoreFloat3(&result, DirectX::XMVector3Normalize(vec));
+            return result;
+        }
         return DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
     }
 
     // 2点間の距離の二乗（平方根計算を避けるため高速）
     inline float DistanceSq(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b) {
-        float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
-        return dx * dx + dy * dy + dz * dz;
+        DirectX::XMVECTOR vecA = DirectX::XMLoadFloat3(&a);
+        DirectX::XMVECTOR vecB = DirectX::XMLoadFloat3(&b);
+        DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(vecA, vecB);
+        DirectX::XMVECTOR distSq = DirectX::XMVector3LengthSq(diff);
+        return DirectX::XMVectorGetX(distSq);
     }
 
     // 2点間の距離
     inline float Distance(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b) {
-        return std::sqrt(DistanceSq(a, b));
+        DirectX::XMVECTOR vecA = DirectX::XMLoadFloat3(&a);
+        DirectX::XMVECTOR vecB = DirectX::XMLoadFloat3(&b);
+        DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(vecA, vecB);
+        DirectX::XMVECTOR dist = DirectX::XMVector3Length(diff);
+        return DirectX::XMVectorGetX(dist);
     }
 
 } // namespace MathHelper

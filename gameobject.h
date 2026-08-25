@@ -17,6 +17,19 @@ enum class ObjectType
     Unknown
 };
 
+// =================================================================
+// 被弾ダメージ情報構造体
+// =================================================================
+struct HitInfo
+{
+    int damage = 1;
+    DirectX::XMFLOAT3 hitSourcePos = {0.0f, 0.0f, 0.0f};
+    DirectX::XMFLOAT3 knockbackVel = {0.0f, 0.0f, 0.0f};
+    DirectX::XMFLOAT3 popupColor = {2.5f, 0.0f, 0.0f};
+    bool setLightning = false;
+    bool setExplosion = false;
+};
+
 class GameObject
 {
 protected:
@@ -43,6 +56,7 @@ public:
     virtual void Uninit() = 0;
     virtual void Update() = 0;
     virtual void Draw() = 0;
+    virtual void OnHit(const HitInfo& info) {} // 被弾時処理インターフェース
 
     RenderComponent& GetRenderComponent() { return m_RenderComponent; }
     const RenderComponent& GetRenderComponent() const { return m_RenderComponent; }

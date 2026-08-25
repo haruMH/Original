@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "gameobject.h"
 
 class Field : public GameObject
