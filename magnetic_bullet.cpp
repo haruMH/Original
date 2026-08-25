@@ -6,6 +6,7 @@
 #include "math_helper.h"
 #include "collision.h"
 #include "camera.h"
+#include "game_constants.h"
 
 using namespace DirectX;
 
@@ -102,6 +103,26 @@ void MagneticBullet::Update()
         if (m_Life <= 0) {
             SetDestroy();
             return;
+        }
+
+        // プレイヤーとの衝突判定（ダメージ＋消滅）
+        Player* player = Manager::GetGameObject<Player>();
+        if (player && !player->IsDestroy())
+        {
+            if (Collision::CheckSphere(this, player))
+            {
+                // ノックバック方向は弾の進行方向
+                HitInfo hit;
+                hit.damage        = Constants::MagneticBullet::DAMAGE;
+                hit.hitSourcePos  = m_Position;
+                hit.knockbackVel  = { m_Direction.x * Constants::MagneticBullet::KNOCKBACK,
+                                      0.1f,
+                                      m_Direction.z * Constants::MagneticBullet::KNOCKBACK };
+                hit.popupColor    = { 1.5f, 0.0f, 2.5f }; // 紫色のダメージポップアップ
+                player->OnHit(hit);
+                SetDestroy(); // 弾を消滅
+                return;
+            }
         }
 
         // 壁との衝突による消滅処理
