@@ -78,19 +78,18 @@ void MagneticBullet::Update()
         // Y方向は半径より5倍速く収束させることでカットシーン中にボスの中心高さに落ち着かせる
         m_CurrentYOffset += (m_YOffset - m_CurrentYOffset) * (m_AttractFactor * 5.0f);
 
-        // 3. 奇妙な軌道（うねり・緩急）の適用
-        // 半径に高速な脈動（うねり）を加える
+        // 3. 軌道のうねり適用（半径と高さのみ変調。角度は均等に保つ）
+        // 半径に脈動（うねり）を加えて有機的な動きを演出
         float wavyRadius = m_CurrentRadius + 1.2f * sinf(m_Angle * 3.0f);
-        // 高さ（YOffset）にも独自の上下ウェーブを加える
+        // 高さにも独自の上下ウェーブを加える
         float wavyY = m_CurrentYOffset + 0.8f * sinf(m_Angle * 2.0f);
-        // 角度を少し非線形に変調させて、回転速度に緩急をつける
-        float skewedAngle = m_Angle + 0.3f * cosf(m_Angle * 2.0f);
+        // ※ 角度の非線形変調（skewedAngle）は左側で弾が密集する原因のため除去
 
-        // 4. 座標の決定
+        // 4. 座標の決定（角度は m_Angle をそのまま使用して均等周回を保証）
         XMFLOAT3 bossPos = m_BossTarget->GetPosition();
-        m_Position.x = bossPos.x + wavyRadius * cosf(skewedAngle);
+        m_Position.x = bossPos.x + wavyRadius * cosf(m_Angle);
         m_Position.y = bossPos.y + wavyY;
-        m_Position.z = bossPos.z + wavyRadius * sinf(skewedAngle);
+        m_Position.z = bossPos.z + wavyRadius * sinf(m_Angle);
     }
     else {
         // === 射出状態：プレイヤーに向かって直線的に高速移動 ===
