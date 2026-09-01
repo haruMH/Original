@@ -22,4 +22,6 @@ private:
     void UpdateGameplay();
 
     int m_ClearDelayTimer = 0; // ボス撃破後のクリア移行遅延タイマー（フレーム数）
+    int m_ComboCount = 0;      // 連続キル（コンボ）数
+    int m_ComboTimer = 0;      // コンボ維持残りフレーム数 (60FPSベース)
 };

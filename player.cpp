@@ -55,13 +55,8 @@ void Player::Init()
     m_Visual->Init();
 
     // テクスチャリソースの読み込みと描画コンポーネント設定
-#ifdef NDEBUG
-    m_Texture = ResourceManager::GetTexture("Assets/texture/player.png");
-    m_RenderComponent = RenderComponent("Assets/texture/player.png", MeshType::Cube, true);
-#else
     m_Texture = ResourceManager::GetTexture("player.png");
     m_RenderComponent = RenderComponent("player.png", MeshType::Cube, true);
-#endif
 }
 
 // =================================================================
@@ -211,9 +206,9 @@ void Player::Throw()
     if (m_Combat) m_Combat->Throw();
 }
 
-void Player::ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos)
+void Player::OnHit(const HitInfo& info)
 {
-    if (m_Combat) m_Combat->ApplyDamage(damage, enemyPos);
+    if (m_Combat) m_Combat->OnHit(info);
 }
 
 void Player::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)

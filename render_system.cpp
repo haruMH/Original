@@ -130,13 +130,9 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
     
     // -------------------------------------------------------------
     // 1. 頂点シェーダー (instanced_vs.cso) の読み込みと生成
-    // リリースビルドは Assets/shader/ サブフォルダから読み込む
+    // パス解決は Renderer::ResolveShaderPath で一元化（2-1 対応）
     // -------------------------------------------------------------
-#ifdef NDEBUG
-    fopen_s(&f, "Assets/shader/instanced_vs.cso", "rb");
-#else
-    fopen_s(&f, "instanced_vs.cso", "rb");
-#endif
+    fopen_s(&f, Renderer::ResolveShaderPath("instanced_vs.cso").c_str(), "rb");
     if (!f)
     {
         log << "[RenderSystem::CreateResources] Failed to open instanced_vs.cso!" << std::endl;
@@ -189,13 +185,9 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
 
     // -------------------------------------------------------------
     // 3. ピクセルシェーダー (instanced_ps.cso) の読み込みと生成
-    // リリースビルドは Assets/shader/ サブフォルダから読み込む
+    // パス解決は Renderer::ResolveShaderPath で一元化（2-1 対応）
     // -------------------------------------------------------------
-#ifdef NDEBUG
-    fopen_s(&f, "Assets/shader/instanced_ps.cso", "rb");
-#else
-    fopen_s(&f, "instanced_ps.cso", "rb");
-#endif
+    fopen_s(&f, Renderer::ResolveShaderPath("instanced_ps.cso").c_str(), "rb");
     if (!f)
     {
         log << "[RenderSystem::CreateResources] Failed to open instanced_ps.cso!" << std::endl;
@@ -222,13 +214,9 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
 
     // -------------------------------------------------------------
     // 4. インスタンスアウトライン用頂点シェーダー (outline_instanced_vs.cso) の読み込みと生成
-    // リリースビルドは Assets/shader/ サブフォルダから読み込む
+    // パス解決は Renderer::ResolveShaderPath で一元化（2-1 対応）
     // -------------------------------------------------------------
-#ifdef NDEBUG
-    fopen_s(&f, "Assets/shader/outline_instanced_vs.cso", "rb");
-#else
-    fopen_s(&f, "outline_instanced_vs.cso", "rb");
-#endif
+    fopen_s(&f, Renderer::ResolveShaderPath("outline_instanced_vs.cso").c_str(), "rb");
     if (!f)
     {
         log << "[RenderSystem::CreateResources] Failed to open outline_instanced_vs.cso!" << std::endl;
@@ -270,51 +258,64 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
 // =================================================================
 void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::vector<GameObject*>& objects, RenderPass pass)
 {
-    // 1. 視錐台の構築（通常描画・アウトライン描画時のみカリングを行う。シャドウマップ描画時は画面外の影も落とすためスキップ）
-    bool useCulling = (pass != RenderPass::Shadow);
-    DirectX::BoundingFrustum frustum;
-    if (useCulling)
-    {
-        DirectX::BoundingFrustum::CreateFromMatrix(frustum, Renderer::GetProjectionMatrix());
-        DirectX::XMMATRIX invView = DirectX::XMMatrixInverse(nullptr, Renderer::GetViewMatrix());
-        frustum.Transform(frustum, invView);
-    }
-
-    // 2. シーン上の GameObject を走査し、インスタンシング描画対象のオブジェクトをフラットなリストに格納する
     std::vector<GameObject*> drawList;
 
-    for (GameObject* obj : objects)
+    // 3-3 対応: Normalパスでカリングした描画リストを保持し、Outlineパスで再利用する
+    if (pass == RenderPass::Outline && !m_CachedDrawList.empty())
     {
-        if (!obj) continue;
-
-
-        const RenderComponent& rc = obj->GetRenderComponent();
-        if (!rc.visible || rc.meshType != MeshType::Cube || rc.textureKey.empty())
+        drawList = m_CachedDrawList;
+    }
+    else
+    {
+        // 1. 視錐台の構築（通常描画・アウトライン描画時のみカリングを行う。シャドウマップ描画時は画面外の影も落とすためスキップ）
+        bool useCulling = (pass != RenderPass::Shadow);
+        DirectX::BoundingFrustum frustum;
+        if (useCulling)
         {
-            continue; // 非表示、キューブメッシュ以外、またはテクスチャキーが空の場合はスキップ
+            DirectX::BoundingFrustum::CreateFromMatrix(frustum, Renderer::GetProjectionMatrix());
+            DirectX::XMMATRIX invView = DirectX::XMMatrixInverse(nullptr, Renderer::GetViewMatrix());
+            frustum.Transform(frustum, invView);
         }
 
-        // テクスチャキーがインデックスマップに存在することを確認
-        if (m_TextureIndexMap.find(rc.textureKey) != m_TextureIndexMap.end())
+        // 2. シーン上の GameObject を走査し、インスタンシング描画対象のオブジェクトをフラットなリストに格納する
+        for (GameObject* obj : objects)
         {
-            // 視錐台カリング判定
-            if (useCulling)
-            {
-                // オブジェクトのスケールを考慮して、簡易バウンディング球（マージン付き）を構築
-                DirectX::XMFLOAT3 pos = obj->GetPosition();
-                DirectX::XMFLOAT3 scale = obj->GetScale();
-                // 直方体の外接球半径（対角線の半分）で計算する
-                // → 細長い壁など、最大スケール軸と直交する方向の広がりも正しく扱える
-                float radius = sqrtf(scale.x * scale.x + scale.y * scale.y + scale.z * scale.z) * 0.5f + 1.0f;
+            if (!obj) continue;
 
-                DirectX::BoundingSphere sphere(pos, radius);
-                if (!frustum.Intersects(sphere))
-                {
-                    continue; // 視界外の場合は描画リストに追加しない（カリング）
-                }
+            const RenderComponent& rc = obj->GetRenderComponent();
+            if (!rc.visible || rc.meshType != MeshType::Cube || rc.textureKey.empty())
+            {
+                continue; // 非表示、キューブメッシュ以外、またはテクスチャキーが空の場合はスキップ
             }
 
-            drawList.push_back(obj);
+            // テクスチャキーがインデックスマップに存在することを確認
+            if (m_TextureIndexMap.find(rc.textureKey) != m_TextureIndexMap.end())
+            {
+                // 視錐台カリング判定
+                if (useCulling)
+                {
+                    // オブジェクトのスケールを考慮して、簡易バウンディング球（マージン付き）を構築
+                    DirectX::XMFLOAT3 pos = obj->GetPosition();
+                    DirectX::XMFLOAT3 scale = obj->GetScale();
+                    // 直方体の外接球半径（対角線の半分）で計算する
+                    // → 細長い壁など、最大スケール軸と直交する方向の広がりも正しく扱える
+                    float radius = sqrtf(scale.x * scale.x + scale.y * scale.y + scale.z * scale.z) * 0.5f + 1.0f;
+
+                    DirectX::BoundingSphere sphere(pos, radius);
+                    if (!frustum.Intersects(sphere))
+                    {
+                        continue; // 視界外の場合は描画リストに追加しない（カリング）
+                    }
+                }
+
+                drawList.push_back(obj);
+            }
+        }
+
+        // 通常パスの場合は、アウトラインパスでカリング計算をスキップするために結果をキャッシュしておく
+        if (pass == RenderPass::Normal)
+        {
+            m_CachedDrawList = drawList;
         }
     }
 
@@ -447,18 +448,10 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
 
     if (!device) return false;
 
-    // 配列にするテクスチャのキー一覧
-    // リリースビルド時は Assets/texture/ サブフォルダのパスを使用する
     std::vector<std::string> textureKeys = {
-#ifdef NDEBUG
-        "Assets/texture/enemy.png",
-        "Assets/texture/player.png",
-        "Assets/texture/grid.png"
-#else
         "enemy.png",
         "player.png",
         "grid.png"
-#endif
     };
 
     std::vector<ID3D11Texture2D*> textures;
@@ -572,9 +565,15 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
     textureArray->Release();
     context->Release();
     for (auto* r : resources) r->Release();
-    for (auto* t : textures) t->Release();
-
     log << "[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV." << std::endl;
     return true;
+}
+
+// ─────────────────────────────────────────────
+// カリング結果キャッシュのクリア
+// ─────────────────────────────────────────────
+void RenderSystem::ClearCache()
+{
+    m_CachedDrawList.clear();
 }
 

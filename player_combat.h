@@ -4,6 +4,8 @@
 class Player;
 class Enemy;
 
+struct HitInfo;
+
 // =================================================================
 // プレイヤー戦闘アクション管理クラス (PlayerCombat)
 // =================================================================
@@ -24,7 +26,7 @@ public:
     void Update();
 
     // 被弾ダメージの適用
-    void ApplyDamage(int damage, const DirectX::XMFLOAT3& enemyPos);
+    void OnHit(const HitInfo& info);
 
     // パリィ成功時のカウンター実行
     void ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos);

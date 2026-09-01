@@ -1,4 +1,6 @@
 ﻿#include "boss_enemy.h"
+#include "event_system.h"
+#include "event_types.h"
 #include "renderer.h"
 #include "resource_manager.h"
 #include "math_helper.h"
@@ -35,18 +37,15 @@ void BossEnemy::Init()
     m_PhaseAttackTimer = 0;
     m_PhaseIndex       = 0;
     m_IsInvincible     = false;
-    m_Phase1Triggered  = false;
-    m_Phase2Triggered  = false;
-    m_Phase3Triggered  = false;
+    m_Phases = {
+        { Constants::Boss::PHASE1_HP_THRESHOLD, 1, false },
+        { Constants::Boss::PHASE2_HP_THRESHOLD, 2, false },
+        { Constants::Boss::PHASE3_HP_THRESHOLD, 3, false }
+    };
     m_PhaseTargetPos   = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_LightningVisualTimer = 0;
 
-    // リリースビルド時は Assets/texture/ サブフォルダから読み込む
-#ifdef NDEBUG
-    m_RenderComponent = RenderComponent("Assets/texture/enemy.png", MeshType::Cube, true);
-#else
     m_RenderComponent = RenderComponent("enemy.png", MeshType::Cube, true);
-#endif
 }
 
 // ─────────────────────────────────────────────
@@ -54,6 +53,8 @@ void BossEnemy::Init()
 // ─────────────────────────────────────────────
 void BossEnemy::Update()
 {
+    if (Manager::IsCutsceneActive()) return;
+
     if (m_DamageFlashTimer > 0) {
         m_DamageFlashTimer--;
     }
@@ -71,30 +72,20 @@ void BossEnemy::Update()
 
     // 通常状態の時にHPを監視してフェーズ移行を行う
     if (m_BossState == BossState::NORMAL) {
-        if (m_HP <= Constants::Boss::PHASE3_HP_THRESHOLD && !m_Phase3Triggered) {
-            m_BossState = BossState::PHASE_TRANSITION;
-            m_PhaseIndex = 3;
-            m_IsInvincible = true;
-            m_Phase3Triggered = true;
-            m_PhaseAttackTimer = 0;
-            m_LightningVisualTimer = 0;
-            OutputDebugStringA("[BossEnemy] Phase 3 Triggered!\n");
-        }
-        else if (m_HP <= Constants::Boss::PHASE2_HP_THRESHOLD && !m_Phase2Triggered) {
-            m_BossState = BossState::PHASE_TRANSITION;
-            m_PhaseIndex = 2;
-            m_IsInvincible = true;
-            m_Phase2Triggered = true;
-            m_PhaseAttackTimer = 0;
-            OutputDebugStringA("[BossEnemy] Phase 2 Triggered!\n");
-        }
-        else if (m_HP <= Constants::Boss::PHASE1_HP_THRESHOLD && !m_Phase1Triggered) {
-            m_BossState = BossState::PHASE_TRANSITION;
-            m_PhaseIndex = 1;
-            m_IsInvincible = true;
-            m_Phase1Triggered = true;
-            m_PhaseAttackTimer = 0;
-            OutputDebugStringA("[BossEnemy] Phase 1 Triggered!\n");
+        for (auto& phase : m_Phases) {
+            if (m_HP <= phase.hpThreshold && !phase.triggered) {
+                m_BossState = BossState::PHASE_TRANSITION;
+                m_PhaseIndex = phase.phaseIndex;
+                m_IsInvincible = true;
+                phase.triggered = true;
+                m_PhaseAttackTimer = 0;
+                m_LightningVisualTimer = 0;
+                m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f); // 変形タメ中の移行に備え、スケールを安全にリセット
+                char dbg[128];
+                sprintf_s(dbg, "[BossEnemy] Phase %d Triggered!\n", phase.phaseIndex);
+                OutputDebugStringA(dbg);
+                break;
+            }
         }
     }
 
@@ -201,7 +192,11 @@ void BossEnemy::FireRapidShot()
     if (g_Camera) g_Camera->Shake(0.12f, 8);
 }
 
-// ─────────────────────────────────────────────
+void BossEnemy::OnHit(const HitInfo& info)
+{
+    ApplyBossDamage(info.damage, info.hitSourcePos);
+}
+
 // ボス被弾ダメージ処理
 // ─────────────────────────────────────────────
 void BossEnemy::ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePos)
@@ -239,8 +234,10 @@ void BossEnemy::ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePo
     m_HP -= damage;
     m_DamageFlashTimer = 15;
 
-    Manager::AddHitStop(12);
-    if (g_Camera) g_Camera->Shake(0.40f, 12);
+    BossHitEvent hitEvent;
+    hitEvent.damage = damage;
+    hitEvent.hitSourcePos = hitSourcePos;
+    EventSystem::Publish<BossHitEvent>(hitEvent);
 
     // 巨大なので少しだけノックバック
     XMFLOAT3 diff = m_Position - hitSourcePos;
@@ -253,19 +250,12 @@ void BossEnemy::ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePo
     }
 
     // ── オーバーダメージ保護：未発動フェーズがある場合はHPをその閾値でクランプ ──
-    // フェーズ移行閾値: Phase1=42, Phase2=30, Phase3=18
-    // HPが一気に閾値を通過してしまったとき、特殊モーションをスキップさせないために
-    // まだ発動していない最も優先度が高いフェーズの閾値+1でHPを下限クランプする
     if (m_BossState == BossState::NORMAL) {
-        if (!m_Phase1Triggered && m_HP < Constants::Boss::PHASE1_HP_THRESHOLD) {
-            // フェーズ1が未発動なのに飛び越えた → クランプ（Update()でフェーズ発動させる）
-            m_HP = Constants::Boss::PHASE1_HP_THRESHOLD;
-        } else if (!m_Phase2Triggered && m_HP < Constants::Boss::PHASE2_HP_THRESHOLD) {
-            // フェーズ2が未発動なのに飛び越えた → クランプ
-            m_HP = Constants::Boss::PHASE2_HP_THRESHOLD;
-        } else if (!m_Phase3Triggered && m_HP < Constants::Boss::PHASE3_HP_THRESHOLD) {
-            // フェーズ3が未発動なのに飛び越えた → クランプ
-            m_HP = Constants::Boss::PHASE3_HP_THRESHOLD;
+        for (auto& phase : m_Phases) {
+            if (!phase.triggered && m_HP < phase.hpThreshold) {
+                m_HP = phase.hpThreshold;
+                break;
+            }
         }
     }
 
@@ -297,13 +287,54 @@ void BossEnemy::ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePo
 void BossEnemy::PerformPhaseAttack()
 {
     m_PhaseAttackTimer++;
-    if (m_PhaseIndex == 1) {
-        PerformPhase1Attack();
-    } else if (m_PhaseIndex == 2) {
-        PerformPhase2Attack();
-    } else if (m_PhaseIndex == 3) {
-        PerformPhase3Attack();
+
+    // フェーズ攻撃関数のテーブル (データ駆動)
+    typedef void (BossEnemy::*PhaseAttackFunc)();
+    static const PhaseAttackFunc PHASE_ATTACK_TABLE[] = {
+        nullptr, // 0番目は未使用 (m_PhaseIndex が 1-indexed のため)
+        &BossEnemy::PerformPhase1Attack,
+        &BossEnemy::PerformPhase2Attack,
+        &BossEnemy::PerformPhase3Attack
+    };
+
+    const int numPhases = sizeof(PHASE_ATTACK_TABLE) / sizeof(PHASE_ATTACK_TABLE[0]);
+    if (m_PhaseIndex >= 1 && m_PhaseIndex < numPhases) {
+        PhaseAttackFunc func = PHASE_ATTACK_TABLE[m_PhaseIndex];
+        if (func) {
+            (this->*func)();
+        }
     }
+}
+
+// ─────────────────────────────────────────────
+// フェーズ1特別攻撃: 360度サークル弾幕 (持続時間: 400フレーム)
+// ─────────────────────────────────────────────
+BossPhase1ChargeInfo BossEnemy::GetPhase1ChargeInfo() const
+{
+    BossPhase1ChargeInfo info = {};
+    info.isCharging = false;
+    info.relativeTimer = 0;
+    info.angleOffset = 0.0f;
+
+    if (m_PhaseAttackTimer >= 45 && m_PhaseAttackTimer < 60) {
+        info.isCharging = true;
+        info.relativeTimer = m_PhaseAttackTimer - 45;
+        info.angleOffset = 0.0f;
+    } else if (m_PhaseAttackTimer >= 125 && m_PhaseAttackTimer < 140) {
+        info.isCharging = true;
+        info.relativeTimer = m_PhaseAttackTimer - 125;
+        info.angleOffset = (DirectX::XM_2PI / 24) * 0.3f;
+    } else if (m_PhaseAttackTimer >= 205 && m_PhaseAttackTimer < 220) {
+        info.isCharging = true;
+        info.relativeTimer = m_PhaseAttackTimer - 205;
+        info.angleOffset = (DirectX::XM_2PI / 24) * 0.6f;
+    } else if (m_PhaseAttackTimer >= 285 && m_PhaseAttackTimer < 300) {
+        info.isCharging = true;
+        info.relativeTimer = m_PhaseAttackTimer - 285;
+        info.angleOffset = (DirectX::XM_2PI / 24) * 0.9f;
+    }
+
+    return info;
 }
 
 // ─────────────────────────────────────────────
@@ -311,29 +342,49 @@ void BossEnemy::PerformPhaseAttack()
 // ─────────────────────────────────────────────
 void BossEnemy::PerformPhase1Attack()
 {
+    // プレイヤーの高さに合わせる（頭上通過防止・チャージ波紋の発生高さにも使用）
+    float bulletY = -0.2f;
+    Player* player = Manager::GetGameObject<Player>();
+    if (player) {
+        bulletY = player->GetPosition().y + 0.3f;
+    }
+    XMFLOAT3 bulletPos = m_Position;
+    bulletPos.y = bulletY;
+
+    // ヘルパーから一括してチャージ情報を取得（コードのコピペ・二重定義を防止）
+    BossPhase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
+
+    if (chargeInfo.isCharging) {
+        float chargeT = chargeInfo.relativeTimer / 15.0f; // 0.0 -> 1.0
+        // ボスをタメで少し縮ませる（Yを縮め、XZを太らせる）
+        m_Scale.y = 5.0f - 1.0f * sinf(chargeT * DirectX::XM_PIDIV2); // 5.0 -> 4.0
+        m_Scale.x = m_Scale.z = 5.0f + 0.3f * sinf(chargeT * DirectX::XM_PIDIV2); // 5.0 -> 5.3
+
+        // 吸引開始フレーム（relativeTimer == 0）でエフェクトを追加
+        if (chargeInfo.relativeTimer == 0) {
+            // 半径を 18.0f / 12.0f に拡大し、高さを弾幕に合わせる
+            ShockwaveSystem::AddShockwave(bulletPos, 18.0f, 1.5f, 0.0f, 2.0f, 15, 0.0f, 0, true);
+            ShockwaveSystem::AddShockwave(bulletPos, 12.0f, 1.5f, 0.0f, 2.0f, 15, 0.0f, 0, true);
+        }
+    } else {
+        // 通常時（発射時含む）は元のサイズに戻す
+        m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f);
+    }
+
     // 60, 140, 220, 300f で発射 (計4回)
     if (m_PhaseAttackTimer == 60 || m_PhaseAttackTimer == 140 || 
         m_PhaseAttackTimer == 220 || m_PhaseAttackTimer == 300) 
     {
-        // プレイヤーの高さに合わせる（頭上通過防止）
-        float bulletY = -0.2f;
-        Player* player = Manager::GetGameObject<Player>();
-        if (player) {
-            bulletY = player->GetPosition().y + 0.3f;
-        }
-        XMFLOAT3 bulletPos = m_Position;
-        bulletPos.y = bulletY;
-
         const int numBullets = 24;
         
         // 掃射回数ごとに弾幕の角度をずらして、安全地帯が毎回変わるようにする
         float startAngleOffset = 0.0f;
         if (m_PhaseAttackTimer == 140) {
-            startAngleOffset = (XM_2PI / numBullets) * 0.25f; // 隙間の1/4ずらす
+            startAngleOffset = (XM_2PI / numBullets) * 0.3f; // 隙間の1/4ずらす
         } else if (m_PhaseAttackTimer == 220) {
-            startAngleOffset = (XM_2PI / numBullets) * 0.50f; // 隙間の1/2ずらす
+            startAngleOffset = (XM_2PI / numBullets) * 0.6f; // 隙間の1/2ずらす
         } else if (m_PhaseAttackTimer == 300) {
-            startAngleOffset = (XM_2PI / numBullets) * 0.75f; // 隙間の3/4ずらす
+            startAngleOffset = (XM_2PI / numBullets) * 0.9f; // 隙間の3/4ずらす
         }
 
         for (int i = 0; i < numBullets; i++) {
@@ -368,8 +419,13 @@ void BossEnemy::PerformPhase2Attack()
 
     m_PhaseAttackTimer++;
 
-    // 1. 回転ラインマーカー棒（縄跳び）の回転角度 (毎フレーム 0.015ラジアンずつゆっくり回転)
-    float angle = m_PhaseAttackTimer * 0.015f;
+    // 予兆時間（最初の60フレーム）は回転させず、判定もスキップ
+    if (m_PhaseAttackTimer <= 60) {
+        return;
+    }
+
+    // 60フレーム以降から回転を開始
+    float angle = (m_PhaseAttackTimer - 60) * 0.015f;
 
     // プレイヤーへの衝突判定
     XMFLOAT3 pPos = player->GetPosition();
@@ -424,7 +480,10 @@ void BossEnemy::PerformPhase2Attack()
             proj, perpDist, dist);
         OutputDebugStringA(dbgBuf);
 
-        player->ApplyDamage(1, m_Position);
+        HitInfo hitInfo;
+        hitInfo.damage = 1;
+        hitInfo.hitSourcePos = m_Position;
+        player->OnHit(hitInfo);
         if (g_Camera) g_Camera->Shake(0.25f, 8);
     }
 
@@ -445,21 +504,42 @@ void BossEnemy::PerformPhase3Attack()
     Player* player = Manager::GetGameObject<Player>();
     if (!player) return;
 
+    // プレイヤーの高さに合わせる（頭上通過防止・チャージ波紋の発生高さにも使用）
+    float bulletY = player->GetPosition().y + 0.3f;
+    XMFLOAT3 bulletPos = m_Position;
+    bulletPos.y = bulletY;
+
+    // ─── 極大魔力チャージ（最初の60フレーム） ───
+    if (m_PhaseAttackTimer < 60) {
+        float t = m_PhaseAttackTimer / 60.0f; // 0.0 -> 1.0
+        // ボスの体を押しつぶすタメ演出（Yを縮め、XZを太らせる）
+        m_Scale.y = 5.0f - 1.8f * sinf(t * XM_PIDIV2); // 5.0f -> 3.2f
+        m_Scale.x = m_Scale.z = 5.0f + 0.6f * sinf(t * XM_PIDIV2); // 5.0f -> 5.6f
+
+        // 10フレーム目に超巨大吸引エフェクトを発生（持続50f、弾幕発射位置 bulletPos）
+        if (m_PhaseAttackTimer == 10) {
+            // 超巨大な収縮サークル（半径28.0f / 18.0f）
+            ShockwaveSystem::AddShockwave(bulletPos, 28.0f, 2.5f, 0.5f, 0.0f, 50, 0.0f, 0, true);
+            ShockwaveSystem::AddShockwave(bulletPos, 18.0f, 2.5f, 0.5f, 0.0f, 50, 0.0f, 0, true);
+        }
+        return; // チャージ中は射撃処理を行わない
+    }
+
+    // 60フレーム目に突入した瞬間、力を開放してカメラをシェイク＆ボスサイズ復元
+    if (m_PhaseAttackTimer == 60) {
+        m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f);
+        if (g_Camera) g_Camera->Shake(0.4f, 15);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
-    // 全方位弾幕（前半: 30〜300f） ─ 螺旋 ＋ 狙い撃ち 二層構造
-    //
-    // [層1] スパイラル: 6フレームに1回・8方向・毎ショット20度回転
-    // [層2] 狙い撃ち : 20フレームに1回・扇形3連弾（速い）
+    // 全方位弾幕（前半: 60〜330f） ─ 螺旋 ＋ 狙い撃ち 二層構造
+    // (チャージ期間追加のため、元の30〜300fからそれぞれ30fシフト)
     // ─────────────────────────────────────────────────────────────────────────
-    if (m_PhaseAttackTimer >= 30 && m_PhaseAttackTimer <= 300) {
+    if (m_PhaseAttackTimer >= 60 && m_PhaseAttackTimer <= 330) {
 
         // ── [層1] スパイラル弾幕（6fに1回・8方向） ──
-        if (m_PhaseAttackTimer % 10 == 0) {
-            float bulletY = player->GetPosition().y + 0.3f;
-            XMFLOAT3 bulletPos = m_Position;
-            bulletPos.y = bulletY;
-
-            int   shotIndex  = (m_PhaseAttackTimer - 30) / 6;
+        if ((m_PhaseAttackTimer - 60) % 10 == 0) {
+            int   shotIndex  = (m_PhaseAttackTimer - 60) / 6;
             float baseOffset = shotIndex * (XM_PI / 9.0f); // 毎ショット20度回転
 
             const int   BULLET_COUNT = 8;                  // 8方向（45度刻み）
@@ -479,14 +559,10 @@ void BossEnemy::PerformPhase3Attack()
         }
 
         // ── [層2] 狙い撃ち扇形3連弾（20fに1回） ──
-        if (m_PhaseAttackTimer % 20 == 0) {
+        if ((m_PhaseAttackTimer - 60) % 20 == 0) {
             float aimAngle = atan2f(
                 player->GetPosition().z - m_Position.z,
                 player->GetPosition().x - m_Position.x);
-
-            float bulletY = player->GetPosition().y + 0.3f;
-            XMFLOAT3 bulletPos = m_Position;
-            bulletPos.y = bulletY;
 
             float offsets[3] = { -0.087f, 0.0f, 0.087f }; // 中央 ＋ 左右5度
             for (int i = 0; i < 3; i++) {
@@ -522,9 +598,9 @@ void BossEnemy::PerformPhase3Attack()
         m_PhaseTargetPos = player->GetPosition();
         m_PhaseTargetPos.y = -0.95f;
 
-        // 同心円の2重警告エフェクト（視認性強化）
-        ShockwaveSystem::AddShockwave(m_PhaseTargetPos, 5.0f, 2.5f, 0.0f, 0.0f, 50, 0.0f, 0);
-        ShockwaveSystem::AddShockwave(m_PhaseTargetPos, 3.5f, 2.5f, 0.0f, 0.0f, 35, 0.0f, 15);
+        // 収縮する赤い警告サークルエフェクト（視認性強化）
+        ShockwaveSystem::AddShockwave(m_PhaseTargetPos, 5.0f, 2.5f, 0.0f, 0.0f, 50, 0.0f, 0, true);
+        ShockwaveSystem::AddShockwave(m_PhaseTargetPos, 3.5f, 2.5f, 0.0f, 0.0f, 35, 0.0f, 15, true);
     }
 
     // 落雷A 発生（警告の50f後）
@@ -538,9 +614,10 @@ void BossEnemy::PerformPhase3Attack()
         float dx  = pPos.x - m_PhaseTargetPos.x;
         float dz  = pPos.z - m_PhaseTargetPos.z;
         float dst = sqrtf(dx * dx + dz * dz);
-        if (dst < Constants::Boss::STRIKE_DAMAGE_RADIUS && !player->IsInvincible()) {
-            player->ApplyDamage(Constants::Boss::STRIKE_DAMAGE, m_PhaseTargetPos);
-        }
+            HitInfo hitInfo;
+            hitInfo.damage = Constants::Boss::STRIKE_DAMAGE;
+            hitInfo.hitSourcePos = m_PhaseTargetPos;
+            player->OnHit(hitInfo);
         if (g_Camera) g_Camera->Shake(0.3f, 8);
     }
 
@@ -557,8 +634,8 @@ void BossEnemy::PerformPhase3Attack()
             randPos.y = -0.95f;
             randPos.z = ((float)rand() / RAND_MAX) * STAGE_HALF * 2.0f - STAGE_HALF;
 
-            // 警告エフェクト（40f猶予・やや小さい赤いリング）
-            ShockwaveSystem::AddShockwave(randPos, 3.0f, 2.0f, 0.0f, 0.0f, 40, 0.0f, 0);
+            // 警告エフェクト（40f猶予・収縮する赤いサークル）
+            ShockwaveSystem::AddShockwave(randPos, 3.0f, 2.0f, 0.0f, 0.0f, 40, 0.0f, 0, true);
 
             // 落雷B 発生（40f後に展開する衝撃波 + ビジュアル登録）
             ShockwaveSystem::AddShockwave(randPos, 3.0f, 2.0f, 0.0f, 0.0f, 15, 1.2f, 40);
@@ -574,7 +651,9 @@ void BossEnemy::PerformPhase3Attack()
     {
         // ランダム落雷の着弾フレームでカメラシェイク
         if (g_Camera) g_Camera->Shake(0.2f, 5);
-        m_LightningVisualTimer = std::max(m_LightningVisualTimer, 8);
+        if (m_LightningVisualTimer < 8) {
+            m_LightningVisualTimer = 8;
+        }
     }
 
     if (m_LightningVisualTimer > 0) {
@@ -638,33 +717,37 @@ void BossEnemy::DrawBarrierEffect()
 
     // 2. 縄跳びラインマーカービジュアル (フェーズ2)
     if (m_BossState == BossState::PHASE_TRANSITION && m_PhaseIndex == 2) {
-        float angle = m_PhaseAttackTimer * 0.015f;
-        
-        // 鮮やかなネオングリーンの自発光（エミッシブ）マテリアルを設定
-        MATERIAL guideMaterial;
-        ZeroMemory(&guideMaterial, sizeof(guideMaterial));
-        guideMaterial.Diffuse        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-        guideMaterial.Ambient        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-        guideMaterial.Specular       = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
-        guideMaterial.Emission       = XMFLOAT4(0.0f, 1.8f, 0.5f, 1.0f); // 鮮やかなネオングリーン
-        guideMaterial.Shininess      = 0.0f;
-        guideMaterial.TextureEnable  = FALSE; // 単色ネオン光
-        guideMaterial.RimPower       = 0.0f;
-        Renderer::SetMaterial(guideMaterial);
+        bool isWarning = (m_PhaseAttackTimer <= 60);
+        // 警告フェーズの間は点滅させる（10F周期で前半5Fのみ表示）
+        if (!isWarning || (m_PhaseAttackTimer % 10 < 5)) {
+            float angle = isWarning ? 0.0f : (m_PhaseAttackTimer - 60) * 0.015f;
+            
+            // 鮮やかなネオングリーンの自発光（エミッシブ）マテリアルを設定
+            MATERIAL guideMaterial;
+            ZeroMemory(&guideMaterial, sizeof(guideMaterial));
+            guideMaterial.Diffuse        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+            guideMaterial.Ambient        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+            guideMaterial.Specular       = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+            guideMaterial.Emission       = isWarning ? XMFLOAT4(3.0f, 0.0f, 0.0f, 1.0f) : XMFLOAT4(0.0f, 1.8f, 0.5f, 1.0f);
+            guideMaterial.Shininess      = 0.0f;
+            guideMaterial.TextureEnable  = FALSE; // 単色ネオン光
+            guideMaterial.RimPower       = 0.0f;
+            Renderer::SetMaterial(guideMaterial);
 
-        Renderer::SetupCubeDraw();
+            Renderer::SetupCubeDraw();
 
-        float angles[2] = { angle, angle + XM_PI };
-        for (int i = 0; i < 2; i++) {
-            // ボスの中心から前方30ユニット分に伸ばすワールド行列を作成
-            // 高さ Y = -0.6f (地面は -0.95f、プレイヤーの足元は Y=0 なのでジャンプで超えられる高さ)
-            XMMATRIX guideWorld = XMMatrixScaling(0.5f, 0.5f, 30.0f) * 
-                                  XMMatrixTranslation(0.0f, 0.0f, 15.0f) *
-                                  XMMatrixRotationRollPitchYaw(0.0f, angles[i], 0.0f) *
-                                  XMMatrixTranslation(m_Position.x, -0.6f, m_Position.z);
+            float angles[2] = { angle, angle + XM_PI };
+            for (int i = 0; i < 2; i++) {
+                // ボスの中心から前方30ユニット分に伸ばすワールド行列を作成
+                // 高さ Y = -0.6f (地面は -0.95f、プレイヤーの足元は Y=0 なのでジャンプで超えられる高さ)
+                XMMATRIX guideWorld = XMMatrixScaling(0.5f, 0.5f, 30.0f) * 
+                                      XMMatrixTranslation(0.0f, 0.0f, 15.0f) *
+                                      XMMatrixRotationRollPitchYaw(0.0f, angles[i], 0.0f) *
+                                      XMMatrixTranslation(m_Position.x, -0.6f, m_Position.z);
 
-            Renderer::SetWorldMatrix(guideWorld);
-            Renderer::GetDeviceContext()->Draw(36, 0);
+                Renderer::SetWorldMatrix(guideWorld);
+                Renderer::GetDeviceContext()->Draw(36, 0);
+            }
         }
     }
 
@@ -702,6 +785,52 @@ void BossEnemy::DrawBarrierEffect()
             std::remove_if(m_RandomLightnings.begin(), m_RandomLightnings.end(),
                 [](const RandomLightning& r) { return r.timer <= 0; }),
             m_RandomLightnings.end());
+    }
+
+    // 4. 弾幕予測レーザーライン（フェーズ1）
+    if (m_BossState == BossState::PHASE_TRANSITION && m_PhaseIndex == 1) {
+        BossPhase1ChargeInfo chargeInfo = GetPhase1ChargeInfo();
+
+        if (chargeInfo.isCharging) {
+            float bulletY = -0.2f;
+            Player* player = Manager::GetGameObject<Player>();
+            if (player) {
+                bulletY = player->GetPosition().y + 0.3f;
+            }
+            XMFLOAT3 bulletPos = m_Position;
+            bulletPos.y = bulletY;
+
+            // 暗めの赤色の自発光（エミッシブ）マテリアルを設定
+            // チャージが進むほど輝度が増す
+            float intensity = 0.5f + 1.5f * ((float)chargeInfo.relativeTimer / 15.0f);
+            MATERIAL laserMaterial;
+            ZeroMemory(&laserMaterial, sizeof(laserMaterial));
+            laserMaterial.Diffuse        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+            laserMaterial.Ambient        = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+            laserMaterial.Specular       = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+            laserMaterial.Emission       = XMFLOAT4(intensity * 1.5f, 0.0f, 0.0f, 1.0f); // 赤色ビーム
+            laserMaterial.Shininess      = 0.0f;
+            laserMaterial.TextureEnable  = FALSE;
+            laserMaterial.RimPower       = 0.0f;
+            Renderer::SetMaterial(laserMaterial);
+
+            Renderer::SetupCubeDraw();
+
+            const int numLines = 24;
+            const float LINE_LENGTH = 25.0f;
+            for (int i = 0; i < numLines; i++) {
+                float angle = i * (XM_2PI / numLines) + chargeInfo.angleOffset;
+                
+                // ボス位置から放射状に極細の棒（X=0.03, Y=0.03, Z=LINE_LENGTH）を配置
+                XMMATRIX laserWorld = XMMatrixScaling(0.03f, 0.03f, LINE_LENGTH) *
+                                      XMMatrixTranslation(0.0f, 0.0f, LINE_LENGTH * 0.5f) *
+                                      XMMatrixRotationRollPitchYaw(0.0f, angle, 0.0f) *
+                                      XMMatrixTranslation(bulletPos.x, bulletPos.y, bulletPos.z);
+
+                Renderer::SetWorldMatrix(laserWorld);
+                Renderer::GetDeviceContext()->Draw(36, 0);
+            }
+        }
     }
 }
 

@@ -13,6 +13,7 @@ struct ScorePopupEntry {
     float OffsetY;                       // Y方向浮き上がり累積量
     float EmitR, EmitG, EmitB;           // 発光カラー（Emission に設定する値）
     ID3D11ShaderResourceView* Texture;   // GDI生成テクスチャ（参照カウントを所有）
+    bool  Used;                          // 使用中フラグ (メモリプール用)
 };
 
 // =================================================================
@@ -20,7 +21,8 @@ struct ScorePopupEntry {
 // =================================================================
 class ScorePopupSystem {
 private:
-    static std::list<ScorePopupEntry> m_Popups;
+    static const size_t POOL_SIZE = 128;
+    static ScorePopupEntry m_Popups[POOL_SIZE];
 
     // GPU リソース
     static ID3D11Buffer*            m_QuadVB;      // 4頂点 TRIANGLESTRIP クアッド

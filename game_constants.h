@@ -109,6 +109,13 @@ namespace Constants
         const int   THROW_SANDBAG_DAMAGE    = 6;        // サンドバッグをボスに投げつけた時のダメージ
     }
 
+    // 磁力旋回弾に関するパラメータ
+    namespace MagneticBullet
+    {
+        const int   DAMAGE      = 1;    // プレイヤーに接触した際のダメージ量
+        const float KNOCKBACK   = 0.2f; // 接触時のノックバック速度
+    }
+
     // UI・画面表示に関するパラメータ
     namespace UI
     {
@@ -132,6 +139,38 @@ namespace Constants
             
             const ColorRGB PANEL_BG         = { 20, 10, 30 };    // ボスHPバーパネル全体の背景カラー（深紫色）
         }
+
+        namespace PlayerHP
+        {
+            // バーのサイズと画面パラメータ
+            const float BAR_WIDTH           = 400.0f;   // プレイヤーHPバーの横幅
+            const float BAR_HEIGHT          = 60.0f;    // プレイヤーHPバーの高さ
+            const float SCREEN_POS_X        = 220.0f;   // 画面上のX中心座標
+            const float SCREEN_POS_Y        = 45.0f;    // 画面上のY中心座標
+
+            // HPバー配色定義
+            const ColorRGB HP_HIGH          = { 0, 230, 255 };   // 高HP時のカラー（シアン/青緑）
+            const ColorRGB HP_MID           = { 255, 200, 0 };   // 中HP時のカラー（黄色）
+            const ColorRGB HP_LOW           = { 255, 50, 50 };   // 低HP時のカラー（赤）
+            
+            const ColorRGB BAR_BG           = { 20, 30, 45 };    // HPゲージの空部分のカラー
+            const ColorRGB BAR_BORDER       = { 40, 140, 200 };  // HPゲージの枠線カラー
+            
+            const ColorRGB TEXT_HP          = { 230, 240, 255 }; // HP数値テキスト（5 / 5など）のカラー
+            const ColorRGB TEXT_LABEL       = { 50, 200, 255 };  // "PLAYER"ラベルテキストのカラー
+            
+            const ColorRGB PANEL_BG         = { 10, 20, 35 };    // プレイヤーHPバーパネル全体の背景カラー（深青色）
+        }
+    }
+
+    // 空間分割（コリジョングリッド）に関するパラメータ
+    namespace Collision
+    {
+        constexpr float GRID_CELL_SIZE  = 5.0f;
+        constexpr int   GRID_COLS       = 24;
+        constexpr int   GRID_ROWS       = 24;
+        constexpr float GRID_MIN_X      = -60.0f;
+        constexpr float GRID_MIN_Z      = -60.0f;
     }
 
     // ステージ構築・配置に関するパラメータ
@@ -146,12 +185,39 @@ namespace Constants
         const int   ENEMY_GRID_COLS         = 4;        // モブ敵グリッド配置の列数
         const int   ENEMY_GRID_ROWS         = 4;        // モブ敵グリッド配置の行数
         const float ENEMY_SPAWN_INTERVAL    = 6.0f;     // 敵同士の配置間隔
+        const float WALL_DEFAULT_POS_X      = -8.0f;
+        const float WALL_DEFAULT_POS_Y      = 1.5f;
+        const float WALL_DEFAULT_POS_Z      = -7.0f;
+        const float WALL_DEFAULT_SCALE      = 5.0f;
+
+        const float ENEMY_GRID_SPAWN_OFFSET_X = 1.0f;
+        const float ENEMY_GRID_SPAWN_OFFSET_Z = -7.0f;
+        const float ENEMY_GRID_SPAWN_INTERVAL_XZ = 3.2f;
+
+        // アイテム配置
+        const float ITEM_SPAWN_Y            = 0.5f;
+        const float ITEM_BOSS_VACUUM_Z      = -15.0f;
+        const float ITEM_BOSS_GIGANT_X      = -4.0f;
+        const float ITEM_BOSS_GIGANT_Z      = -15.0f;
+        const float ITEM_BOSS_LIGHTNING_X   = 4.0f;
+        const float ITEM_BOSS_LIGHTNING_Z   = -15.0f;
+
+        const float ITEM_NORMAL_VACUUM_Z    = 4.0f;
+        const float ITEM_NORMAL_GIGANT_X    = -4.0f;
+        const float ITEM_NORMAL_GIGANT_Z    = 4.0f;
+        const float ITEM_NORMAL_LIGHTNING_X = 2.0f;
+        const float ITEM_NORMAL_LIGHTNING_Z = 6.0f;
     }
 
     // デバッグ・テスト用パラメータ
     namespace Debug
     {
-        const bool  START_FROM_BOSS         = false;    // trueにするとゲーム開始時にいきなりボス戦からスタートします
+#ifdef NDEBUG
+        const bool  START_FROM_BOSS         = false;    // リリース時は強制的に通常ステージから開始
+        const bool  INVINCIBLE_PLAYER       = false;    // リリース時は無敵化を強制無効
+#else
+        const bool  START_FROM_BOSS         = true;    // trueにするとゲーム開始時にいきなりボス戦からスタートします
         const bool  INVINCIBLE_PLAYER       = false;    // trueにするとプレイヤーが無敵になります（テスト用）
+#endif
     }
 }

@@ -3,6 +3,7 @@
 #include "camera.h"
 #include "input.h"
 #include "main.h"
+#include "game_constants.h"
 #include "player.h"
 #include "renderer.h"
 #include "resource_manager.h"
@@ -20,22 +21,26 @@
 #include "score_popup.h"
 #include "score_hud.h"
 #include "shockwave.h"
+#include "event_system.h"
+#include "event_types.h"
 
-// シーンオブジェクト定義のインクルード
+// DirectX 名前空間の使用
+using namespace DirectX;
+
+// 各シーンクラスのインクルード
 #include "title_scene.h"
 #include "gameplay_scene.h"
 #include "clear_scene.h"
 #include "gameover_scene.h"
 
 // 静的メンバ変数の実体定義
+std::vector<std::unique_ptr<GameObject>> Manager::m_ManagedObjects;
 std::vector<GameObject*> Manager::m_GameObjects;
 std::vector<GameObject*> Manager::m_UpdateObjects;
 Player*                Manager::m_CachedPlayer = nullptr;
+BossEnemy*             Manager::m_CachedBoss = nullptr;
 
-std::vector<Enemy*>       Manager::m_Enemies;
-std::vector<Wall*>        Manager::m_Walls;
-std::vector<Item*>        Manager::m_Items;
-std::vector<EnemyBullet*> Manager::m_Bullets;
+std::unordered_map<ObjectType, std::vector<GameObject*>> Manager::m_CategoryMap;
 RenderSystem           Manager::m_RenderSystem;
 int                    Manager::m_HitStopFrames = 0;
 int                    Manager::m_SlowMotionTimer = 0;
@@ -50,6 +55,14 @@ XMFLOAT4               Manager::m_FadeColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 
 IScene*                Manager::m_ActiveScene = nullptr;
 
+XMFLOAT4               Manager::m_FlashColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+float                  Manager::m_FlashFadeSpeed = 0.05f;
+bool                   Manager::m_IsLowHPWarning = false;
+float                  Manager::m_LowHPPulseTime = 0.0f;
+
+bool                   Manager::m_IsCutsceneActive = false;
+int                    Manager::m_CutsceneTimer = 0;
+
 Camera*                g_Camera = nullptr;
 
 // ─────────────────────────────────────────────
@@ -60,10 +73,18 @@ void Manager::Init()
     Renderer::Init();
     Input::Init();
     GameRule::Init();
+    EnemyBullet::InitPool(); // 弾薬メモリプールの初期化
+    m_IsCutsceneActive = false;
+    m_CutsceneTimer = 0;
     m_HitStopFrames = 0;
     m_SlowMotionTimer = 0;
     m_SlowMotionDuration = 0;
+    m_FlashColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+    m_FlashFadeSpeed = 0.05f;
+    m_IsLowHPWarning = false;
+    m_LowHPPulseTime = 0.0f;
     m_CachedPlayer = nullptr;
+    m_CachedBoss = nullptr;
     m_ActiveScene = nullptr;
 
     // 描画システムの初期化
@@ -106,7 +127,7 @@ void Manager::Init()
 // ─────────────────────────────────────────────
 void Manager::Uninit()
 {
-    // アクティブなシーンオブジェクトの終了処理と解放
+    // アクティブなシーンオブジェクトの終了処理と破棄
     if (m_ActiveScene) {
         m_ActiveScene->Uninit();
         delete m_ActiveScene;
@@ -125,18 +146,20 @@ void Manager::Uninit()
     // フェードシステムの終了処理
     FadeSystem::Uninit();
 
+    m_RenderSystem.ClearCache();
     m_RenderSystem.Uninit();
 
-    // 登録されたすべてのオブジェクトの解放
-    for (GameObject* gameObject : m_GameObjects) {
+    // 登録されているゲームオブジェクトの破棄
+    for (auto& gameObject : m_ManagedObjects) {
         if (gameObject) {
             gameObject->Uninit();
-            delete gameObject;
         }
     }
+    m_ManagedObjects.clear();
     m_GameObjects.clear();
     m_UpdateObjects.clear();
     m_CachedPlayer = nullptr;
+    m_CachedBoss = nullptr;
     ClearCategoryLists();
 
     if (g_Camera) {
@@ -147,6 +170,7 @@ void Manager::Uninit()
 
     Input::Uninit();
     ResourceManager::Uninit();
+    EnemyBullet::UninitPool(); // 弾薬メモリプールの解放
     Renderer::Uninit();
 }
 
@@ -155,7 +179,7 @@ void Manager::Uninit()
 // ─────────────────────────────────────────────
 void Manager::Update()
 {
-    // ImGui の新規フレームを開始
+    // ImGui の新規フレーム開始
     Renderer::BeginNewFrame();
 
     Input::Update();
@@ -163,20 +187,91 @@ void Manager::Update()
     // フェードシステムのタイマー更新
     FadeSystem::Update(1.0f / 60.0f);
 
-    // スコアポップアップはシーンを問わず更新可能にする
+    // スコアポップアップ表示の更新
     ScorePopupSystem::Update();
 
-    // スコアHUDもシーンを問わず更新
+    // スコアHUDの更新
     ScoreHUD::Update();
 
-    // 現在アクティブなシーンオブジェクトの更新処理を実行 (ポリモーフィズムによる委譲)
+    // 現在アクティブなシーンオブジェクトの更新を実行
     if (m_ActiveScene) {
         m_ActiveScene->Update();
     }
 
     if (g_Camera) g_Camera->Update();
 
+    // 画面フラッシュと低HP警告赤パルスの更新
+    if (m_FlashColor.w > 0.0f) {
+        m_FlashColor.w -= m_FlashFadeSpeed;
+        if (m_FlashColor.w < 0.0f) m_FlashColor.w = 0.0f;
+    }
+
+    // ボス登場カットシーンのタイムライン更新
+    if (m_IsCutsceneActive) {
+        m_CutsceneTimer--;
+
+        // 1. スローモーション（ウィッチタイム）の持続
+        // カットシーン中は、ボスとプレイヤー以外の動きを0.3倍速のスローモーションにする
+        if (m_CutsceneTimer > 30) {
+            m_SlowMotionTimer = 2; // 毎フレーム 2 を代入してスロー状態を維持
+            m_SlowMotionDuration = 10;
+        }
+
+        // 2. タイムラインごとのイベントトリガー
+        if (m_CutsceneTimer == 180) {
+            // 開始時: 白フラッシュ（フェード速度はゆっくり 0.02f）
+            TriggerFlash(XMFLOAT4(1.0f, 1.0f, 1.0f, 0.8f), 0.02f);
+        }
+        else if (m_CutsceneTimer == 120) {
+            // ボス咆哮・着地時: 足元に巨大でゆっくり広がる赤い衝撃波を発生（ダメージなし、force=0）
+            BossEnemy* boss = GetGameObject<BossEnemy>();
+            if (boss) {
+                XMFLOAT3 bossPos = boss->GetPosition();
+                // 衝撃波の発生（半径 15.0f, 赤, 継続 60フレーム, 吹き飛ばし力 0.0f, ディレイ 0, 収縮なし）
+                ShockwaveSystem::AddShockwave(bossPos, 15.0f, 2.5f, 0.2f, 0.0f, 60, 0.0f, 0, false);
+            }
+            // 咆哮に合わせて、画面全体を「ゆったりとした警告赤パルス」で明滅させるために警告状態をON
+            m_IsLowHPWarning = true;
+            m_LowHPPulseTime = 0.0f; // パルス角度をリセット
+        }
+        else if (m_CutsceneTimer == 40) {
+            // 咆哮終了: 赤パルス明滅をOFFにする
+            m_IsLowHPWarning = false;
+            // 通常画面に戻るフェード
+            TriggerFlash(XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f), 0.05f);
+        }
+        else if (m_CutsceneTimer <= 0) {
+            // カットシーン終了
+            m_IsCutsceneActive = false;
+            m_IsLowHPWarning = false;
+            m_SlowMotionTimer = 0; // スローモーション解除
+            
+            // 戦闘開始イベントを発行
+            BossBattleStartEvent startEvent;
+            EventSystem::Publish<BossBattleStartEvent>(startEvent);
+        }
+    }
+
+    if (m_IsLowHPWarning) {
+        // 低HP時は、画面を赤くパルス（明滅）させる（カットシーン時はゆっくり、通常プレイのHP1時は高速）
+        m_LowHPPulseTime += m_IsCutsceneActive ? 0.06f : 0.15f; 
+        // サイン波を用いてアルファ値を 0.04 ~ 0.28 の間で脈動させる
+        float pulseAlpha = 0.16f + 0.12f * sinf(m_LowHPPulseTime);
+        
+        // 通常のフラッシュが走っていない場合は警告赤をセット
+        if (m_FlashColor.w <= 0.0f) {
+            m_FlashColor = XMFLOAT4(1.0f, 0.0f, 0.0f, pulseAlpha);
+        } else {
+            // 通常フラッシュが優先され、警告赤をブレンドしてマージ
+            m_FlashColor.x = m_FlashColor.x + (1.0f - m_FlashColor.x) * pulseAlpha;
+            m_FlashColor.w = (std::max)(m_FlashColor.w, pulseAlpha);
+        }
+    } else {
+        m_LowHPPulseTime = 0.0f;
+    }
+
     // 遅延シーン遷移のリクエストがあり、かつ暗転が完了した（またはフェード中でない）場合に切り替える
+
     if (m_SceneTransitionRequested) {
         if (!FadeSystem::IsFading() || FadeSystem::IsFadeOutComplete()) {
             m_SceneTransitionRequested = false;
@@ -192,6 +287,8 @@ void Manager::Update()
 // ─────────────────────────────────────────────
 void Manager::Draw()
 {
+    m_RenderSystem.ClearCache(); // キャッシュクリア
+
     XMMATRIX cameraView = Renderer::GetViewMatrix();
     XMMATRIX cameraProj = Renderer::GetProjectionMatrix();
 
@@ -204,24 +301,27 @@ void Manager::Draw()
     XMMATRIX lightProj = XMMatrixOrthographicLH(30.0f, 30.0f, 1.0f, 50.0f);
     Renderer::SetShadowVPMatrix(lightView * lightProj);
     Renderer::SetViewMatrix(lightView);
-    Renderer::SetProjectionMatrix(lightProj);
+    Renderer::SetProjectionMatrix(cameraProj); // カメラのプロジェクション行列を再設定
 
-    // === 1. シャドウパス描画 ===
+    // インスタンシングまたは別パスで描画されるオブジェクトを除外する判定
+    auto ShouldSkipShadowOutline = [](ObjectType type) -> bool {
+        return type == ObjectType::Field
+            || type == ObjectType::Enemy
+            || type == ObjectType::Player
+            || type == ObjectType::Wall
+            || type == ObjectType::Boss
+            || type == ObjectType::Unknown;
+    };
+
+    // === 1. シャドウマップ描画パス ===
     Renderer::BeginShadowPass();
-    Renderer::SetupCubeDraw(); // キューブ共通アセットをバインド
+    Renderer::SetupCubeDraw();
     for (GameObject* obj : m_GameObjects) {
-        ObjectType type = obj->GetObjectType();
-        if (type != ObjectType::Field && 
-            type != ObjectType::Enemy && 
-            type != ObjectType::Player && 
-            type != ObjectType::Wall &&
-            type != ObjectType::Boss &&
-            type != ObjectType::Unknown) {
+        if (!ShouldSkipShadowOutline(obj->GetObjectType())) {
             obj->Draw();
             Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
     }
-    // インスタンスシャドウ描画を実行
     m_RenderSystem.RenderCubeInstances(Renderer::GetDeviceContext(), m_GameObjects, RenderPass::Shadow);
     Renderer::EndShadowPass();
 
@@ -230,66 +330,47 @@ void Manager::Draw()
     Renderer::SetProjectionMatrix(cameraProj);
     Renderer::Begin();
 
-    // まず空 (Skybox) を描画
     for (GameObject* obj : m_GameObjects) {
         if (obj->GetObjectType() == ObjectType::Unknown) { obj->Draw(); }
     }
-
-    // 描画ステートの復元
     Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    // 床(Field)を描画
     for (GameObject* obj : m_GameObjects) {
         if (obj->GetObjectType() == ObjectType::Field) { obj->Draw(); }
     }
-
-    // 床描画で変更されたトポロジーをLISTに戻す
     Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    // 一括描画以外のオブジェクトを個別描画（プレイヤー・ボスはガイドライン/バリア描画のため呼ぶ）
     Renderer::SetupCubeDraw();
     for (GameObject* obj : m_GameObjects) {
         ObjectType type = obj->GetObjectType();
-        // 床、敵、壁は一括描画するため個別描画はスキップ
         if (type == ObjectType::Field || type == ObjectType::Enemy || type == ObjectType::Wall) {
             continue;
         }
-
         obj->Draw();
         Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
 
-    // キューブオブジェクトの一括インスタンシング描画
     m_RenderSystem.RenderCubeInstances(Renderer::GetDeviceContext(), m_GameObjects, RenderPass::Normal);
     Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    // === 3. アウトライン描画 ===
+    // === 3. アウトライン描画パス (シャドウと同様の除外判定) ===
     Renderer::BeginOutlinePass();
     Renderer::SetupCubeDraw();
     for (GameObject* obj : m_GameObjects) {
-        ObjectType type = obj->GetObjectType();
-        if (type != ObjectType::Field && 
-            type != ObjectType::Enemy && 
-            type != ObjectType::Player && 
-            type != ObjectType::Wall &&
-            type != ObjectType::Boss &&
-            type != ObjectType::Unknown) {
+        if (!ShouldSkipShadowOutline(obj->GetObjectType())) {
             obj->Draw();
             Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
     }
-    // インスタンスアウトライン描画を実行
     m_RenderSystem.RenderCubeInstances(Renderer::GetDeviceContext(), m_GameObjects, RenderPass::Outline);
     Renderer::EndOutlinePass();
 
     if (g_Camera) g_Camera->Draw();
 
-    // 各種ポップアップ・HUD・エフェクト描画
     ScorePopupSystem::Draw();
     ShockwaveSystem::Draw();
     ScoreHUD::Draw();
 
-    // 現在アクティブなシーン独自の3D/2D描画があれば追加で実行
     if (m_ActiveScene) {
         m_ActiveScene->Draw();
     }
@@ -298,56 +379,64 @@ void Manager::Draw()
 }
 
 // ─────────────────────────────────────────────
-// ボスステージへの移行処理
+// ボスステージへの遷移と構築
 // ─────────────────────────────────────────────
 void Manager::TransitionToBossStage()
 {
-    OutputDebugStringA("[Manager] TransitionToBossStage - 開始\n");
+    LOG_INFO("[Manager] TransitionToBossStage - 開始\n");
     m_IsBossStage = true;
 
-    // プレイヤーを取得
+    // プレイヤーの位置を中央にリセット
     Player* player = GetGameObject<Player>();
     if (player) {
-        OutputDebugStringA("[Manager] プレイヤー位置をリセット\n");
+        LOG_INFO("[Manager] プレイヤー位置をリセット\n");
         player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
     }
 
-    // プレイヤー、フィールド以外のすべてのオブジェクトを破棄（リストから削除）
-    OutputDebugStringA("[Manager] オブジェクト破棄処理を開始します...\n");
+    // プレイヤーとフィールド以外のオブジェクトをすべて破棄
+    LOG_INFO("[Manager] オブジェクト破棄を開始します...\n");
     int destroyedCount = 0;
-    std::vector<GameObject*> nextObjects;
-    nextObjects.reserve(m_GameObjects.size());
-    for (GameObject* obj : m_GameObjects) {
-        if (obj->GetObjectType() != ObjectType::Player && obj->GetObjectType() != ObjectType::Field) {
-            if (player) {
-                player->NotifyObjectDestroyed(obj);
-            }
-            obj->Uninit();
-            delete obj;
-            destroyedCount++;
-        } else {
-            nextObjects.push_back(obj);
-        }
-    }
-    m_GameObjects = std::move(nextObjects);
-    // カテゴリ別キャッシュリストを一旦クリアし、残ったオブジェクトで再構築する
+    m_ManagedObjects.erase(
+        std::remove_if(m_ManagedObjects.begin(), m_ManagedObjects.end(),
+            [player, &destroyedCount](const std::unique_ptr<GameObject>& obj) {
+                ObjectType t = obj->GetObjectType();
+                if (t != ObjectType::Player && t != ObjectType::Field) {
+                    if (player) {
+                        player->NotifyObjectDestroyed(obj.get());
+                    }
+                    obj->Uninit();
+                    destroyedCount++;
+                    return true;
+                }
+                return false;
+            }),
+        m_ManagedObjects.end());
+
+    // 描画・走査用リストからも削除
+    m_GameObjects.erase(
+        std::remove_if(m_GameObjects.begin(), m_GameObjects.end(),
+            [](GameObject* obj) {
+                ObjectType t = obj->GetObjectType();
+                return t != ObjectType::Player && t != ObjectType::Field;
+            }),
+        m_GameObjects.end());
+
+    // カテゴリ別キャッシュリストのクリアと再登録
     ClearCategoryLists();
-    // 静的オブジェクトを除外して更新対象リスト（m_UpdateObjects）を再構築
     m_UpdateObjects.clear();
     for (GameObject* obj : m_GameObjects) {
         ::ObjectType t = obj->GetObjectType();
         if (t != ::ObjectType::Wall && t != ::ObjectType::Field) {
             m_UpdateObjects.push_back(obj);
         }
-        // 残ったオブジェクトをカテゴリリストに再登録する
         RegisterCategory(obj);
     }
-    std::string destroyMsg = "[Manager] オブジェクト破棄が完了しました (個数: " + std::to_string(destroyedCount) + ")\n";
-    OutputDebugStringA(destroyMsg.c_str());
+    LOG_INFO("[Manager] オブジェクト破棄クリーンアップ完了 (破棄数: %d)\n", destroyedCount);
+    m_RenderSystem.ClearCache();
 
     // ボス部屋の壁を生成
-    OutputDebugStringA("[Manager] ボス部屋の壁を生成します...\n");
-    float roomSize = 18.0f;
+    LOG_INFO("[Manager] ボス部屋の壁を生成します...\n");
+    float roomSize = Constants::Stage::BOSS_ROOM_SIZE;
     // 北の壁
     Wall* wallN = AddGameObject<Wall>();
     wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
@@ -364,16 +453,16 @@ void Manager::TransitionToBossStage()
     Wall* wallW = AddGameObject<Wall>();
     wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
     wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
-    OutputDebugStringA("[Manager] 壁生成完了\n");
+    LOG_INFO("[Manager] 壁の配置完了\n");
 
     // ボスエネミーの生成
-    OutputDebugStringA("[Manager] ボスエネミーの生成を開始します...\n");
+    LOG_INFO("[Manager] ボスエネミーの生成を開始します...\n");
     BossEnemy* boss = AddGameObject<BossEnemy>();
-    boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f)); // プレイヤーの少し前方に配置
-    OutputDebugStringA("[Manager] ボスエネミー生成完了\n");
+    boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f));
+    LOG_INFO("[Manager] ボスエネミー生成完了\n");
 
-    // ボス部屋用のアイテム生成（ボスから一番遠い南の壁 Z=-18.0f 付近に配置）
-    OutputDebugStringA("[Manager] ボス部屋用のアイテムを生成します...\n");
+    // ボス戦用のアイテム生成
+    LOG_INFO("[Manager] ボス部屋用のアイテムを生成します...\n");
     Item* itemVacuum = AddGameObject<Item>();
     itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, -15.0f));
     itemVacuum->SetItemType(ItemType::VACUUM);
@@ -386,16 +475,32 @@ void Manager::TransitionToBossStage()
     itemLightning->SetPosition(XMFLOAT3(4.0f, 0.5f, -15.0f));
     itemLightning->SetItemType(ItemType::LIGHTNING);
     
-    // ボス戦の演出：巨大な衝撃波をプレイヤーとボスの間に走らせる
-    ShockwaveSystem::AddShockwave(XMFLOAT3(0.0f, -0.95f, 5.0f), 15.0f, 0.0f, 2.0f, 4.0f, 40, 0.0f, 0);
-
-    // カメラをボスに向けて強めにシェイク
-    if (g_Camera) g_Camera->Shake(0.6f, 20);
-    OutputDebugStringA("[Manager] TransitionToBossStage - 正常終了\n");
+    // ボス登場カットシーンのトリガー
+    TriggerBossSpawnCutscene();
+    LOG_INFO("[Manager] TransitionToBossStage - 正常終了\n");
 }
 
 // ─────────────────────────────────────────────
-// シーン遷移予約 (遅延遷移)
+// ボス登場カットシーンのトリガー
+// ─────────────────────────────────────────────
+void Manager::TriggerBossSpawnCutscene()
+{
+    m_IsCutsceneActive = true;
+    m_CutsceneTimer = 180; // 3秒間 (60fps)
+
+    // イベント発行
+    BossSpawnEvent spawnEvent;
+    BossEnemy* boss = GetGameObject<BossEnemy>();
+    if (boss) {
+        spawnEvent.bossPosition = boss->GetPosition();
+    } else {
+        spawnEvent.bossPosition = XMFLOAT3(0.0f, 1.5f, 10.0f);
+    }
+    EventSystem::Publish<BossSpawnEvent>(spawnEvent);
+}
+
+// ─────────────────────────────────────────────
+// シーン遷移予約
 // ─────────────────────────────────────────────
 void Manager::ChangeScene(Scene nextScene, float fadeOutDuration, float fadeInDuration, XMFLOAT4 color)
 {
@@ -415,24 +520,26 @@ void Manager::ExecuteChangeScene(Scene nextScene)
 {
     OutputDebugStringA(("[Manager] ExecuteChangeScene: " + std::to_string((int)m_CurrentScene) + " -> " + std::to_string((int)nextScene) + "\n").c_str());
 
-    // 現在アクティブなシーンオブジェクトのUninitと破棄
+    // 現在アクティブなシーンオブジェクトの Uninit と破棄
     if (m_ActiveScene) {
         m_ActiveScene->Uninit();
         delete m_ActiveScene;
         m_ActiveScene = nullptr;
     }
 
-    // 既存登録オブジェクトのクリーンアップ（Uninitとdelete）
-    for (GameObject* gameObject : m_GameObjects) {
+    // 既存登録オブジェクトのクリーンアップ
+    for (auto& gameObject : m_ManagedObjects) {
         if (gameObject) {
             gameObject->Uninit();
-            delete gameObject;
         }
     }
+    m_ManagedObjects.clear();
     m_GameObjects.clear();
     m_UpdateObjects.clear();
     m_CachedPlayer = nullptr;
+    m_CachedBoss = nullptr;
     ClearCategoryLists(); // カテゴリ別キャッシュリストも必ずクリアする（ダングリングポインタ防止）
+    m_RenderSystem.ClearCache();
 
     if (g_Camera) {
         g_Camera->Uninit();
@@ -471,7 +578,7 @@ void Manager::ExecuteChangeScene(Scene nextScene)
 }
 
 // ─────────────────────────────────────────────
-// スローモーション強度の取得（フェードアウト用）
+// スローモーション強度の取得（フェードアウト演出等用）
 // ─────────────────────────────────────────────
 float Manager::GetSlowMotionIntensity()
 {
@@ -481,46 +588,92 @@ float Manager::GetSlowMotionIntensity()
 }
 
 // ─────────────────────────────────────────────
-// カテゴリ別リスト登録・解除ヘルパー実装
+// 画面フラッシュの発動
+// ─────────────────────────────────────────────
+void Manager::TriggerFlash(XMFLOAT4 color, float fadeSpeed)
+{
+    m_FlashColor = color;
+    m_FlashFadeSpeed = fadeSpeed;
+}
+
+// ─────────────────────────────────────────────
+// カテゴリ別オブジェクトキャッシュ登録・解除
 // ─────────────────────────────────────────────
 void Manager::RegisterCategory(GameObject* obj)
 {
     if (!obj) return;
     ObjectType type = obj->GetObjectType();
-    if (type == ObjectType::Enemy || type == ObjectType::Boss) {
-        m_Enemies.push_back(static_cast<Enemy*>(obj));
-    } else if (type == ObjectType::Wall) {
-        m_Walls.push_back(static_cast<Wall*>(obj));
-    } else if (type == ObjectType::Item) {
-        m_Items.push_back(static_cast<Item*>(obj));
-    } else if (type == ObjectType::Bullet) {
-        m_Bullets.push_back(static_cast<EnemyBullet*>(obj));
-    }
+    m_CategoryMap[type].push_back(obj);
 }
 
 void Manager::UnregisterCategory(GameObject* obj)
 {
     if (!obj) return;
+
+    if (obj == m_CachedBoss) {
+        m_CachedBoss = nullptr;
+    }
+
     ObjectType type = obj->GetObjectType();
-    if (type == ObjectType::Enemy || type == ObjectType::Boss) {
-        auto it = std::find(m_Enemies.begin(), m_Enemies.end(), static_cast<Enemy*>(obj));
-        if (it != m_Enemies.end()) m_Enemies.erase(it);
-    } else if (type == ObjectType::Wall) {
-        auto it = std::find(m_Walls.begin(), m_Walls.end(), static_cast<Wall*>(obj));
-        if (it != m_Walls.end()) m_Walls.erase(it);
-    } else if (type == ObjectType::Item) {
-        auto it = std::find(m_Items.begin(), m_Items.end(), static_cast<Item*>(obj));
-        if (it != m_Items.end()) m_Items.erase(it);
-    } else if (type == ObjectType::Bullet) {
-        auto it = std::find(m_Bullets.begin(), m_Bullets.end(), static_cast<EnemyBullet*>(obj));
-        if (it != m_Bullets.end()) m_Bullets.erase(it);
+    auto it = m_CategoryMap.find(type);
+    if (it != m_CategoryMap.end()) {
+        auto& vec = it->second;
+        auto vit = std::find(vec.begin(), vec.end(), obj);
+        if (vit != vec.end()) {
+            std::iter_swap(vit, vec.end() - 1);
+            vec.pop_back();
+        }
     }
 }
 
 void Manager::ClearCategoryLists()
 {
-    m_Enemies.clear();
-    m_Walls.clear();
-    m_Items.clear();
-    m_Bullets.clear();
+    m_CategoryMap.clear();
+}
+
+// ─────────────────────────────────────────────
+// 不要になった（IsDestroy == true）オブジェクトの自動クリーンアップ
+// ─────────────────────────────────────────────
+void Manager::DestroyObjectsIf()
+{
+    Player* player = GetGameObject<Player>();
+
+    // 1. 管理オブジェクトリストから IsDestroy() == true を安全に破棄
+    m_ManagedObjects.erase(
+        std::remove_if(m_ManagedObjects.begin(), m_ManagedObjects.end(),
+            [player](const std::unique_ptr<GameObject>& obj) {
+                if (obj && obj->IsDestroy()) {
+                    if (player) {
+                        player->NotifyObjectDestroyed(obj.get());
+                    }
+                    if (obj.get() == m_CachedPlayer) {
+                        m_CachedPlayer = nullptr;
+                    }
+                    if (obj.get() == m_CachedBoss) {
+                        m_CachedBoss = nullptr;
+                    }
+                    UnregisterCategory(obj.get());
+                    obj->Uninit();
+                    return true;
+                }
+                return false;
+            }),
+        m_ManagedObjects.end());
+
+    // 2. 描画・更新用生ポインタリストからも破棄
+    m_GameObjects.erase(
+        std::remove_if(m_GameObjects.begin(), m_GameObjects.end(),
+            [](GameObject* obj) {
+                return obj == nullptr || obj->IsDestroy();
+            }),
+        m_GameObjects.end());
+
+    m_UpdateObjects.erase(
+        std::remove_if(m_UpdateObjects.begin(), m_UpdateObjects.end(),
+            [](GameObject* obj) {
+                return obj == nullptr || obj->IsDestroy();
+            }),
+        m_UpdateObjects.end());
+
+    m_RenderSystem.ClearCache();
 }

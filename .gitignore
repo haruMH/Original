@@ -361,3 +361,18 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# ───────────────────────────────────────────────────────────
+# プロジェクト固有の除外設定 (TOON SLASHER)
+# ───────────────────────────────────────────────────────────
+# ビルドログ（ローカルパスを含む一時生成物）
+build_error*.txt
+build_log*.txt
+build_out*.txt
+debug_log*.txt
+
+# 一時バックアップファイル（リファクタリング作業中の残骸）
+temp_*.cpp
+temp_*.h
+*_backup.cpp
+*_backup.h

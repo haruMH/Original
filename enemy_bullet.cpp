@@ -13,14 +13,14 @@
 #include "score_popup.h"
 #include "game_rule.h"
 
-// ─────────────────────────────────────────────
-// 初期化
-// ─────────────────────────────────────────────
+// ������������������������������������������������������������������������������������������
+// ������
+// ������������������������������������������������������������������������������������������
 void EnemyBullet::Init()
 {
     m_Position = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_Rotation = XMFLOAT3(0.0f, 0.0f, 0.0f);
-    m_Scale    = XMFLOAT3(0.4f, 0.4f, 0.4f); // 弾は小さめ
+    m_Scale    = XMFLOAT3(0.4f, 0.4f, 0.4f); // �e�͏�����
     m_Size     = XMFLOAT3(0.4f, 0.4f, 0.4f);
     m_Life     = BULLET_LIFE;
     m_Speed    = BULLET_SPEED;
@@ -28,13 +28,9 @@ void EnemyBullet::Init()
     m_IsPlayerOwned = false;
     m_EmissiveColor = XMFLOAT3(2.5f, 0.5f, 0.0f);
 
-    // 描画には enemy.png を流用し、インスタンス描画で描く
-    // リリースビルド時は Assets/texture/ サブフォルダから読み込む
-#ifdef NDEBUG
-    m_RenderComponent = RenderComponent("Assets/texture/enemy.png", MeshType::Cube, true);
-#else
+    // 描画には enemy.png を流用し、インスタンス描画で描画
+    // パス解決は ResourceManager::GetTexture 内部で一元処理される（2-7 対応）
     m_RenderComponent = RenderComponent("enemy.png", MeshType::Cube, true);
-#endif
 }
 
 // ─────────────────────────────────────────────
@@ -44,22 +40,22 @@ void EnemyBullet::Uninit()
 {
 }
 
-// ─────────────────────────────────────────────
-// 更新処理
-// ─────────────────────────────────────────────
+// ������������������������������������������������������������������������������������������
+// �X�V����
+// ������������������������������������������������������������������������������������������
 void EnemyBullet::Update()
 {
-    // 直線移動
+    // �����ړ�
     m_Position.x += m_Direction.x * m_Speed;
     m_Position.y += m_Direction.y * m_Speed;
     m_Position.z += m_Direction.z * m_Speed;
 
     Player* player = Manager::GetGameObject<Player>();
 
-    // ─── ① プレイヤー反射状態（味方弾）かどうかの分岐 ───
+    // ������ �@ �v���C���[���ˏ�ԁi�����e�j���ǂ����̕��� ������
     if (!m_IsPlayerOwned)
     {
-        // === 敵の弾：プレイヤーとの衝突判定 ===
+        // === �G�̒e�F�v���C���[�Ƃ̏Փ˔��� ===
         if (player)
         {
             XMFLOAT3 diff = m_Position - player->GetPosition();
@@ -95,7 +91,7 @@ void EnemyBullet::Update()
 
                     player->ResetDashCooldown();
                     player->DisableWarpSlash();
-                    // ジャスト回避成功時にタックルを有効化（モブ弾・ボス弾問わず）
+                    // �W���X�g��𐬌����Ƀ^�b�N����L�����i���u�e�E�{�X�e��킸�j
                     player->EnableTackle(90);
 
                     GameRule::AddScore(150);
@@ -107,23 +103,23 @@ void EnemyBullet::Update()
                 {
                     if (m_IsBossBullet)
                     {
-                        // ボスの弾をダッシュ回避：タックル攻撃を有効化
-                        player->EnableTackle(90); // 1.5秒間タックル有効
+                        // �{�X�̒e��_�b�V�����F�^�b�N���U����L����
+                        player->EnableTackle(90); // 1.5�b�ԃ^�b�N���L��
                         ShockwaveSystem::AddShockwave(player->GetPosition(), 5.0f, 0.0f, 2.0f, 3.0f, 20, 0.0f, 0);
                         if (g_Camera) g_Camera->Shake(0.2f, 8);
                     }
-                    // 通常敵の弾はそのまますり抜け（タックル無効）
+                    // �ʏ�G�̒e�͂��̂܂܂��蔲���i�^�b�N�������j
                     return;
                 }
                 else if (player->IsGuardActive())
                 {
                     if (m_IsBossBullet)
                     {
-                        // ボスの弾を通常ガードで受けたら高ダメージで反射発射
+                        // �{�X�̒e��ʏ�K�[�h�Ŏ󂯂��獂�_���[�W�Ŕ��˔���
                         m_IsPlayerOwned = true;
                         m_Speed *= 1.5f;
-                        SetDamage(4); // ジャストドッジの2より高い4ダメージ
-                        m_EmissiveColor = XMFLOAT3(1.5f, 0.0f, 2.5f); // 紫色で反射弾を識別しやすく
+                        SetDamage(4); // �W���X�g�h�b�W��2��荂��4�_���[�W
+                        m_EmissiveColor = XMFLOAT3(1.5f, 0.0f, 2.5f); // ���F�Ŕ��˒e����ʂ��₷��
                         m_Direction = player->GetForwardVector();
                         m_Life = BULLET_LIFE;
 
@@ -134,7 +130,7 @@ void EnemyBullet::Update()
                     }
                     else
                     {
-                        // 通常ガード：ダメージ無効、弾消滅
+                        // �ʏ�K�[�h�F�_���[�W�����A�e����
                         Manager::AddHitStop(2);
                         SetDestroy();
                         return;
@@ -142,8 +138,11 @@ void EnemyBullet::Update()
                 }
                 else
                 {
-                    // ─── 被弾（通常ダメージ） ───
-                    player->ApplyDamage(1, m_Position);
+                    // ������ ��e�i�ʏ�_���[�W�j ������
+                    HitInfo hitInfo;
+                    hitInfo.damage = 1;
+                    hitInfo.hitSourcePos = m_Position;
+                    player->OnHit(hitInfo);
                     SetDestroy();
                     return;
                 }
@@ -152,7 +151,7 @@ void EnemyBullet::Update()
     }
     else
     {
-        // === 反射された味方の弾：エネミー（Enemy）との衝突判定 ===
+        // === ���˂��ꂽ�����̒e�F�G�l�~�[�iEnemy�j�Ƃ̏Փ˔��� ===
         for (GameObject* obj : Manager::GetGameObjectList())
         {
             if (!obj || obj->IsDestroy() || obj == this || obj == player) continue;
@@ -160,47 +159,46 @@ void EnemyBullet::Update()
 
             Enemy* enemy = static_cast<Enemy*>(obj);
 
-            // すでに倒されているエネミーは対象外
+            // ���łɓ|����Ă���G�l�~�[�͑ΏۊO
             EnemyState eState = enemy->GetEnemyState();
             if (eState == EnemyState::DEFEATED || eState == EnemyState::BLOWN_AWAY || eState == EnemyState::VACUUMED) continue;
 
-            // 弾と敵の距離判定
+            // �e�ƓG�̋�������
             XMFLOAT3 diff = m_Position - enemy->GetPosition();
             float dist = MathHelper::Length(diff);
             float limitDist = GetRadius() + enemy->GetRadius();
 
             if (dist < limitDist)
             {
+                HitInfo hitInfo;
+                hitInfo.hitSourcePos = m_Position;
                 if (enemy->GetObjectType() == ObjectType::Boss)
                 {
-                    BossEnemy* boss = static_cast<BossEnemy*>(enemy);
-                    boss->ApplyBossDamage(GetDamage(), m_Position);
+                    hitInfo.damage = GetDamage();
+                    enemy->OnHit(hitInfo);
                 }
                 else
                 {
-                    // 敵に衝突：敵を吹き飛ばす
                     float force = 0.35f;
                     XMFLOAT3 pushVel = XMFLOAT3(m_Direction.x * force, 0.18f, m_Direction.z * force);
-                    enemy->SetVelocity(pushVel);
-                    enemy->SetEnemyState(EnemyState::BLOWN_AWAY);
-
-                    // 撃破処理
-                    enemy->Defeat();
+                    hitInfo.damage = 1;
+                    hitInfo.knockbackVel = pushVel;
+                    enemy->OnHit(hitInfo);
                 }
 
-                // 弾は消滅
+                // �e�͏���
                 SetDestroy();
                 return;
             }
         }
     }
 
-    // 壁との衝突判定（壁に当たったら消滅。味方弾でも同様）
+    // �ǂƂ̏Փ˔���i�ǂɓ�����������ŁB�����e�ł���l�j
     for (GameObject* obj : Manager::GetGameObjectList())
     {
         if (!obj || obj->IsDestroy() || obj == this || obj == player) continue;
         
-        // 敵、ボス、地面、他の弾丸は除外（壁などの障害物のみと衝突させる）
+        // �G�A�{�X�A�n�ʁA���̒e�ۂ͏��O�i�ǂȂǂ̏�Q���݂̂ƏՓ˂�����j
         ObjectType type = obj->GetObjectType();
         if (type == ObjectType::Enemy || 
             type == ObjectType::Boss || 
@@ -217,7 +215,7 @@ void EnemyBullet::Update()
         }
     }
 
-    // 寿命のカウントダウン
+    // �����̃J�E���g�_�E��
     m_Life--;
     if (m_Life <= 0)
     {
@@ -225,12 +223,12 @@ void EnemyBullet::Update()
     }
 }
 
-// ─────────────────────────────────────────────
-// 描画処理（シャドウ/アウトラインパス用）
-// ─────────────────────────────────────────────
+// ������������������������������������������������������������������������������������������
+// �`�揈���i�V���h�E/�A�E�g���C���p�X�p�j
+// ������������������������������������������������������������������������������������������
 void EnemyBullet::Draw()
 {
-    // 通常描画は RenderSystem 側で一括で行われるため、ここでは何もしない
+    // �ʏ�`��� RenderSystem ���ňꊇ�ōs���邽�߁A�����ł͉�����Ȃ�
     if (!Renderer::IsShadowMode() && !Renderer::IsOutlineMode()) return;
 
     XMMATRIX worldMatrix =
@@ -239,10 +237,71 @@ void EnemyBullet::Draw()
         XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
     Renderer::SetWorldMatrix(worldMatrix);
 
-#ifdef NDEBUG
-    ID3D11ShaderResourceView* tex = ResourceManager::GetTexture("Assets/texture/enemy.png");
-#else
     ID3D11ShaderResourceView* tex = ResourceManager::GetTexture("enemy.png");
-#endif
     Renderer::DrawCube(worldMatrix, tex);
+}
+
+// ─────────────────────────────────────────────
+// メモリプール管理の実装
+// ─────────────────────────────────────────────
+void* EnemyBullet::m_PoolMemory = nullptr;
+bool* EnemyBullet::m_UsedList = nullptr;
+
+void EnemyBullet::InitPool()
+{
+    if (m_PoolMemory) return; // 二重初期化防止
+    m_PoolMemory = ::operator new(sizeof(EnemyBullet) * POOL_SIZE);
+    m_UsedList = new bool[POOL_SIZE];
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        m_UsedList[i] = false;
+    }
+}
+
+void EnemyBullet::UninitPool()
+{
+    if (m_PoolMemory) {
+        ::operator delete(m_PoolMemory);
+        m_PoolMemory = nullptr;
+    }
+    if (m_UsedList) {
+        delete[] m_UsedList;
+        m_UsedList = nullptr;
+    }
+}
+
+void* EnemyBullet::operator new(size_t size)
+{
+    if (!m_PoolMemory) {
+        InitPool();
+    }
+
+    if (size != sizeof(EnemyBullet)) {
+        return ::operator new(size);
+    }
+
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        if (!m_UsedList[i]) {
+            m_UsedList[i] = true;
+            return static_cast<char*>(m_PoolMemory) + (i * sizeof(EnemyBullet));
+        }
+    }
+
+    return ::operator new(size);
+}
+
+void EnemyBullet::operator delete(void* p)
+{
+    if (!p) return;
+
+    if (m_PoolMemory) {
+        ptrdiff_t offset = static_cast<char*>(p) - static_cast<char*>(m_PoolMemory);
+        ptrdiff_t index = offset / sizeof(EnemyBullet);
+
+        if (index >= 0 && index < static_cast<ptrdiff_t>(POOL_SIZE) && (offset % sizeof(EnemyBullet) == 0)) {
+            m_UsedList[index] = false;
+            return;
+        }
+    }
+
+    ::operator delete(p);
 }

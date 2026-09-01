@@ -16,6 +16,8 @@ struct ShockwaveEntry {
     int      Delay;        // 開始ディレイ（待機フレーム数）
     bool     PhysicsApplied; // 物理衝撃波が既に適用されたか
     float    Force;        // 物理衝撃波の威力
+    bool     Shrink;       // 収縮するエフェクトか
+    bool     Used;         // 使用中フラグ (メモリプール用)
 };
 
 // =================================================================
@@ -23,7 +25,8 @@ struct ShockwaveEntry {
 // =================================================================
 class ShockwaveSystem {
 private:
-    static std::list<ShockwaveEntry> m_Shockwaves;
+    static const size_t POOL_SIZE = 32;
+    static ShockwaveEntry m_Shockwaves[POOL_SIZE];
 
     // GPU リソース
     static ID3D11Buffer*            m_QuadVB;       // 地面に水平なクアッド頂点バッファ
@@ -50,7 +53,7 @@ public:
     // 毎フレーム描画処理（Renderer::End() の直前に呼ぶ）
     static void Draw();
 
-    // 衝撃波を発生させる（同時に周囲への物理吹き飛ばしもトリガーする）
+    // 衝撃波を発生させる（同時に周囲への物理吹き飛ばしもトリガーする） - 従来版
     static void AddShockwave(
         const XMFLOAT3& pos, 
         float maxRadius, 
@@ -60,5 +63,18 @@ public:
         int duration = 24,
         float force = 1.0f,
         int delay = 0
+    );
+
+    // 衝撃波を発生させる - 収縮オプション付き
+    static void AddShockwave(
+        const XMFLOAT3& pos, 
+        float maxRadius, 
+        float colorR, 
+        float colorG, 
+        float colorB,
+        int duration,
+        float force,
+        int delay,
+        bool shrink
     );
 };

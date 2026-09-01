@@ -3,6 +3,7 @@ cbuffer PostEffectBuffer : register(b0) {
     float Threshold;
     float BlurIntensity;
     float SlowMotionIntensity;
+    float4 FlashColor; // RGB: 色, A: 強度
 }
 
 Texture2D    g_Texture1 : register(t0);
@@ -42,6 +43,12 @@ float4 main(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD) : SV_TARG
             float gray = dot(color.rgb, float3(0.2126, 0.7152, 0.0722));
             float3 slowColor = float3(gray * 0.6, gray * 0.75, gray * 1.3); // 青みがかったシネマティックモノクロ
             color.rgb = lerp(color.rgb, slowColor, SlowMotionIntensity);
+        }
+
+        // 画面フラッシュ / 調色エフェクト（BOM対策などアライメント整合完了）
+        if (FlashColor.a > 0.0)
+        {
+            color.rgb = lerp(color.rgb, FlashColor.rgb, FlashColor.a);
         }
     }
 

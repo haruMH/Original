@@ -76,6 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -90,6 +91,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -102,6 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -116,6 +119,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -141,12 +145,14 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="manager.cpp" />
     <ClCompile Include="enemy.cpp" />
+    <ClCompile Include="enemy_affix.cpp" />
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="player.cpp" />
     <ClCompile Include="player_movement.cpp" />
     <ClCompile Include="player_combat.cpp" />
     <ClCompile Include="player_visual.cpp" />
     <ClCompile Include="game_rule.cpp" />
+    <ClCompile Include="event_system.cpp" />
     <ClCompile Include="collision_system.cpp" />
     <ClCompile Include="explosion_system.cpp" />
     <ClCompile Include="wall.cpp" />
@@ -160,12 +166,14 @@
     <ClCompile Include="shockwave.cpp" />
     <ClCompile Include="attacking_enemy.cpp" />
     <ClCompile Include="enemy_bullet.cpp" />
+    <ClCompile Include="magnetic_bullet.cpp" />
     <ClCompile Include="boss_enemy.cpp" />
     <ClCompile Include="title_scene.cpp" />
     <ClCompile Include="gameplay_scene.cpp" />
     <ClCompile Include="clear_scene.cpp" />
     <ClCompile Include="gameover_scene.cpp" />
     <ClCompile Include="fade_system.cpp" />
+    <ClCompile Include="spatial_grid.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -175,6 +183,7 @@
     <ClCompile Include="imgui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="spatial_grid.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="field.h" />
     <ClInclude Include="gameobject.h" />
@@ -204,6 +213,7 @@
     <ClInclude Include="shockwave.h" />
     <ClInclude Include="attacking_enemy.h" />
     <ClInclude Include="enemy_bullet.h" />
+    <ClInclude Include="magnetic_bullet.h" />
     <ClInclude Include="boss_enemy.h" />
     <ClInclude Include="scene_interface.h" />
     <ClInclude Include="title_scene.h" />

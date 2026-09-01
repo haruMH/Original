@@ -52,4 +52,18 @@ public:
     XMFLOAT3 GetEmissive() const override { return m_EmissiveColor; }
     static ObjectType GetStaticType() { return ObjectType::Bullet; }
     ObjectType GetObjectType() const override { return GetStaticType(); }
+
+public:
+    // メモリプールの初期化・解放
+    static void InitPool();
+    static void UninitPool();
+
+    // 高速アロケーション用プールアロケータ
+    void* operator new(size_t size);
+    void operator delete(void* p);
+
+private:
+    static void* m_PoolMemory;
+    static bool* m_UsedList;
+    static const size_t POOL_SIZE = 256;
 };

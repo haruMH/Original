@@ -285,45 +285,28 @@ void Renderer::Init() {
     m_Device->CreateRasterizerState(&rd, &m_RasterizerStateCullFront);
     m_DeviceContext->RSSetState(m_RasterizerStateCullBack);
 
-    // アウトライン用シェーダー読み込み
-    // リリースビルドは Assets/shader/ サブフォルダ、デバッグはルートから読み込む
-#ifdef NDEBUG
-    FILE* fov = fopen("Assets/shader/outline_vs.cso", "rb");
-#else
-    FILE* fov = fopen("outline_vs.cso", "rb");
-#endif
+    // アウトライン用シェーダー読み込み（2-1 対応: ResolveShaderPath でパス解決を一元化）
+    FILE* fov = fopen(ResolveShaderPath("outline_vs.cso").c_str(), "rb");
     if (fov) {
         fseek(fov, 0, SEEK_END); long s = ftell(fov); fseek(fov, 0, SEEK_SET);
         unsigned char* b = new unsigned char[s]; fread(b, s, 1, fov); fclose(fov);
         m_Device->CreateVertexShader(b, s, NULL, &m_OutlineVS); delete[] b;
     }
-#ifdef NDEBUG
-    FILE* fop = fopen("Assets/shader/outline_ps.cso", "rb");
-#else
-    FILE* fop = fopen("outline_ps.cso", "rb");
-#endif
+    FILE* fop = fopen(ResolveShaderPath("outline_ps.cso").c_str(), "rb");
     if (fop) {
         fseek(fop, 0, SEEK_END); long s = ftell(fop); fseek(fop, 0, SEEK_SET);
         unsigned char* b = new unsigned char[s]; fread(b, s, 1, fop); fclose(fop);
         m_Device->CreatePixelShader(b, s, NULL, &m_OutlinePS); delete[] b;
     }
 
-    // ポストエフェクト用シェーダー読み込み
-#ifdef NDEBUG
-    FILE* fvs = fopen("Assets/shader/postEffect_vs.cso", "rb");
-#else
-    FILE* fvs = fopen("postEffect_vs.cso", "rb");
-#endif
+    // ポストエフェクト用シェーダー読み込み（2-1 対応: ResolveShaderPath でパス解決を一元化）
+    FILE* fvs = fopen(ResolveShaderPath("postEffect_vs.cso").c_str(), "rb");
     if (fvs) {
         fseek(fvs, 0, SEEK_END); long s = ftell(fvs); fseek(fvs, 0, SEEK_SET);
         unsigned char* b = new unsigned char[s]; fread(b, s, 1, fvs); fclose(fvs);
         m_Device->CreateVertexShader(b, s, NULL, &m_PostVS); delete[] b;
     }
-#ifdef NDEBUG
-    FILE* fps = fopen("Assets/shader/postEffect_ps.cso", "rb");
-#else
-    FILE* fps = fopen("postEffect_ps.cso", "rb");
-#endif
+    FILE* fps = fopen(ResolveShaderPath("postEffect_ps.cso").c_str(), "rb");
     if (fps) {
         fseek(fps, 0, SEEK_END); long s = ftell(fps); fseek(fps, 0, SEEK_SET);
         unsigned char* b = new unsigned char[s]; fread(b, s, 1, fps); fclose(fps);
@@ -394,24 +377,14 @@ void Renderer::Init() {
         sdc.pSysMem = v;
         m_Device->CreateBuffer(&bdc, &sdc, &m_CubeVertexBuffer);
 
-        // リリースビルドは Assets/shader/ サブフォルダから、デバッグはルートから読み込む
-#ifdef NDEBUG
-        CreateVertexShader(&m_CubeVertexShader, &m_CubeInputLayout, "Assets/shader/vertexShader.cso");
-        CreatePixelShader(&m_CubePixelShader, "Assets/shader/pixelShader.cso");
-        CreatePixelShader(&m_TestPixelShader, "Assets/shader/test_ps.cso");
-        CreateVertexShader(&m_WaterVS, nullptr, "Assets/shader/WaterVS.cso");
-        CreatePixelShader(&m_WaterPS, "Assets/shader/WaterPS.cso");
-        CreatePixelShader(&m_DissolvePS, "Assets/shader/DissolvePS.cso");
-        CreatePixelShader(&m_RefractPS, "Assets/shader/RefractPS.cso");
-#else
-        CreateVertexShader(&m_CubeVertexShader, &m_CubeInputLayout, "vertexShader.cso");
-        CreatePixelShader(&m_CubePixelShader, "pixelShader.cso");
-        CreatePixelShader(&m_TestPixelShader, "test_ps.cso");
-        CreateVertexShader(&m_WaterVS, nullptr, "WaterVS.cso");
-        CreatePixelShader(&m_WaterPS, "WaterPS.cso");
-        CreatePixelShader(&m_DissolvePS, "DissolvePS.cso");
-        CreatePixelShader(&m_RefractPS, "RefractPS.cso");
-#endif
+        // キューブ用シェーダー読み込み（2-1 対応: ResolveShaderPath でパス解決を一元化）
+        CreateVertexShader(&m_CubeVertexShader, &m_CubeInputLayout, ResolveShaderPath("vertexShader.cso").c_str());
+        CreatePixelShader(&m_CubePixelShader,   ResolveShaderPath("pixelShader.cso").c_str());
+        CreatePixelShader(&m_TestPixelShader,   ResolveShaderPath("test_ps.cso").c_str());
+        CreateVertexShader(&m_WaterVS, nullptr,  ResolveShaderPath("WaterVS.cso").c_str());
+        CreatePixelShader(&m_WaterPS,            ResolveShaderPath("WaterPS.cso").c_str());
+        CreatePixelShader(&m_DissolvePS,         ResolveShaderPath("DissolvePS.cso").c_str());
+        CreatePixelShader(&m_RefractPS,          ResolveShaderPath("RefractPS.cso").c_str());
 
         // 新規エフェクト用定数バッファの生成
         D3D11_BUFFER_DESC cbd = {};
@@ -594,6 +567,7 @@ void Renderer::End() {
     m_DeviceContext->PSSetShaderResources(1, 1, &m_LumSRV);
     pe.Mode = 3;
     pe.SlowMotionIntensity = Manager::GetSlowMotionIntensity();
+    pe.FlashColor = Manager::GetFlashColor();
     m_DeviceContext->UpdateSubresource(m_PostBuffer, 0, NULL, &pe, 0, 0);
     m_DeviceContext->Draw(3, 0);
 
@@ -655,6 +629,29 @@ void Renderer::SetCameraPosition(XMFLOAT3 p) {
 }
 void Renderer::SetShadowMode(bool e) { m_IsShadowMode = e; }
 void Renderer::SetShadowMatrix(XMMATRIX m) { m_ShadowMatrix = m; }
+// ─────────────────────────────────────────────
+// シェーダーパス解決（2-1 対応）
+// テクスチャの ResourceManager::GetTexture と同じ考え方で一元化する。
+// 呼び出し元は常にベース名（例: "vertexShader.cso"）を渡すだけでよい。
+// ─────────────────────────────────────────────
+std::string Renderer::ResolveShaderPath(const std::string& fileName)
+{
+#ifdef NDEBUG
+    // リリースビルド: "Assets/shader/" で始まっていなければプレフィックスを付与
+    if (fileName.rfind("Assets/shader/", 0) != 0) {
+        return "Assets/shader/" + fileName;
+    }
+    return fileName;
+#else
+    // デバッグビルド: ベース名のみ（カレントディレクトリから読み込み）
+    const std::string prefix = "Assets/shader/";
+    if (fileName.rfind(prefix, 0) == 0) {
+        return fileName.substr(prefix.size());
+    }
+    return fileName;
+#endif
+}
+
 void Renderer::CreateVertexShader(ID3D11VertexShader** vs, ID3D11InputLayout** il, const char* name) {
     FILE* f = fopen(name, "rb"); if(!f) return; fseek(f, 0, SEEK_END); long s = ftell(f); fseek(f, 0, SEEK_SET);
     unsigned char* b = new unsigned char[s]; fread(b, s, 1, f); fclose(f); m_Device->CreateVertexShader(b, s, NULL, vs);
