@@ -18,6 +18,7 @@ struct VS_INPUT
     // スロット1: インスタンスデータ (D3D11_INPUT_PER_INSTANCE_DATA)
     row_major float4x4 World : WORLD; // ワールド行列
     float TextureIndex : TEXINDEX; // インプットレイアウト互換用のダミー入力
+    float3 Emissive : EMISSIVE; // インプットレイアウト互換用のダミー入力
 };
 
 struct VS_OUTPUT

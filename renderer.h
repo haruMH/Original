@@ -190,6 +190,10 @@ public:
     static ID3D11Device* GetDevice() { return m_Device; }
     static ID3D11DeviceContext* GetDeviceContext() { return m_DeviceContext; }
     static ID3D11Buffer* GetCubeVertexBuffer() { return m_CubeVertexBuffer; }
+    static ID3D11RasterizerState* GetRasterizerStateCullBack() { return m_RasterizerStateCullBack; }
+    static ID3D11RasterizerState* GetRasterizerStateCullFront() { return m_RasterizerStateCullFront; }
+    static ID3D11DepthStencilState* GetDepthStateEnable() { return m_DepthStateEnable; }
+    static ID3D11DepthStencilState* GetDepthStateOutline() { return m_DepthStateOutline; }
     static bool IsShadowMode() { return m_IsShadowMode; }
     static void CreateVertexShader(ID3D11VertexShader** vs, ID3D11InputLayout** il, const char* name);
     static void CreatePixelShader(ID3D11PixelShader** ps, const char* name);

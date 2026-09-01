@@ -331,6 +331,8 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
         context->IASetInputLayout(m_InstancedOutlineInputLayout);
         context->VSSetShader(m_InstancedOutlineVertexShader, nullptr, 0);
         context->PSSetShader(Renderer::GetOutlinePixelShader(), nullptr, 0);
+        context->RSSetState(Renderer::GetRasterizerStateCullFront()); // アウトラインは裏面を描画
+        context->OMSetDepthStencilState(Renderer::GetDepthStateOutline(), 0);
     }
     else // 通常パスまたはシャドウマップパス
     {
@@ -343,6 +345,8 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
         else
         {
             context->PSSetShader(m_InstancedPixelShader, nullptr, 0);
+            context->RSSetState(Renderer::GetRasterizerStateCullBack()); // 通常描画は表面を描画
+            context->OMSetDepthStencilState(Renderer::GetDepthStateEnable(), 0);
         }
     }
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -436,6 +440,8 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
     context->IASetInputLayout(nullptr);
     context->VSSetShader(nullptr, nullptr, 0);
     context->PSSetShader(nullptr, nullptr, 0);
+    context->RSSetState(Renderer::GetRasterizerStateCullBack());
+    context->OMSetDepthStencilState(Renderer::GetDepthStateEnable(), 0);
 }
 
 // =================================================================
