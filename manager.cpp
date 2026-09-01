@@ -1,4 +1,4 @@
-﻿#include "manager.h"
+#include "manager.h"
 #include <string>
 #include "camera.h"
 #include "input.h"
@@ -45,6 +45,8 @@ Scene                  Manager::m_CurrentScene = Scene::TITLE;
 bool                   Manager::m_IsBossStage = true;
 Scene                  Manager::m_NextScene = Scene::TITLE;
 bool                   Manager::m_SceneTransitionRequested = false;
+float                  Manager::m_FadeInDuration = 0.4f;
+XMFLOAT4               Manager::m_FadeColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 
 IScene*                Manager::m_ActiveScene = nullptr;
 
@@ -78,6 +80,9 @@ void Manager::Init()
 
     // 衝撃波システムの初期化
     ShockwaveSystem::Init(Renderer::GetDevice());
+
+    // フェードシステムの初期化
+    FadeSystem::Init(Renderer::GetDevice());
 
     // 光源設定
     LIGHT light;
@@ -117,6 +122,9 @@ void Manager::Uninit()
     // 衝撃波システムの終了処理
     ShockwaveSystem::Uninit();
 
+    // フェードシステムの終了処理
+    FadeSystem::Uninit();
+
     m_RenderSystem.Uninit();
 
     // 登録されたすべてのオブジェクトの解放
@@ -152,6 +160,9 @@ void Manager::Update()
 
     Input::Update();
 
+    // フェードシステムのタイマー更新
+    FadeSystem::Update(1.0f / 60.0f);
+
     // スコアポップアップはシーンを問わず更新可能にする
     ScorePopupSystem::Update();
 
@@ -165,10 +176,14 @@ void Manager::Update()
 
     if (g_Camera) g_Camera->Update();
 
-    // 遅延シーン遷移のリクエストが来ている場合は実行する
+    // 遅延シーン遷移のリクエストがあり、かつ暗転が完了した（またはフェード中でない）場合に切り替える
     if (m_SceneTransitionRequested) {
-        m_SceneTransitionRequested = false;
-        ExecuteChangeScene(m_NextScene);
+        if (!FadeSystem::IsFading() || FadeSystem::IsFadeOutComplete()) {
+            m_SceneTransitionRequested = false;
+            ExecuteChangeScene(m_NextScene);
+            // シーンの切り替えが完了したら、新しいシーンでフェードインを開始
+            FadeSystem::StartFadeIn(m_FadeInDuration, m_FadeColor);
+        }
     }
 }
 
@@ -382,10 +397,15 @@ void Manager::TransitionToBossStage()
 // ─────────────────────────────────────────────
 // シーン遷移予約 (遅延遷移)
 // ─────────────────────────────────────────────
-void Manager::ChangeScene(Scene nextScene)
+void Manager::ChangeScene(Scene nextScene, float fadeOutDuration, float fadeInDuration, XMFLOAT4 color)
 {
     m_NextScene = nextScene;
     m_SceneTransitionRequested = true;
+    m_FadeInDuration = fadeInDuration;
+    m_FadeColor = color;
+
+    // フェードアウトを開始
+    FadeSystem::StartFadeOut(fadeOutDuration, color);
 }
 
 // ─────────────────────────────────────────────

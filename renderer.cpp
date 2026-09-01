@@ -1,7 +1,8 @@
-﻿#include "renderer.h"
+#include "renderer.h"
 #include "manager.h"
 #include "main.h"
 #include "wall.h"
+#include "fade_system.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx11.h"
@@ -599,6 +600,9 @@ void Renderer::End() {
     // SRV バインド解除（次フレームへの干渉を防ぐ）
     m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
     m_DeviceContext->OMSetDepthStencilState(m_DepthStateEnable, 0);
+
+    // バックバッファ最前面にフェードオーバーレイを描画
+    FadeSystem::Draw(m_DeviceContext);
 
     // ImGui のレンダリングと描画実行
     ImGui::Render();

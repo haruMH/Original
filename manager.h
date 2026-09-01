@@ -1,9 +1,10 @@
-﻿#pragma once
+#pragma once
 #include <vector>
 #include <type_traits>
 #include "render_system.h"
 #include "gameobject.h"
 #include "scene_interface.h"
+#include "fade_system.h"
 
 // 前方宣言
 class Player;
@@ -49,6 +50,8 @@ private:
     static Scene                  m_CurrentScene;     // 現在のシーン（既存コード互換用）
     static Scene                  m_NextScene;        // 遷移予定の次のシーン
     static bool                   m_SceneTransitionRequested; // シーン遷移リクエストフラグ
+    static float                  m_FadeInDuration;           // 遷移後フェードイン時間
+    static XMFLOAT4               m_FadeColor;                // フェード色
 
     static IScene*                m_ActiveScene;      // 現在アクティブなシーンオブジェクト
 
@@ -154,6 +157,6 @@ public:
     static bool  IsSlowMotionActive() { return m_SlowMotionTimer > 0; }
     static bool  IsBossStage() { return m_IsBossStage; }
     static void  TransitionToBossStage();
-    static void  ChangeScene(Scene nextScene);
+    static void  ChangeScene(Scene nextScene, float fadeOutDuration = 0.5f, float fadeInDuration = 0.5f, XMFLOAT4 color = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
     static Scene GetCurrentScene() { return m_CurrentScene; }
 };
