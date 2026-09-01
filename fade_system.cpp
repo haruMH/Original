@@ -11,7 +11,7 @@
 FadeState                FadeSystem::m_State = FadeState::None;
 float                    FadeSystem::m_CurrentAlpha = 0.0f;
 float                    FadeSystem::m_Timer = 0.0f;
-float                    FadeSystem::m_Duration = 0.4f;
+float                    FadeSystem::m_Duration = 0.5f;
 XMFLOAT4                 FadeSystem::m_FadeColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 
 ID3D11VertexShader*      FadeSystem::m_VS = nullptr;
@@ -175,7 +175,7 @@ bool FadeSystem::Init(ID3D11Device* device)
     m_State = FadeState::None;
     m_CurrentAlpha = 0.0f;
     m_Timer = 0.0f;
-    m_Duration = 0.4f;
+    m_Duration = 0.5f;
 
     OutputDebugStringA("[FadeSystem] Successfully Initialized!\n");
     return true;
@@ -217,6 +217,11 @@ void FadeSystem::Update(float deltaTime)
 {
     if (m_State == FadeState::None) return;
 
+    if (m_State == FadeState::FadeHold) {
+        m_CurrentAlpha = 1.0f;
+        return;
+    }
+
     m_Timer += deltaTime;
     float progress = ClampVal(m_Timer / m_Duration, 0.0f, 1.0f);
 
@@ -227,6 +232,8 @@ void FadeSystem::Update(float deltaTime)
         m_CurrentAlpha = smoothProgress;
         if (progress >= 1.0f) {
             m_CurrentAlpha = 1.0f;
+            m_State = FadeState::FadeHold; // 完全暗転保持状態へ移行 (裏でのロードと初描画待機)
+            OutputDebugStringA("[FadeSystem] FadeOut Complete -> FadeHold\n");
         }
     }
     else if (m_State == FadeState::FadeIn) {

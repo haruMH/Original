@@ -8,6 +8,7 @@ using namespace DirectX;
 enum class FadeState {
     None,       // フェード処理なし (通常状態)
     FadeOut,    // 暗転中 (画面が指定色へ覆われる)
+    FadeHold,   // 完全暗転維持中 (画面を100%遮断したまま裏でロードと初期描画を待機)
     FadeIn      // 明転中 (暗転状態から画面が現れる)
 };
 
@@ -34,10 +35,10 @@ public:
     static void Uninit();
 
     // フェードアウト開始 (画面全体を指定色へ暗転)
-    static void StartFadeOut(float duration = 0.4f, XMFLOAT4 color = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
+    static void StartFadeOut(float duration = 0.5f, XMFLOAT4 color = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
 
     // フェードイン開始 (暗転状態から明転)
-    static void StartFadeIn(float duration = 0.4f, XMFLOAT4 color = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
+    static void StartFadeIn(float duration = 0.5f, XMFLOAT4 color = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
 
     // フレーム更新
     static void Update(float deltaTime = 1.0f / 60.0f);
@@ -48,7 +49,7 @@ public:
     // 状態取得関数
     static FadeState GetState() { return m_State; }
     static bool IsFading() { return m_State != FadeState::None; }
-    static bool IsFadeOutComplete() { return m_State == FadeState::FadeOut && m_CurrentAlpha >= 1.0f; }
+    static bool IsFadeOutComplete() { return m_State == FadeState::FadeHold || (m_State == FadeState::FadeOut && m_CurrentAlpha >= 1.0f); }
     static bool IsFadeInComplete() { return m_State == FadeState::FadeIn && m_CurrentAlpha <= 0.0f; }
     static float GetAlpha() { return m_CurrentAlpha; }
 };

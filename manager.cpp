@@ -50,7 +50,8 @@ Scene                  Manager::m_CurrentScene = Scene::TITLE;
 bool                   Manager::m_IsBossStage = true;
 Scene                  Manager::m_NextScene = Scene::TITLE;
 bool                   Manager::m_SceneTransitionRequested = false;
-float                  Manager::m_FadeInDuration = 0.4f;
+bool                   Manager::m_PendingFadeIn = false;
+float                  Manager::m_FadeInDuration = 0.5f;
 XMFLOAT4               Manager::m_FadeColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 
 IScene*                Manager::m_ActiveScene = nullptr;
@@ -270,15 +271,25 @@ void Manager::Update()
         m_LowHPPulseTime = 0.0f;
     }
 
-    // 遅延シーン遷移のリクエストがあり、かつ暗転が完了した（またはフェード中でない）場合に切り替える
-
+    // 遅延シーン遷移のリクエストがあり、かつ暗転（FadeHold）が完了した場合に切り替える
     if (m_SceneTransitionRequested) {
         if (!FadeSystem::IsFading() || FadeSystem::IsFadeOutComplete()) {
             m_SceneTransitionRequested = false;
+
+            // 1. 新しいシーンへ切り替えと初期化を実行
             ExecuteChangeScene(m_NextScene);
-            // シーンの切り替えが完了したら、新しいシーンでフェードインを開始
-            FadeSystem::StartFadeIn(m_FadeInDuration, m_FadeColor);
+
+            // 2. 描画キャッシュの完全クリア
+            m_RenderSystem.ClearCache();
+
+            // 3. このフレームは FadeHold（完全暗転 100%遮断）のまま新シーンの初期化・初描画・テクスチャバインドを完了させ、
+            //    次フレームで明転（FadeIn）を開始する
+            m_PendingFadeIn = true;
         }
+    } else if (m_PendingFadeIn) {
+        // 暗転の裏で新シーンの1フレーム目の描画・テクスチャバインドが正常に完了したため、明転を開始
+        m_PendingFadeIn = false;
+        FadeSystem::StartFadeIn(m_FadeInDuration, m_FadeColor);
     }
 }
 

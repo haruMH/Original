@@ -49,6 +49,7 @@ private:
     static Scene                  m_CurrentScene;     // 現在のシーン（既存コード互換用）
     static Scene                  m_NextScene;        // 遷移予定 of the next scene
     static bool                   m_SceneTransitionRequested; // シーン遷移リクエストフラグ
+    static bool                   m_PendingFadeIn;            // 裏でのシーン構築後、次フレームでフェードインを開始する待機フラグ
     static float                  m_FadeInDuration;           // 遷移後フェードイン時間
     static XMFLOAT4               m_FadeColor;                // フェード色
 
