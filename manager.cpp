@@ -1,4 +1,4 @@
-#include "manager.h"
+﻿#include "manager.h"
 #include <string>
 #include "camera.h"
 #include "input.h"
