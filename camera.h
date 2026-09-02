@@ -33,6 +33,13 @@ public:
     }
 
     float GetAngleY() const { return m_AngleY; }
+    float GetAngleX() const { return m_AngleX; }
+    void  SetAngles(float angleX, float angleY) {
+        m_AngleX = angleX;
+        m_AngleY = angleY;
+    }
+    void  SetDistance(float distance) { m_Distance = distance; }
+
     // ゲッター（必要に応じて）
     XMFLOAT3 GetPosition() { return m_Position; }
     XMFLOAT3 GetForward() const;

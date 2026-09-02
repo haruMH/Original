@@ -173,15 +173,21 @@ void GameplayScene::Init()
     } else {
         Manager::SetIsBossStage(false);
         
-        // �ʏ�X�e�[�W�F�ǂ�G�G���A�̊O���ɔz�u
+        // ʏXe[WFǂGGÅOɔzu
         Wall* wall = Manager::AddGameObject<Wall>();
         wall->SetPosition(XMFLOAT3(Constants::Stage::WALL_DEFAULT_POS_X, Constants::Stage::WALL_DEFAULT_POS_Y, Constants::Stage::WALL_DEFAULT_POS_Z));
         wall->SetScale(XMFLOAT3(Constants::Stage::WALL_DEFAULT_SCALE, Constants::Stage::WALL_DEFAULT_SCALE, Constants::Stage::WALL_DEFAULT_SCALE));
 
-        // �v���C���[������ʒu��
+        // プレイヤー初期位置と向き（敵集団が存在する -Z 方向に向ける）
         player->SetPosition(XMFLOAT3(0.0f, -0.5f, Constants::Stage::PLAYER_START_POS_Z));
+        player->SetRotation(XMFLOAT3(0.0f, XM_PI, 0.0f));
 
-        // ���u�G��O���b�h�z�u
+        // カメラもプレイヤーの背後から敵集団を見据える初期アングルに設定
+        if (g_Camera) {
+            g_Camera->SetAngles(0.2f, XM_PI);
+        }
+
+        // uGObhzu
         int totalEnemies = 0;
         int minX = -Constants::Stage::ENEMY_GRID_COLS / 2;
         int maxX = minX + Constants::Stage::ENEMY_GRID_COLS - 1;
