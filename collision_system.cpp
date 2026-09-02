@@ -194,15 +194,15 @@ static void HandlePlayerItemPickup(Player* player, const std::vector<GameObject*
             switch (item->GetItemType()) {
             case ItemType::VACUUM:
                 player->SetHasVacuumItem(true);
-                OutputDebugStringA("[CollisionSystem] 吸引アイテムを取得しました！\n");
+                LOG_INFO("[CollisionSystem] 吸引アイテムを取得しました！\n");
                 break;
             case ItemType::GIGANT:
                 player->SetHasGigantItem(true);
-                OutputDebugStringA("[CollisionSystem] 巨大化アイテムを取得しました！\n");
+                LOG_INFO("[CollisionSystem] 巨大化アイテムを取得しました！\n");
                 break;
             case ItemType::LIGHTNING:
                 player->SetHasLightningItem(true);
-                OutputDebugStringA("[CollisionSystem] 雷電アイテムを取得しました！\n");
+                LOG_INFO("[CollisionSystem] 雷電アイテムを取得しました！\n");
                 break;
             }
             item->SetDestroy();

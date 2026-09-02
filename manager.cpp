@@ -314,25 +314,10 @@ void Manager::Draw()
     Renderer::SetViewMatrix(lightView);
     Renderer::SetProjectionMatrix(cameraProj); // カメラのプロジェクション行列を再設定
 
-    // インスタンシングまたは別パスで描画されるオブジェクトを除外する判定
-    auto ShouldSkipShadowOutline = [](ObjectType type) -> bool {
-        return type == ObjectType::Field
-            || type == ObjectType::Enemy
-            || type == ObjectType::Player
-            || type == ObjectType::Wall
-            || type == ObjectType::Boss
-            || type == ObjectType::Unknown;
-    };
-
     // === 1. シャドウマップ描画パス ===
     Renderer::BeginShadowPass();
     Renderer::SetupCubeDraw();
-    for (GameObject* obj : m_GameObjects) {
-        if (!ShouldSkipShadowOutline(obj->GetObjectType())) {
-            obj->Draw();
-            Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        }
-    }
+    DrawShadowAndOutlineObjects();
     m_RenderSystem.RenderCubeInstances(Renderer::GetDeviceContext(), m_GameObjects, RenderPass::Shadow);
     Renderer::EndShadowPass();
 
@@ -367,12 +352,7 @@ void Manager::Draw()
     // === 3. アウトライン描画パス (シャドウと同様の除外判定) ===
     Renderer::BeginOutlinePass();
     Renderer::SetupCubeDraw();
-    for (GameObject* obj : m_GameObjects) {
-        if (!ShouldSkipShadowOutline(obj->GetObjectType())) {
-            obj->Draw();
-            Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        }
-    }
+    DrawShadowAndOutlineObjects();
     m_RenderSystem.RenderCubeInstances(Renderer::GetDeviceContext(), m_GameObjects, RenderPass::Outline);
     Renderer::EndOutlinePass();
 
@@ -390,6 +370,29 @@ void Manager::Draw()
 }
 
 // ─────────────────────────────────────────────
+// シャドウ／アウトラインパス共通のオブジェクト描画
+// ─────────────────────────────────────────────
+void Manager::DrawShadowAndOutlineObjects()
+{
+    // インスタンシングまたは別パスで描画されるオブジェクトを除外する判定
+    auto ShouldSkipShadowOutline = [](ObjectType type) -> bool {
+        return type == ObjectType::Field
+            || type == ObjectType::Enemy
+            || type == ObjectType::Player
+            || type == ObjectType::Wall
+            || type == ObjectType::Boss
+            || type == ObjectType::Unknown;
+    };
+
+    for (GameObject* obj : m_GameObjects) {
+        if (obj && !ShouldSkipShadowOutline(obj->GetObjectType())) {
+            obj->Draw();
+            Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        }
+    }
+}
+
+// ─────────────────────────────────────────────
 // ボスステージへの遷移と構築
 // ─────────────────────────────────────────────
 void Manager::TransitionToBossStage()
@@ -404,46 +407,13 @@ void Manager::TransitionToBossStage()
         player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
     }
 
-    // プレイヤーとフィールド以外のオブジェクトをすべて破棄
+    // プレイヤーとフィールド以外のオブジェクトをすべて破棄（破棄処理の一元化）
     LOG_INFO("[Manager] オブジェクト破棄を開始します...\n");
-    int destroyedCount = 0;
-    m_ManagedObjects.erase(
-        std::remove_if(m_ManagedObjects.begin(), m_ManagedObjects.end(),
-            [player, &destroyedCount](const std::unique_ptr<GameObject>& obj) {
-                ObjectType t = obj->GetObjectType();
-                if (t != ObjectType::Player && t != ObjectType::Field) {
-                    if (player) {
-                        player->NotifyObjectDestroyed(obj.get());
-                    }
-                    obj->Uninit();
-                    destroyedCount++;
-                    return true;
-                }
-                return false;
-            }),
-        m_ManagedObjects.end());
-
-    // 描画・走査用リストからも削除
-    m_GameObjects.erase(
-        std::remove_if(m_GameObjects.begin(), m_GameObjects.end(),
-            [](GameObject* obj) {
-                ObjectType t = obj->GetObjectType();
-                return t != ObjectType::Player && t != ObjectType::Field;
-            }),
-        m_GameObjects.end());
-
-    // カテゴリ別キャッシュリストのクリアと再登録
-    ClearCategoryLists();
-    m_UpdateObjects.clear();
-    for (GameObject* obj : m_GameObjects) {
-        ::ObjectType t = obj->GetObjectType();
-        if (t != ::ObjectType::Wall && t != ::ObjectType::Field) {
-            m_UpdateObjects.push_back(obj);
-        }
-        RegisterCategory(obj);
-    }
-    LOG_INFO("[Manager] オブジェクト破棄クリーンアップ完了 (破棄数: %d)\n", destroyedCount);
-    m_RenderSystem.ClearCache();
+    DestroyObjectsIf([](GameObject* obj) {
+        ObjectType t = obj->GetObjectType();
+        return t != ObjectType::Player && t != ObjectType::Field;
+    });
+    LOG_INFO("[Manager] オブジェクト破棄クリーンアップ完了\n");
 
     // ボス部屋の壁を生成
     LOG_INFO("[Manager] ボス部屋の壁を生成します...\n");
@@ -529,7 +499,7 @@ void Manager::ChangeScene(Scene nextScene, float fadeOutDuration, float fadeInDu
 // ─────────────────────────────────────────────
 void Manager::ExecuteChangeScene(Scene nextScene)
 {
-    OutputDebugStringA(("[Manager] ExecuteChangeScene: " + std::to_string((int)m_CurrentScene) + " -> " + std::to_string((int)nextScene) + "\n").c_str());
+    LOG_INFO("[Manager] ExecuteChangeScene: %d -> %d\n", (int)m_CurrentScene, (int)nextScene);
 
     // 現在アクティブなシーンオブジェクトの Uninit と破棄
     if (m_ActiveScene) {
@@ -647,13 +617,23 @@ void Manager::ClearCategoryLists()
 // ─────────────────────────────────────────────
 void Manager::DestroyObjectsIf()
 {
+    DestroyObjectsIf([](GameObject* obj) {
+        return obj && obj->IsDestroy();
+    });
+}
+
+// ─────────────────────────────────────────────
+// 条件指定によるオブジェクト破棄の一元化
+// ─────────────────────────────────────────────
+void Manager::DestroyObjectsIf(std::function<bool(GameObject*)> pred)
+{
     Player* player = GetGameObject<Player>();
 
-    // 1. 管理オブジェクトリストから IsDestroy() == true を安全に破棄
+    // 1. 管理オブジェクトリストから条件に合致するオブジェクトを安全に破棄
     m_ManagedObjects.erase(
         std::remove_if(m_ManagedObjects.begin(), m_ManagedObjects.end(),
-            [player](const std::unique_ptr<GameObject>& obj) {
-                if (obj && obj->IsDestroy()) {
+            [player, &pred](const std::unique_ptr<GameObject>& obj) {
+                if (obj && pred(obj.get())) {
                     if (player) {
                         player->NotifyObjectDestroyed(obj.get());
                     }
@@ -674,15 +654,15 @@ void Manager::DestroyObjectsIf()
     // 2. 描画・更新用生ポインタリストからも破棄
     m_GameObjects.erase(
         std::remove_if(m_GameObjects.begin(), m_GameObjects.end(),
-            [](GameObject* obj) {
-                return obj == nullptr || obj->IsDestroy();
+            [&pred](GameObject* obj) {
+                return obj == nullptr || pred(obj);
             }),
         m_GameObjects.end());
 
     m_UpdateObjects.erase(
         std::remove_if(m_UpdateObjects.begin(), m_UpdateObjects.end(),
-            [](GameObject* obj) {
-                return obj == nullptr || obj->IsDestroy();
+            [&pred](GameObject* obj) {
+                return obj == nullptr || pred(obj);
             }),
         m_UpdateObjects.end());
 

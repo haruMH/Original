@@ -40,12 +40,26 @@ public:
     // カットシーン設定用
     void SetCutsceneMode(bool enable, XMFLOAT3 eye = XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3 target = XMFLOAT3(0.0f, 0.0f, 0.0f))
     {
+        if (enable && !m_IsCutsceneMode) {
+            // カットシーン開始時のカメラアングルを保存
+            m_SavedAngleX = m_AngleX;
+            m_SavedAngleY = m_AngleY;
+        }
+        else if (!enable && m_IsCutsceneMode) {
+            // カットシーン終了時、演出中のマウス操作による視点ズレを破棄して元の向きを復元
+            m_AngleX = m_SavedAngleX;
+            m_AngleY = m_SavedAngleY;
+        }
+
         m_IsCutsceneMode = enable;
         if (enable) {
             m_CutsceneEye = eye;
             m_CutsceneTarget = target;
         }
     }
+private:
+    float m_SavedAngleX = 0.2f;
+    float m_SavedAngleY = 0.0f;
 };
 
 // ゲームグローバルカメラ（manager.cpp で実体化）
