@@ -17,19 +17,12 @@ ID3D11ShaderResourceView* ResourceManager::GetTexture(std::string_view fileName)
         return it->second;
     }
 
-    // パス解決
+    // パス解決（Debug / Release 共に Assets/texture/ を最優先に検索）
     std::string path = fileStr;
-#ifdef NDEBUG
-    // リリースビルド時は、Assets/texture/ から始まっていない場合のみ付与する
     if (fileStr.rfind("Assets/texture/", 0) != 0) {
+        // "player.png" 等のプレーン名で呼ばれた場合は Assets/texture/player.png を試す
         path = "Assets/texture/" + fileStr;
     }
-#else
-    // デバッグビルド時は、もし Assets/texture/ から始まっていたらそれを取り除いてプレーン名にする
-    if (fileStr.rfind("Assets/texture/", 0) == 0) {
-        path = fileStr.substr(15); // "Assets/texture/" の長さは 15
-    }
-#endif
 
     // 新規ロード
     ID3D11ShaderResourceView* texture = nullptr;

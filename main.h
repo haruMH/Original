@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
@@ -30,7 +30,7 @@ using namespace DirectX;
 #include <stdarg.h>
 
 #ifdef NDEBUG
-#define LOG_INFO(fmt, ...) ((void)0)
+#define LOG_INFO(...) do {} while(0)
 #else
 inline void LogInfoInternal(const char* fmt, ...) {
     char buf[1024];

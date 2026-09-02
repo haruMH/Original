@@ -15,6 +15,7 @@
 #include "score_popup.h"
 #include "spatial_grid.h"
 #include "boss_enemy.h"
+#include "sound_manager.h"
 
 // namespace LightningConfig は削除され、Constants::Lightning (game_constants.h) に統合されました。
 
@@ -31,6 +32,8 @@ void CollisionSystem::TriggerChainLightning(const XMFLOAT3& startPos, Player* pl
 
     std::vector<Enemy*> chainedEnemies;
     chainedEnemies.reserve(maxChain);
+
+    bool playedSound = false;
 
     for (int chain = 0; chain < maxChain; chain++) {
         Enemy* nearest = nullptr;
@@ -93,6 +96,11 @@ void CollisionSystem::TriggerChainLightning(const XMFLOAT3& startPos, Player* pl
                 nearest->OnHit(hitInfo);
             }
             
+            if (!playedSound) {
+                SoundManager::PlaySE(SoundID::SE_LIGHTNING);
+                playedSound = true;
+            }
+
             chainedEnemies.push_back(nearest);
             currentPos = nextPos; // 次の連鎖の開始点にする
         } else {
@@ -168,6 +176,8 @@ static bool ResolveFlyingEnemyImpact(
             if (g_Camera) g_Camera->Shake(0.3f, 12);
         }
 
+        SoundManager::PlaySE(SoundID::SE_HIT_ENEMY);
+
         float rotY = atan2f(-dir.x, -dir.z);
         if (target->GetObjectType() == ObjectType::Enemy) {
             static_cast<Enemy*>(target)->SetRotation(XMFLOAT3(0.0f, rotY, 0.0f));
@@ -205,6 +215,7 @@ static void HandlePlayerItemPickup(Player* player, const std::vector<GameObject*
                 LOG_INFO("[CollisionSystem] 雷電アイテムを取得しました！\n");
                 break;
             }
+            SoundManager::PlaySE(SoundID::SE_ITEM_PICKUP);
             item->SetDestroy();
         }
     }
@@ -323,6 +334,8 @@ static void HandleFlyingVsWall(
                 flying->SetVelocity(XMFLOAT3(oldVel.x * -0.3f, 0.1f, oldVel.z * -0.3f));
             }
         }
+
+        SoundManager::PlaySE(SoundID::SE_HIT_WALL);
 
         Manager::AddHitStop(6);
         if (g_Camera) g_Camera->Shake(0.15f, 10);

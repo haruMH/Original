@@ -13,6 +13,7 @@
 #include "boss_enemy.h"
 #include "enemy_bullet.h"
 #include "shockwave.h"
+#include "sound_manager.h"
 
 using namespace DirectX;
 
@@ -271,6 +272,7 @@ void PlayerCombat::UpdateIdle()
 
         if (nearest) {
             m_Owner->SetGrabbedEnemy(nearest);
+            SoundManager::PlaySE(SoundID::SE_GRAB);
         }
     }
 }
@@ -392,6 +394,8 @@ void PlayerCombat::Throw()
 
         m_Owner->GetGrabbedEnemy()->SetVelocity(throwVelocity);
         m_Owner->GetGrabbedEnemy()->SetEnemyState(EnemyState::FLYING);
+
+        SoundManager::PlaySE(SoundID::SE_THROW);
 
         if (m_Owner->HasVacuumItem()) {
             m_Owner->GetGrabbedEnemy()->SetExplosive(true);

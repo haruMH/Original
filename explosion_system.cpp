@@ -11,18 +11,25 @@
 
 // ������������������������������������������������������������������������������������������
 // �����𔭐��������͂̓G�𐁂���΂�
-// ������������������������������������������������������������������������������������������
+#include "sound_manager.h"
+
+// 
+// 𔭐͂̓G𐁂΂
+// 
 void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
 {
-    float explosionRadius = Constants::Explosion::RADIUS; // �����̗L�����a
-    float baseForce       = Constants::Explosion::BASE_FORCE;  // �����̊�{�З�
+    float explosionRadius = Constants::Explosion::RADIUS; // ̗La
+    float baseForce       = Constants::Explosion::BASE_FORCE;  // ̊{З
 
-    // �J�����V�F�C�N�Ŕ����̃C���p�N�g����o
+    // JVFCNŔ̃CpNgo
     if (g_Camera) {
         g_Camera->Shake(1.2f, 25);
     }
 
-    // �������d�g��i�r�W���A���G�t�F�N�g�̂݁AY���W��n�ʂɔ��킹�A���ԍ���3�{�̐Ԃ��g�䂪�L����j
+    // 爆発音の再生
+    SoundManager::PlaySE(SoundID::SE_EXPLOSION);
+
+    // dgirWAGtFNĝ݁AYWnʂɔ킹Aԍ3{̐Ԃg䂪Lj
     XMFLOAT3 shockPos = center;
     shockPos.y = -0.95f; // nʂ̍ɊSNv
 
