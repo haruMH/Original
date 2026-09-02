@@ -53,6 +53,12 @@ bool SoundManager::Init()
     // イベント購読の紐付け
     BindEvents();
 
+    // ─────────────────────────────────────────────
+    // デフォルトサウンドの事前登録
+    // ─────────────────────────────────────────────
+    RegisterSound(SoundID::BGM_TITLE, "Blackout_Divinity.mp3");
+    RegisterSound(SoundID::SE_DECIDE, "決定ボタンを押す44.wav");
+
     return true;
 }
 

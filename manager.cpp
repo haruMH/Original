@@ -24,6 +24,7 @@
 #include "event_system.h"
 #include "event_types.h"
 #include "sound_manager.h"
+#include "option_ui.h"
 
 // DirectX 名前空間の使用
 using namespace DirectX;
@@ -110,6 +111,9 @@ void Manager::Init()
     // サウンドシステムの初期化
     SoundManager::Init();
 
+    // オプションUIの初期化
+    OptionUI::Init();
+
     // 光源設定
     LIGHT light;
     ZeroMemory(&light, sizeof(light));
@@ -190,6 +194,14 @@ void Manager::Update()
 
     Input::Update();
     SoundManager::Update();
+
+    // オプションUIの更新（Tabキー監視）
+    OptionUI::Update();
+
+    // オプション画面が開いている間は、背後のゲームプレイ更新を一時停止（ポーズ）する
+    if (OptionUI::IsOpen()) {
+        return;
+    }
 
     // フェードシステムのタイマー更新
     FadeSystem::Update(1.0f / 60.0f);
@@ -371,6 +383,9 @@ void Manager::Draw()
     if (m_ActiveScene) {
         m_ActiveScene->Draw();
     }
+
+    // オプション画面UIの描画（ImGuiコマンドを発行）
+    OptionUI::Draw();
 
     Renderer::End();
 }
