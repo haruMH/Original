@@ -130,12 +130,18 @@
       <Command>
         rem --- Assets\texture フォルダを作成しPNGをコピー ---
         if not exist "$(OutDir)Assets\texture" mkdir "$(OutDir)Assets\texture"
+        if exist "$(ProjectDir)Assets\texture" xcopy /Y /Q /E "$(ProjectDir)Assets\texture\*" "$(OutDir)Assets\texture\"
         for %%f in ("$(ProjectDir)*.png") do xcopy /Y /Q "%%f" "$(OutDir)Assets\texture\"
+        rem --- Assets\sound フォルダを作成しMP3 / WAVをコピー ---
+        if not exist "$(OutDir)Assets\sound" mkdir "$(OutDir)Assets\sound"
+        if exist "$(ProjectDir)Assets\sound" xcopy /Y /Q /E "$(ProjectDir)Assets\sound\*" "$(OutDir)Assets\sound\"
+        for %%f in ("$(ProjectDir)*.mp3") do xcopy /Y /Q "%%f" "$(OutDir)Assets\sound\"
+        for %%f in ("$(ProjectDir)*.wav") do xcopy /Y /Q "%%f" "$(OutDir)Assets\sound\"
         rem --- Assets\shader フォルダを作成しCSOをコピー ---
         if not exist "$(OutDir)Assets\shader" mkdir "$(OutDir)Assets\shader"
         for %%f in ("$(ProjectDir)*.cso") do xcopy /Y /Q "%%f" "$(OutDir)Assets\shader\"
       </Command>
-      <Message>リリースフォルダに Assets/texture と Assets/shader を整理中...</Message>
+      <Message>リリースフォルダに Assets/texture, Assets/sound, Assets/shader を整理中...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -174,6 +180,7 @@
     <ClCompile Include="gameover_scene.cpp" />
     <ClCompile Include="fade_system.cpp" />
     <ClCompile Include="spatial_grid.cpp" />
+    <ClCompile Include="sound_manager.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -221,6 +228,7 @@
     <ClInclude Include="clear_scene.h" />
     <ClInclude Include="gameover_scene.h" />
     <ClInclude Include="fade_system.h" />
+    <ClInclude Include="sound_manager.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />

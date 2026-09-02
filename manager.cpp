@@ -23,6 +23,7 @@
 #include "shockwave.h"
 #include "event_system.h"
 #include "event_types.h"
+#include "sound_manager.h"
 
 // DirectX 名前空間の使用
 using namespace DirectX;
@@ -106,6 +107,9 @@ void Manager::Init()
     // フェードシステムの初期化
     FadeSystem::Init(Renderer::GetDevice());
 
+    // サウンドシステムの初期化
+    SoundManager::Init();
+
     // 光源設定
     LIGHT light;
     ZeroMemory(&light, sizeof(light));
@@ -169,6 +173,7 @@ void Manager::Uninit()
         g_Camera = nullptr;
     }
 
+    SoundManager::Uninit();
     Input::Uninit();
     ResourceManager::Uninit();
     EnemyBullet::UninitPool(); // 弾薬メモリプールの解放
@@ -184,6 +189,7 @@ void Manager::Update()
     Renderer::BeginNewFrame();
 
     Input::Update();
+    SoundManager::Update();
 
     // フェードシステムのタイマー更新
     FadeSystem::Update(1.0f / 60.0f);
@@ -540,15 +546,23 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     {
     case Scene::TITLE:
         m_ActiveScene = new TitleScene();
+        SoundManager::PlayBGM(SoundID::BGM_TITLE);
         break;
     case Scene::GAMEPLAY:
         m_ActiveScene = new GameplayScene();
+        if (Constants::Debug::START_FROM_BOSS) {
+            SoundManager::PlayBGM(SoundID::BGM_BOSS_STAGE);
+        } else {
+            SoundManager::PlayBGM(SoundID::BGM_NORMAL_STAGE);
+        }
         break;
     case Scene::CLEAR:
         m_ActiveScene = new ClearScene();
+        SoundManager::PlayBGM(SoundID::BGM_CLEAR, false); // クリアはループなし
         break;
     case Scene::GAMEOVER:
         m_ActiveScene = new GameOverScene();
+        SoundManager::StopBGM();
         break;
     }
 

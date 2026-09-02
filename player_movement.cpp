@@ -9,6 +9,7 @@
 #include "game_constants.h"
 #include "enemy.h"
 #include "boss_enemy.h"
+#include "sound_manager.h"
 
 using namespace DirectX;
 
@@ -84,6 +85,8 @@ void PlayerMovement::Update()
             m_DashTimer = Constants::Player::DASH_DURATION;
             m_DashCooldown = Constants::Player::DASH_COOLDOWN;
             m_IsDashing = true;
+
+            SoundManager::PlaySE(SoundID::SE_DODGE);
 
             m_Owner->SetScale(XMFLOAT3(1.8f, 0.5f, 1.8f));
 
