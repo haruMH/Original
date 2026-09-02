@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // =================================================================
 // ゲーム定数定義ヘッダー (game_constants.h)
@@ -216,7 +216,7 @@ namespace Constants
         const bool  START_FROM_BOSS         = false;    // リリース時は強制的に通常ステージから開始
         const bool  INVINCIBLE_PLAYER       = false;    // リリース時は無敵化を強制無効
 #else
-        const bool  START_FROM_BOSS         = true;    // trueにするとゲーム開始時にいきなりボス戦からスタートします
+        const bool  START_FROM_BOSS         = false;    // trueにするとゲーム開始時にいきなりボス戦からスタートします
         const bool  INVINCIBLE_PLAYER       = false;    // trueにするとプレイヤーが無敵になります（テスト用）
 #endif
     }
