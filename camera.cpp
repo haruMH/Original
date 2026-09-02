@@ -29,6 +29,9 @@ void Camera::Init()
     Renderer::SetProjectionMatrix(proj);
 }
 
+float Camera::m_Sensitivity = 0.002f;
+bool  Camera::m_InvertY = false;
+
 void Camera::Uninit() {}
 
 void Camera::Update()
@@ -38,7 +41,7 @@ void Camera::Update()
 
     // --- 回転速度の設定 ---
     float keyRotationSpeed = 0.03f; // キーボードでの回転速度
-    float sensitivity = 0.002f;     // マウス感度
+    float sensitivity = m_Sensitivity; // 設定されたマウス感度
 
     // カットシーン中はプレイヤーによるカメラ操作を無効化する
     if (!m_IsCutsceneMode)
@@ -54,8 +57,11 @@ void Camera::Update()
         if (Input::GetKeyPress(VK_RIGHT)) m_AngleY += keyRotationSpeed;
 
         // 3. 上下回転 (AngleX)
-        // マウス
-        m_AngleX += (float)Input::GetMouseMoveY() * sensitivity;
+        // マウス（上下反転設定を反映）
+        float mouseMoveY = (float)Input::GetMouseMoveY();
+        if (m_InvertY) mouseMoveY = -mouseMoveY;
+        m_AngleX += mouseMoveY * sensitivity;
+
         // 矢印キー（上 / 下）
         if (Input::GetKeyPress(VK_UP))   m_AngleX -= keyRotationSpeed; // 上を向く
         if (Input::GetKeyPress(VK_DOWN)) m_AngleX += keyRotationSpeed; // 下を向く

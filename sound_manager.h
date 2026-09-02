@@ -32,6 +32,7 @@ enum class SoundID
     SE_EXPLOSION,     // 爆発音
     SE_PLAYER_HIT,    // プレイヤー被弾
     SE_BOSS_ROAR,     // ボス咆哮・登場
+    SE_DECIDE,        // 決定ボタン音（Enter）
 
     COUNT
 };
@@ -83,13 +84,15 @@ public:
     static bool RegisterSound(SoundID id, const std::string& relativePath);
 
     // BGM 制御
-    static void PlayBGM(SoundID id, bool loop = true, float volume = 1.0f);
-    static void StopBGM();
-    static void SetBGMVolume(float volume);
+    static void  PlayBGM(SoundID id, bool loop = true, float volume = 1.0f);
+    static void  StopBGM();
+    static void  SetBGMVolume(float volume);
+    static float GetBGMVolume() { return m_BgmVolume; }
 
     // SE 制御 (ワンショット多重再生)
-    static void PlaySE(SoundID id, float volumeMultiplier = 1.0f);
-    static void SetSEVolume(float volume);
+    static void  PlaySE(SoundID id, float volumeMultiplier = 1.0f);
+    static void  SetSEVolume(float volume);
+    static float GetSEVolume() { return m_SeVolume; }
 
     // EventSystem との自動連携イベント登録
     static void BindEvents();

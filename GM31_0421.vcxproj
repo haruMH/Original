@@ -181,6 +181,7 @@
     <ClCompile Include="fade_system.cpp" />
     <ClCompile Include="spatial_grid.cpp" />
     <ClCompile Include="sound_manager.cpp" />
+    <ClCompile Include="option_ui.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -229,6 +230,7 @@
     <ClInclude Include="gameover_scene.h" />
     <ClInclude Include="fade_system.h" />
     <ClInclude Include="sound_manager.h" />
+    <ClInclude Include="option_ui.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />

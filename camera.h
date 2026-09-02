@@ -12,6 +12,10 @@ private:
     float m_AngleY;      // ヨー角（左右）
     float m_Distance;    // プレイヤーとの距離
 
+    // カメラ感度・操作設定
+    static float m_Sensitivity; // マウス感度（デフォルト 0.002f）
+    static bool  m_InvertY;     // 上下反転（デフォルト false）
+
     float m_ShakeIntensity = 0.0f; // 振動の強さ
     int   m_ShakeTimer = 0;        // 振動の残り時間
 
@@ -39,6 +43,12 @@ public:
         m_AngleY = angleY;
     }
     void  SetDistance(float distance) { m_Distance = distance; }
+
+    // カメラ感度・上下反転設定
+    static float GetSensitivity() { return m_Sensitivity; }
+    static void  SetSensitivity(float sens) { m_Sensitivity = sens; }
+    static bool  GetInvertY() { return m_InvertY; }
+    static void  SetInvertY(bool invert) { m_InvertY = invert; }
 
     // ゲッター（必要に応じて）
     XMFLOAT3 GetPosition() { return m_Position; }

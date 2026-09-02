@@ -1,6 +1,7 @@
 ﻿#include "title_scene.h"
 #include "input.h"
 #include "manager.h"
+#include "sound_manager.h"
 
 // =================================================================
 // コンストラクタ / デストラクタ
@@ -34,8 +35,9 @@ void TitleScene::Uninit()
 // =================================================================
 void TitleScene::Update()
 {
-    // スペースキーが押されたらゲーム本編へ
+    // Enterキーが押されたら決定音を再生してゲーム本編へ
     if (Input::GetKeyTrigger(VK_RETURN)) {
+        SoundManager::PlaySE(SoundID::SE_DECIDE);
         Manager::ChangeScene(Scene::GAMEPLAY);
     }
 }
