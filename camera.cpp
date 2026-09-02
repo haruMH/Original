@@ -40,22 +40,26 @@ void Camera::Update()
     float keyRotationSpeed = 0.03f; // キーボードでの回転速度
     float sensitivity = 0.002f;     // マウス感度
 
-    // 2. 左右回転 (AngleY)
-    // マウス
-    m_AngleY += (float)Input::GetMouseMoveX() * sensitivity;
-    // Q / E キー
-    if (Input::GetKeyPress('Q')) m_AngleY -= keyRotationSpeed;
-    if (Input::GetKeyPress('E')) m_AngleY += keyRotationSpeed;
-    // 矢印キー（左 / 右）
-    if (Input::GetKeyPress(VK_LEFT))  m_AngleY -= keyRotationSpeed;
-    if (Input::GetKeyPress(VK_RIGHT)) m_AngleY += keyRotationSpeed;
+    // カットシーン中はプレイヤーによるカメラ操作を無効化する
+    if (!m_IsCutsceneMode)
+    {
+        // 2. 左右回転 (AngleY)
+        // マウス
+        m_AngleY += (float)Input::GetMouseMoveX() * sensitivity;
+        // Q / E キー
+        if (Input::GetKeyPress('Q')) m_AngleY -= keyRotationSpeed;
+        if (Input::GetKeyPress('E')) m_AngleY += keyRotationSpeed;
+        // 矢印キー（左 / 右）
+        if (Input::GetKeyPress(VK_LEFT))  m_AngleY -= keyRotationSpeed;
+        if (Input::GetKeyPress(VK_RIGHT)) m_AngleY += keyRotationSpeed;
 
-    // 3. 上下回転 (AngleX)
-    // マウス
-    m_AngleX += (float)Input::GetMouseMoveY() * sensitivity;
-    // 矢印キー（上 / 下）
-    if (Input::GetKeyPress(VK_UP))   m_AngleX -= keyRotationSpeed; // 上を向く
-    if (Input::GetKeyPress(VK_DOWN)) m_AngleX += keyRotationSpeed; // 下を向く
+        // 3. 上下回転 (AngleX)
+        // マウス
+        m_AngleX += (float)Input::GetMouseMoveY() * sensitivity;
+        // 矢印キー（上 / 下）
+        if (Input::GetKeyPress(VK_UP))   m_AngleX -= keyRotationSpeed; // 上を向く
+        if (Input::GetKeyPress(VK_DOWN)) m_AngleX += keyRotationSpeed; // 下を向く
+    }
 
     if (!player)
     {

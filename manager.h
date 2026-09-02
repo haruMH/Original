@@ -3,6 +3,7 @@
 #include <type_traits>
 #include <memory>
 #include <unordered_map>
+#include <functional>
 #include "render_system.h"
 #include "gameobject.h"
 #include "scene_interface.h"
@@ -70,6 +71,9 @@ private:
     static bool m_IsCutsceneActive;
     static int  m_CutsceneTimer;
 
+    // シャドウマップ／アウトラインパス共通のオブジェクト描画ヘルパー
+    static void DrawShadowAndOutlineObjects();
+
 public:
     // 初期化と終了処理
     static void Init();
@@ -78,7 +82,10 @@ public:
     // 更新と描画（アクティブなシーンオブジェクトに処理を委譲します）
     static void Update();
     static void Draw();
-    static void DestroyObjectsIf(); // オブジェクト破棄処理の一元化
+    static void DestroyObjectsIf(); // オブジェクト破棄処理の一元化（IsDestroy == true）
+
+    // 条件指定によるオブジェクト破棄の一元化（ボスステージ遷移等で使用）
+    static void DestroyObjectsIf(std::function<bool(GameObject*)> pred);
 
     // テンプレート関数によるオブジェクトの生成・追加.
     template<typename ObjT>
