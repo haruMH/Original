@@ -207,6 +207,14 @@ public:
 
     // 画面フラッシュ / 瀕死赤パルス制御
     static void TriggerFlash(DirectX::XMFLOAT4 color, float fadeSpeed = 0.05f);
-    static void SetLowHPWarning(bool active) { m_IsLowHPWarning = active; }
+    static void SetLowHPWarning(bool active) {
+        m_IsLowHPWarning = active;
+        if (!active) {
+            m_LowHPPulseTime = 0.0f;
+            if (m_FlashColor.x >= 0.99f && m_FlashColor.y <= 0.01f && m_FlashColor.z <= 0.01f) {
+                m_FlashColor = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+            }
+        }
+    }
     static DirectX::XMFLOAT4 GetFlashColor() { return m_FlashColor; }
 };

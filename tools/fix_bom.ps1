@@ -17,7 +17,8 @@ $files = @(
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\option_ui.cpp",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\title_scene.cpp",
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\tutorial_scene.h",
-    "c:\Users\HARU17\Desktop\GM31\DX11_Original\tutorial_scene.cpp"
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\tutorial_scene.cpp",
+    "c:\Users\HARU17\Desktop\GM31\DX11_Original\boss_enemy.cpp"
 )
 foreach ($f in $files) {
     if (Test-Path $f) {

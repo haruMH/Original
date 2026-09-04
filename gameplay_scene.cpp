@@ -249,11 +249,12 @@ void GameplayScene::Init()
 // =================================================================
 void GameplayScene::Uninit()
 {
+    Manager::SetLowHPWarning(false); // 警告赤パルスを解除
     EventSystem::Clear(); // イベントリスナーのクリア
 }
 
 // =================================================================
-// t[XV
+// フレーム更新
 // =================================================================
 void GameplayScene::Update()
 {
@@ -273,7 +274,9 @@ void GameplayScene::Update()
             Manager::ChangeScene(Scene::GAMEOVER);
             return;
         }
-        bool isLowHP = (player->GetHP() == 1);
+        // ボス撃破後（クリアディレイ中含む）またはゲームクリア後は警告点滅を解除する
+        bool isClearOrDefeated = GameRule::IsGameClear() || (m_ClearDelayTimer > 0);
+        bool isLowHP = (player->GetHP() == 1) && !isClearOrDefeated;
         Manager::SetLowHPWarning(isLowHP);
     } else {
         Manager::SetLowHPWarning(false);
@@ -392,6 +395,10 @@ void GameplayScene::UpdateGameplay()
             }
 
             if (!bossExists) {
+                // ボス撃破直後に低HP警告赤パルスを即座に解除
+                if (m_ClearDelayTimer == 0) {
+                    Manager::SetLowHPWarning(false);
+                }
                 // ボス撃破後、ディレイ時間を経てリザルト画面に遷移する
                 m_ClearDelayTimer++;
                 if (m_ClearDelayTimer >= Constants::Boss::CLEAR_DELAY_FRAMES) {

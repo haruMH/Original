@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // =================================================================
 // ゲーム定数定義ヘッダー (game_constants.h)
@@ -92,8 +92,10 @@ namespace Constants
         const int   PHASE3_HP_THRESHOLD     = 18;       // 第3フェーズ移行のHP閾値
 
         // ボス攻撃・落雷関連
-        const float STRIKE_DAMAGE_RADIUS    = 4.0f;     // プレイヤー狙い落雷の当たり判定半径
+        const float STRIKE_DAMAGE_RADIUS    = 2.0f;     // プレイヤー狙い落雷の当たり判定半径
         const int   STRIKE_DAMAGE           = 1;        // プレイヤー狙い落雷のダメージ値
+        const int   STRIKE_WARNING_FRAMES   = 65;       // プレイヤー狙い落雷の警告猶予フレーム（着弾までの時間）
+        const int   STRIKE_INTERVAL_FRAMES  = 100;      // プレイヤー狙い落雷の発生間隔（フレーム数）
         const float STAGE_HALF_WIDTH        = 17.0f;    // ランダム落雷が発生するステージの半幅
         const int   RANDOM_STRIKE_MIN       = 3;        // ランダム落雷の最小発生箇所数
         const int   RANDOM_STRIKE_EXTRA     = 3;        // ランダム落雷の追加発生箇所数
@@ -216,7 +218,7 @@ namespace Constants
         const bool  START_FROM_BOSS         = false;    // リリース時は強制的に通常ステージから開始
         const bool  INVINCIBLE_PLAYER       = false;    // リリース時は無敵化を強制無効
 #else
-        const bool  START_FROM_BOSS         = false;    // trueにするとゲーム開始時にいきなりボス戦からスタートします
+        const bool  START_FROM_BOSS         = true;    // trueにするとゲーム開始時にいきなりボス戦からスタートします
         const bool  INVINCIBLE_PLAYER       = false;    // trueにするとプレイヤーが無敵になります（テスト用）
 #endif
     }

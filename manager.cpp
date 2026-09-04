@@ -555,6 +555,11 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     // 現在のシーン状態を更新
     m_CurrentScene = nextScene;
 
+    // シーン遷移時に低HP警告パルスや画面フラッシュ演出を完全リセット
+    m_IsLowHPWarning = false;
+    m_LowHPPulseTime = 0.0f;
+    m_FlashColor = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+
     // カメラはどのシーンでも必要なので、共通で生成する
     g_Camera = new Camera();
     g_Camera->Init();
