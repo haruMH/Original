@@ -1,4 +1,4 @@
-﻿#include "enemy.h"
+#include "enemy.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "enemy_affix.h"
@@ -313,13 +313,14 @@ bool Enemy::IsSandbag() const
     return m_Affix ? m_Affix->IsSandbag() : false;
 }
 
-void Enemy::SetSandbag(bool enable)
+void Enemy::SetSandbag(bool enable, int life)
 {
     if (enable) {
-        m_Affix = std::make_shared<SandbagAffix>();
+        m_Affix = std::make_shared<SandbagAffix>(life);
     } else if (IsSandbag()) {
         m_Affix = nullptr;
     }
 }
+
 
 

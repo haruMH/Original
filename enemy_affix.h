@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <DirectXMath.h>
 
 class Enemy;
@@ -62,9 +62,12 @@ public:
 class SandbagAffix : public IEnemyAffix
 {
 private:
-    int m_Life = 300;
+    int m_Life;
 
 public:
+    // チュートリアルなど長期間存在させる場合は life に INT_MAX 等を渡す
+    explicit SandbagAffix(int life = 300) : m_Life(life) {}
+
     DirectX::XMFLOAT3 GetEmissive() const override
     {
         // 緑グロー

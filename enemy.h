@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "gameobject.h"
 #include <memory>
 
@@ -45,7 +45,7 @@ public:
     void       SetLightning(bool lightning);
 
     bool       IsSandbag() const;
-    void       SetSandbag(bool enable);
+    void       SetSandbag(bool enable, int life = 300); // life: チュートリアル用は INT_MAX を渡す
 
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }

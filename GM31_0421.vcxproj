@@ -175,6 +175,7 @@
     <ClCompile Include="magnetic_bullet.cpp" />
     <ClCompile Include="boss_enemy.cpp" />
     <ClCompile Include="title_scene.cpp" />
+    <ClCompile Include="tutorial_scene.cpp" />
     <ClCompile Include="gameplay_scene.cpp" />
     <ClCompile Include="clear_scene.cpp" />
     <ClCompile Include="gameover_scene.cpp" />
@@ -225,6 +226,7 @@
     <ClInclude Include="boss_enemy.h" />
     <ClInclude Include="scene_interface.h" />
     <ClInclude Include="title_scene.h" />
+    <ClInclude Include="tutorial_scene.h" />
     <ClInclude Include="gameplay_scene.h" />
     <ClInclude Include="clear_scene.h" />
     <ClInclude Include="gameover_scene.h" />

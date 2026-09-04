@@ -58,14 +58,13 @@ public:
     void SetCutsceneMode(bool enable, XMFLOAT3 eye = XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3 target = XMFLOAT3(0.0f, 0.0f, 0.0f))
     {
         if (enable && !m_IsCutsceneMode) {
-            // カットシーン開始時のカメラアングルを保存
-            m_SavedAngleX = m_AngleX;
-            m_SavedAngleY = m_AngleY;
+            // カットシーン開始
         }
         else if (!enable && m_IsCutsceneMode) {
-            // カットシーン終了時、演出中のマウス操作による視点ズレを破棄して元の向きを復元
-            m_AngleX = m_SavedAngleX;
-            m_AngleY = m_SavedAngleY;
+            // カットシーン終了時: ボス正面（Z+方向）を捉える標準アングルにリセット
+            m_AngleX = 0.2f;
+            m_AngleY = 0.0f;
+            m_InterpolationFactor = 0.0f; // 演出用補間係数を即時リセット
         }
 
         m_IsCutsceneMode = enable;

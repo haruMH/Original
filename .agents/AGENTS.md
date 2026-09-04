@@ -17,6 +17,7 @@
 ## 2. 可読性 (Readability) — 弱点と修正ルール
 
 ### 2-1. `CollisionSystem::Update()` が単一関数で500行超、責務が混在している
+
 - 以下のプライベート静的関数に分割すること。各関数は60行以内を目安とする。
   - `HandlePlayerItemPickup(Player*, const std::vector<Item*>&)`
   - `HandleSpinSweep(Player*, CollisionGrid&)`
@@ -26,21 +27,27 @@
   - `TriggerChainLightning(...)` はそのまま維持。
 
 ### 2-2. 「爆発／電撃／通常」のダメージ分岐が3箇所（壁・ボス・敵）でほぼコピペされている
+
 - `ResolveFlyingEnemyImpact(Enemy* flying, GameObject* target, bool& explosionThisFrame)` のような単一関数に集約し、上記3箇所すべてから呼び出す形にする。
 
 ### 2-3. `game_constants.h` に一元化する方針があるのに、マジックナンバーが個別ファイルに再出現している
+
 - `game_constants.h` に `Constants::Collision::GRID_CELL_SIZE` などの名前空間を追加し、マジックナンバーを移動する。同じ意味の数値が2箇所に存在する状態をゼロにすること。
 
 ### 2-4. デバッグログ（`OutputDebugStringA`）がロジックに直接埋め込まれ、文字列結合コードとゲームロジックが視覚的に区別できない
+
 - `LOG_INFO(fmt, ...)` のようなマクロ/インライン関数でラップし、`NDEBUG` 時は空文字列に展開されるようにする。ログ呼び出しは必ず単独行に置き、ロジック用の変数とログ用の一時変数を混在させない。
 
 ### 2-5. `Player` のモジュール分割（`PlayerMovement`/`PlayerCombat`/`PlayerVisual`）が `friend class` + 直接メンバアクセスで実装されており、実質的にカプセル化されていない
+
 - `friend` 宣言を撤廃し、`Player` に意図の明確な public メソッドを用意し、各モジュールはそれらのメソッド経由でのみ状態を変更する。
 
 ### 2-6. 命名の不統一: `Player::ApplyDamage` と `BossEnemy::ApplyBossDamage`
+
 - 概念的に同じ「ダメージを受ける/与える」操作の名前を `OnHit` 等に統一する。
 
 ### 2-7. テクスチャパス解決の `#ifdef NDEBUG` 分岐が最低7ファイルにコピペされている
+
 - パス解決ロジックを `ResourceManager::GetTexture()` の内部一箇所に集約する。各`GameObject`派生クラスは常にベース名（例: `"player.png"`) のみを渡せばよい状態にする。
 
 ---
@@ -48,18 +55,23 @@
 ## 3. 処理速度 (Performance) — 弱点と修正ルール
 
 ### 3-1. `Manager::GetGameObject<BossEnemy>()` が毎フレーム・飛行エネミー毎にO(n)全探索している
+
 - `m_CachedBoss` をManagerに追加してO(1)化するか、`CollisionSystem::Update()` の冒頭で一度だけボスを取得し、ループへは引数として渡す。
 
 ### 3-2. `AttackingEnemy` の回避行動が独自にO(n)全走査を行い、`CollisionSystem` の空間分割グリッドと二重実装になっている
+
 - `CollisionGrid` を `SpatialGrid` として汎用ユーティリティに昇格させ、`CollisionSystem`・`AttackingEnemy`（回避行動）・`TriggerChainLightning`（連鎖索敵）が同じ空間分割データ構造を共有するようにする。
 
 ### 3-3. Shadow/Normal/Outlineの3描画パスで、視錐台カリング＋描画リスト構築が重複計算されている
+
 - Normalパスで計算した「カリング後の描画対象リスト」を保持しておき、Outlineパスではそれを再利用する。
 
 ### 3-4. `Manager::Draw()` 内で、同じ「オブジェクト種別による除外条件」がShadow/Outlineパスでコピペされている
+
 - 同一条件をラムダ/ヘルパー関数（例: `Manager::DrawIndividualObjects`）に切り出す。
 
 ### 3-5. `UnregisterCategory` が `std::vector::erase`（O(n)）でカテゴリリストから除去している
+
 - swap-and-pop方式に統一するか、`unordered_map` を補助的に持つ設計に変更し、O(1)化する。
 
 ---
@@ -67,24 +79,31 @@
 ## 4. 拡張性 (Extensibility) — 弱点と修正ルール
 
 ### 4-1. `Manager` が「神クラス」化しており、新しいオブジェクト種別の追加が複数箇所への手作業の変更を要求する
+
 - `std::unordered_map<ObjectType, std::vector<GameObject*>>` に置き換え、型を意識しない汎用実装にする。
 
 ### 4-2. `Enemy` の亜種フラグ（`m_IsExplosive`/`m_IsLightning`/`m_IsSandbag`）が基底クラスに直接ベタ書きされ、`CollisionSystem` 側の分岐も線形に増え続ける設計になっている
+
 - `IEnemyAffix`（属性）インターフェースを導入し、属性ごとの動作をポリモーフィズム化する。
 
 ### 4-3. `BossEnemy` のフェーズ管理が bool×3 + int + 巨大if/elseの手組みステートマシンになっている
+
 - フェーズをデータ化（`BossPhase` 構造体など）し、現在HPに応じて該当フェーズをリストから探して実行するデータ駆動型に変更する。
 
 ### 4-4. ダメージを受ける処理が型ごとにバラバラで、共通インターフェースが存在しない
+
 - `GameObject` に仮想関数 `virtual void OnHit(const HitInfo& info)` を追加し、各クラスでこれをオーバーライドする形に統一する。
 
 ### 4-5. `GameObject`派生クラスの追加時、`Manager`ヘッダの前方宣言・friend宣言・カテゴリ登録の3箇所を手動で編集する必要がある
+
 - カテゴリ管理のマップ化とカプセル化（friend廃止）によって、新しいオブジェクト追加時の変更を最小化（ObjectType列挙型の追加とソースコードの追加のみ）する。
 
 ### 4-6. オブジェクト破棄ロジックが4箇所にほぼ同じ内容で重複している
+
 - `Manager::DestroyObjectsIf` のような単一の破棄関数に統一する。さらに、手動管理を `std::unique_ptr` 管理に置き換える。
 
 ### 4-7. `PlayerMovement::Update()` と `GameplayScene::UpdateGameplay()` の両方が `Collision::ResolveGrabPhysics()` を異なる引数で呼び出し、責務が重複している
+
 - 掴んだ敵の位置同期を `GameplayScene::UpdateGameplay()` 側（オフセット 0.8f）に一本化し、`PlayerMovement::Update()` 側の重複呼び出しを削除する。
 
 ---
@@ -115,4 +134,21 @@
    - ユーザーから明示的に「コミット」「プルリク」「マージ」の指示があるまで、自動で `git commit` を実行しないこと。
    - Visual Studio のソリューションエクスプローラー等でどのファイルに変更が入ったか（チェックマーク）が常に確認できるように、未コミットの差分状態を維持すること。
 
+---
 
+## 8. ツール呼び出しのループ防止ルール（クォータ保護）
+
+### 8-1. 同一ツール連続呼び出しの上限（案1）
+
+- **同じツールを同じ引数（ファイルパス・行範囲・検索クエリ等）で3回以上連続して呼び出している場合は、ループが発生していると即座に判断し、ツール呼び出しを停止する。**
+- 停止後は必ずユーザーに「ループが発生している可能性がある」旨を報告し、現状と次に取るべき行動の選択肢を提示する。
+- いかなる理由があっても「念のため再確認」として同じツール呼び出しを繰り返すことを禁止する。
+
+### 8-2. 呼び出し前の自己チェック義務（案4）
+
+- **ツールを呼び出す前に、「直前2回のツール呼び出しと同じ内容ではないか」を必ず自己確認する。**
+- 同じ内容であると気づいた場合は、そのツールを呼び出さず、以下のいずれかに切り替える。
+  1. アプローチを変えて別のツール・別の引数で調査する
+  2. 現時点の情報で実装・修正を行う
+  3. ユーザーに状況を報告して追加情報を求める
+- 「同じファイルの同じ行を何度も見ている」「同じキーワードで何度も grep している」状態は、調査の行き詰まりのサインとして認識する。

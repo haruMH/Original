@@ -116,8 +116,16 @@ void GameplayScene::Init()
             g_Camera->Shake(0.5f, 15); // 戦闘開始時の咆哮の余韻シェイク
         }
 
-        // 生存している磁力弾をすべてプレイヤーに向かって一斉射出
+        // カットシーン終了時にプレイヤーをボス方向（北）へ向かせる
         Player* player = Manager::GetGameObject<Player>();
+        if (player) {
+            XMFLOAT3 rot = player->GetRotation();
+            rot.y = 0.0f; // Z+方向（ボスのいる北向き）にリセット
+            player->SetRotation(rot);
+        }
+
+        // 生存している磁力弾をすべてプレイヤーに向かって一斉射出
+        player = Manager::GetGameObject<Player>();
         if (player) {
             XMFLOAT3 playerPos = player->GetPosition();
             for (MagneticBullet* bullet : Manager::GetGameObjects<MagneticBullet>()) {

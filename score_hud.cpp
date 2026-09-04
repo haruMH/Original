@@ -1,4 +1,4 @@
-﻿#include "score_hud.h"
+#include "score_hud.h"
 #include "game_constants.h"
 #include "renderer.h"
 #include "game_rule.h"
@@ -512,7 +512,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreateTitleTexture(ID3D11Device* device)
     SelectObject(hdc, hFontDesc);
     SetTextColor(hdc, RGB(200, 200, 200));
     RECT rcDesc = { 0, 120, W, 250 };
-    DrawTextW(hdc, L"PRESS SPACE TO START\n\n[Controls]\nMove: WASD / Jump: Space\nGrab/Throw: Left Click / Spin: Right Click", -1, &rcDesc, DT_CENTER);
+    DrawTextW(hdc, L"PRESS ENTER TO START\n\n[Controls]\nMove: WASD / Dash: Shift\nGrab/Throw: Left Click / Spin: Right Click", -1, &rcDesc, DT_CENTER);
 
     GdiFlush();
 

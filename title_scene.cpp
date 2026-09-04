@@ -35,10 +35,10 @@ void TitleScene::Uninit()
 // =================================================================
 void TitleScene::Update()
 {
-    // Enterキーが押されたら決定音を再生してゲーム本編へ
+    // Enterキーが押されたら決定音を再生してチュートリアルへ
     if (Input::GetKeyTrigger(VK_RETURN)) {
         SoundManager::PlaySE(SoundID::SE_DECIDE);
-        Manager::ChangeScene(Scene::GAMEPLAY);
+        Manager::ChangeScene(Scene::TUTORIAL);
     }
 }
 

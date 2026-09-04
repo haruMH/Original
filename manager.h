@@ -16,6 +16,7 @@ class Wall;
 class Item;
 class EnemyBullet;
 class TitleScene;
+class TutorialScene;
 class GameplayScene;
 class ClearScene;
 class GameOverScene;
@@ -24,6 +25,7 @@ class BossEnemy;
 // シーン状態を定義する列挙型（既存のコードとの互換性のために残します）
 enum class Scene {
     TITLE,
+    TUTORIAL,
     GAMEPLAY,
     CLEAR,
     GAMEOVER

@@ -1,5 +1,6 @@
 ﻿#include "manager.h"
 #include <string>
+#include <unordered_set>
 #include "camera.h"
 #include "input.h"
 #include "main.h"
@@ -31,6 +32,7 @@ using namespace DirectX;
 
 // 各シーンクラスのインクルード
 #include "title_scene.h"
+#include "tutorial_scene.h"
 #include "gameplay_scene.h"
 #include "clear_scene.h"
 #include "gameover_scene.h"
@@ -431,6 +433,7 @@ void Manager::TransitionToBossStage()
     // プレイヤーとフィールド以外のオブジェクトをすべて破棄（破棄処理の一元化）
     LOG_INFO("[Manager] オブジェクト破棄を開始します...\n");
     DestroyObjectsIf([](GameObject* obj) {
+        if (!obj) return false;
         ObjectType t = obj->GetObjectType();
         return t != ObjectType::Player && t != ObjectType::Field;
     });
@@ -563,6 +566,10 @@ void Manager::ExecuteChangeScene(Scene nextScene)
         m_ActiveScene = new TitleScene();
         SoundManager::PlayBGM(SoundID::BGM_TITLE);
         break;
+    case Scene::TUTORIAL:
+        m_ActiveScene = new TutorialScene();
+        SoundManager::PlayBGM(SoundID::BGM_NORMAL_STAGE);
+        break;
     case Scene::GAMEPLAY:
         m_ActiveScene = new GameplayScene();
         if (Constants::Debug::START_FROM_BOSS) {
@@ -652,48 +659,68 @@ void Manager::DestroyObjectsIf()
 }
 
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 // 条件指定によるオブジェクト破棄の一元化
 // ─────────────────────────────────────────────
 void Manager::DestroyObjectsIf(std::function<bool(GameObject*)> pred)
 {
     Player* player = GetGameObject<Player>();
 
-    // 1. 管理オブジェクトリストから条件に合致するオブジェクトを安全に破棄
-    m_ManagedObjects.erase(
-        std::remove_if(m_ManagedObjects.begin(), m_ManagedObjects.end(),
-            [player, &pred](const std::unique_ptr<GameObject>& obj) {
-                if (obj && pred(obj.get())) {
-                    if (player) {
-                        player->NotifyObjectDestroyed(obj.get());
-                    }
-                    if (obj.get() == m_CachedPlayer) {
-                        m_CachedPlayer = nullptr;
-                    }
-                    if (obj.get() == m_CachedBoss) {
-                        m_CachedBoss = nullptr;
-                    }
-                    UnregisterCategory(obj.get());
-                    obj->Uninit();
-                    return true;
-                }
-                return false;
-            }),
-        m_ManagedObjects.end());
+    // 1. 破棄対象ポインタの収集（predの評価を一度だけ安全に行う）
+    std::vector<GameObject*> targets;
+    targets.reserve(m_ManagedObjects.size());
 
-    // 2. 描画・更新用生ポインタリストからも破棄
+    for (const auto& uptr : m_ManagedObjects) {
+        if (uptr && pred(uptr.get())) {
+            targets.push_back(uptr.get());
+        }
+    }
+
+    if (targets.empty()) {
+        return;
+    }
+
+    // 高速検索用に対象セットを構築
+    std::unordered_set<GameObject*> targetSet(targets.begin(), targets.end());
+
+    // 2. 外部参照通知と終了処理（Uninit）
+    for (GameObject* obj : targets) {
+        if (!obj) continue;
+        if (player) {
+            player->NotifyObjectDestroyed(obj);
+        }
+        if (obj == m_CachedPlayer) {
+            m_CachedPlayer = nullptr;
+        }
+        if (obj == m_CachedBoss) {
+            m_CachedBoss = nullptr;
+        }
+        UnregisterCategory(obj);
+        obj->Uninit();
+    }
+
+    // 3. 生ポインタキャッシュ（m_GameObjects, m_UpdateObjects）から除外
     m_GameObjects.erase(
         std::remove_if(m_GameObjects.begin(), m_GameObjects.end(),
-            [&pred](GameObject* obj) {
-                return obj == nullptr || pred(obj);
+            [&targetSet](GameObject* obj) {
+                return obj == nullptr || targetSet.count(obj) > 0;
             }),
         m_GameObjects.end());
 
     m_UpdateObjects.erase(
         std::remove_if(m_UpdateObjects.begin(), m_UpdateObjects.end(),
-            [&pred](GameObject* obj) {
-                return obj == nullptr || pred(obj);
+            [&targetSet](GameObject* obj) {
+                return obj == nullptr || targetSet.count(obj) > 0;
             }),
         m_UpdateObjects.end());
+
+    // 4. 所有権リスト（unique_ptr）から安全に解放・破棄
+    m_ManagedObjects.erase(
+        std::remove_if(m_ManagedObjects.begin(), m_ManagedObjects.end(),
+            [&targetSet](const std::unique_ptr<GameObject>& uptr) {
+                return !uptr || targetSet.count(uptr.get()) > 0;
+            }),
+        m_ManagedObjects.end());
 
     m_RenderSystem.ClearCache();
 }
