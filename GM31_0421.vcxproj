@@ -77,6 +77,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Source;$(ProjectDir)Source\Core;$(ProjectDir)Source\Scene;$(ProjectDir)Source\Player;$(ProjectDir)Source\Enemy;$(ProjectDir)Source\Stage;$(ProjectDir)Source\Graphics;$(ProjectDir)Source\UI;$(ProjectDir)Source\Effect;$(ProjectDir)Source\Audio;$(ProjectDir)imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -92,6 +93,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Source;$(ProjectDir)Source\Core;$(ProjectDir)Source\Scene;$(ProjectDir)Source\Player;$(ProjectDir)Source\Enemy;$(ProjectDir)Source\Stage;$(ProjectDir)Source\Graphics;$(ProjectDir)Source\UI;$(ProjectDir)Source\Effect;$(ProjectDir)Source\Audio;$(ProjectDir)imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -105,6 +107,7 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Source;$(ProjectDir)Source\Core;$(ProjectDir)Source\Scene;$(ProjectDir)Source\Player;$(ProjectDir)Source\Enemy;$(ProjectDir)Source\Stage;$(ProjectDir)Source\Graphics;$(ProjectDir)Source\UI;$(ProjectDir)Source\Effect;$(ProjectDir)Source\Audio;$(ProjectDir)imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -120,6 +123,7 @@
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Source;$(ProjectDir)Source\Core;$(ProjectDir)Source\Scene;$(ProjectDir)Source\Player;$(ProjectDir)Source\Enemy;$(ProjectDir)Source\Stage;$(ProjectDir)Source\Graphics;$(ProjectDir)Source\UI;$(ProjectDir)Source\Effect;$(ProjectDir)Source\Audio;$(ProjectDir)imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -145,44 +149,54 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="camera.cpp" />
-    <ClCompile Include="field.cpp" />
-    <ClCompile Include="input.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="manager.cpp" />
-    <ClCompile Include="enemy.cpp" />
-    <ClCompile Include="enemy_affix.cpp" />
-    <ClCompile Include="renderer.cpp" />
-    <ClCompile Include="player.cpp" />
-    <ClCompile Include="player_movement.cpp" />
-    <ClCompile Include="player_combat.cpp" />
-    <ClCompile Include="player_visual.cpp" />
-    <ClCompile Include="game_rule.cpp" />
-    <ClCompile Include="event_system.cpp" />
-    <ClCompile Include="collision_system.cpp" />
-    <ClCompile Include="explosion_system.cpp" />
-    <ClCompile Include="wall.cpp" />
-    <ClCompile Include="collision.cpp" />
-    <ClCompile Include="player_controller.cpp" />
-    <ClCompile Include="resource_manager.cpp" />
-    <ClCompile Include="render_system.cpp" />
-    <ClCompile Include="item.cpp" />
-    <ClCompile Include="score_popup.cpp" />
-    <ClCompile Include="score_hud.cpp" />
-    <ClCompile Include="shockwave.cpp" />
-    <ClCompile Include="attacking_enemy.cpp" />
-    <ClCompile Include="enemy_bullet.cpp" />
-    <ClCompile Include="magnetic_bullet.cpp" />
-    <ClCompile Include="boss_enemy.cpp" />
-    <ClCompile Include="title_scene.cpp" />
-    <ClCompile Include="tutorial_scene.cpp" />
-    <ClCompile Include="gameplay_scene.cpp" />
-    <ClCompile Include="clear_scene.cpp" />
-    <ClCompile Include="gameover_scene.cpp" />
-    <ClCompile Include="fade_system.cpp" />
-    <ClCompile Include="spatial_grid.cpp" />
-    <ClCompile Include="sound_manager.cpp" />
-    <ClCompile Include="option_ui.cpp" />
+    <!-- Core -->
+    <ClCompile Include="Source\Core\main.cpp" />
+    <ClCompile Include="Source\Core\manager.cpp" />
+    <ClCompile Include="Source\Core\game_rule.cpp" />
+    <ClCompile Include="Source\Core\event_system.cpp" />
+    <ClCompile Include="Source\Core\camera.cpp" />
+    <ClCompile Include="Source\Core\input.cpp" />
+    <!-- Scene -->
+    <ClCompile Include="Source\Scene\title_scene.cpp" />
+    <ClCompile Include="Source\Scene\tutorial_scene.cpp" />
+    <ClCompile Include="Source\Scene\gameplay_scene.cpp" />
+    <ClCompile Include="Source\Scene\clear_scene.cpp" />
+    <ClCompile Include="Source\Scene\gameover_scene.cpp" />
+    <!-- Player -->
+    <ClCompile Include="Source\Player\player.cpp" />
+    <ClCompile Include="Source\Player\player_controller.cpp" />
+    <ClCompile Include="Source\Player\player_movement.cpp" />
+    <ClCompile Include="Source\Player\player_combat.cpp" />
+    <ClCompile Include="Source\Player\player_visual.cpp" />
+    <!-- Enemy -->
+    <ClCompile Include="Source\Enemy\enemy.cpp" />
+    <ClCompile Include="Source\Enemy\enemy_affix.cpp" />
+    <ClCompile Include="Source\Enemy\attacking_enemy.cpp" />
+    <ClCompile Include="Source\Enemy\boss_enemy.cpp" />
+    <ClCompile Include="Source\Enemy\enemy_bullet.cpp" />
+    <ClCompile Include="Source\Enemy\magnetic_bullet.cpp" />
+    <!-- Stage -->
+    <ClCompile Include="Source\Stage\field.cpp" />
+    <ClCompile Include="Source\Stage\wall.cpp" />
+    <ClCompile Include="Source\Stage\item.cpp" />
+    <ClCompile Include="Source\Stage\collision.cpp" />
+    <ClCompile Include="Source\Stage\collision_system.cpp" />
+    <ClCompile Include="Source\Stage\spatial_grid.cpp" />
+    <!-- Graphics -->
+    <ClCompile Include="Source\Graphics\renderer.cpp" />
+    <ClCompile Include="Source\Graphics\render_system.cpp" />
+    <ClCompile Include="Source\Graphics\resource_manager.cpp" />
+    <!-- UI -->
+    <ClCompile Include="Source\UI\score_hud.cpp" />
+    <ClCompile Include="Source\UI\score_popup.cpp" />
+    <ClCompile Include="Source\UI\option_ui.cpp" />
+    <!-- Effect -->
+    <ClCompile Include="Source\Effect\shockwave.cpp" />
+    <ClCompile Include="Source\Effect\explosion_system.cpp" />
+    <ClCompile Include="Source\Effect\fade_system.cpp" />
+    <!-- Audio -->
+    <ClCompile Include="Source\Audio\sound_manager.cpp" />
+    <!-- ImGui -->
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -192,47 +206,60 @@
     <ClCompile Include="imgui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="spatial_grid.h" />
-    <ClInclude Include="camera.h" />
-    <ClInclude Include="field.h" />
-    <ClInclude Include="gameobject.h" />
-    <ClInclude Include="input.h" />
-    <ClInclude Include="main.h" />
-    <ClInclude Include="manager.h" />
-    <ClInclude Include="enemy.h" />
-    <ClInclude Include="renderer.h" />
-    <ClInclude Include="player.h" />
-    <ClInclude Include="game_constants.h" />
-    <ClInclude Include="player_movement.h" />
-    <ClInclude Include="player_combat.h" />
-    <ClInclude Include="player_visual.h" />
-    <ClInclude Include="game_rule.h" />
-    <ClInclude Include="collision_system.h" />
-    <ClInclude Include="explosion_system.h" />
-    <ClInclude Include="wall.h" />
-    <ClInclude Include="collision.h" />
-    <ClInclude Include="player_controller.h" />
-    <ClInclude Include="resource_manager.h" />
-    <ClInclude Include="math_helper.h" />
-    <ClInclude Include="render_component.h" />
-    <ClInclude Include="render_system.h" />
-    <ClInclude Include="item.h" />
-    <ClInclude Include="score_popup.h" />
-    <ClInclude Include="score_hud.h" />
-    <ClInclude Include="shockwave.h" />
-    <ClInclude Include="attacking_enemy.h" />
-    <ClInclude Include="enemy_bullet.h" />
-    <ClInclude Include="magnetic_bullet.h" />
-    <ClInclude Include="boss_enemy.h" />
-    <ClInclude Include="scene_interface.h" />
-    <ClInclude Include="title_scene.h" />
-    <ClInclude Include="tutorial_scene.h" />
-    <ClInclude Include="gameplay_scene.h" />
-    <ClInclude Include="clear_scene.h" />
-    <ClInclude Include="gameover_scene.h" />
-    <ClInclude Include="fade_system.h" />
-    <ClInclude Include="sound_manager.h" />
-    <ClInclude Include="option_ui.h" />
+    <!-- Core -->
+    <ClInclude Include="Source\Core\main.h" />
+    <ClInclude Include="Source\Core\manager.h" />
+    <ClInclude Include="Source\Core\gameobject.h" />
+    <ClInclude Include="Source\Core\game_constants.h" />
+    <ClInclude Include="Source\Core\game_rule.h" />
+    <ClInclude Include="Source\Core\event_system.h" />
+    <ClInclude Include="Source\Core\event_types.h" />
+    <ClInclude Include="Source\Core\camera.h" />
+    <ClInclude Include="Source\Core\input.h" />
+    <ClInclude Include="Source\Core\math_helper.h" />
+    <!-- Scene -->
+    <ClInclude Include="Source\Scene\scene_interface.h" />
+    <ClInclude Include="Source\Scene\title_scene.h" />
+    <ClInclude Include="Source\Scene\tutorial_scene.h" />
+    <ClInclude Include="Source\Scene\gameplay_scene.h" />
+    <ClInclude Include="Source\Scene\clear_scene.h" />
+    <ClInclude Include="Source\Scene\gameover_scene.h" />
+    <!-- Player -->
+    <ClInclude Include="Source\Player\player.h" />
+    <ClInclude Include="Source\Player\player_controller.h" />
+    <ClInclude Include="Source\Player\player_movement.h" />
+    <ClInclude Include="Source\Player\player_combat.h" />
+    <ClInclude Include="Source\Player\player_visual.h" />
+    <!-- Enemy -->
+    <ClInclude Include="Source\Enemy\enemy.h" />
+    <ClInclude Include="Source\Enemy\enemy_affix.h" />
+    <ClInclude Include="Source\Enemy\attacking_enemy.h" />
+    <ClInclude Include="Source\Enemy\boss_enemy.h" />
+    <ClInclude Include="Source\Enemy\enemy_bullet.h" />
+    <ClInclude Include="Source\Enemy\magnetic_bullet.h" />
+    <!-- Stage -->
+    <ClInclude Include="Source\Stage\field.h" />
+    <ClInclude Include="Source\Stage\wall.h" />
+    <ClInclude Include="Source\Stage\item.h" />
+    <ClInclude Include="Source\Stage\collision.h" />
+    <ClInclude Include="Source\Stage\collision_system.h" />
+    <ClInclude Include="Source\Stage\spatial_grid.h" />
+    <!-- Graphics -->
+    <ClInclude Include="Source\Graphics\renderer.h" />
+    <ClInclude Include="Source\Graphics\render_system.h" />
+    <ClInclude Include="Source\Graphics\render_component.h" />
+    <ClInclude Include="Source\Graphics\resource_manager.h" />
+    <!-- UI -->
+    <ClInclude Include="Source\UI\score_hud.h" />
+    <ClInclude Include="Source\UI\score_popup.h" />
+    <ClInclude Include="Source\UI\option_ui.h" />
+    <!-- Effect -->
+    <ClInclude Include="Source\Effect\shockwave.h" />
+    <ClInclude Include="Source\Effect\explosion_system.h" />
+    <ClInclude Include="Source\Effect\fade_system.h" />
+    <!-- Audio -->
+    <ClInclude Include="Source\Audio\sound_manager.h" />
+    <!-- ImGui -->
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />
