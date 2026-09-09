@@ -509,6 +509,11 @@ void Manager::TriggerBossSpawnCutscene()
 // ─────────────────────────────────────────────
 void Manager::ChangeScene(Scene nextScene, float fadeOutDuration, float fadeInDuration, XMFLOAT4 color)
 {
+    // 既に遷移中（フェードアウト中や切り替え・明転待ち中）なら多重リクエストを防止（フェードリセットによるスタック防止）
+    if (m_SceneTransitionRequested || m_PendingFadeIn) {
+        return;
+    }
+
     m_NextScene = nextScene;
     m_SceneTransitionRequested = true;
     m_FadeInDuration = fadeInDuration;
