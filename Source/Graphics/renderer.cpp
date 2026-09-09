@@ -1,8 +1,9 @@
-﻿#include "renderer.h"
+#include "renderer.h"
 #include "manager.h"
 #include "main.h"
 #include "wall.h"
 #include "fade_system.h"
+#include "render_constants.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx11.h"
@@ -140,21 +141,21 @@ void Renderer::Init() {
     m_Device->CreateShaderResourceView(tempTex, NULL, &m_SceneSRV);
     tempTex->Release(); // RTV, SRVに紐づいたので解放してOK
 
-    // 1/4サイズの縮小バッファ設定
-    rtDesc.Width = SCREEN_WIDTH / 4;
-    rtDesc.Height = SCREEN_HEIGHT / 4;
+    // 縮小バッファ設定 (1/4サイズ)
+    rtDesc.Width = SCREEN_WIDTH / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
+    rtDesc.Height = SCREEN_HEIGHT / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
     m_PostViewport.Width = (float)rtDesc.Width;
     m_PostViewport.Height = (float)rtDesc.Height;
     m_PostViewport.MinDepth = 0.0f;
     m_PostViewport.MaxDepth = 1.0f;
 
-    // 2. 高輝度抽出用バッファ (1/4)
+    // 2. 高輝度抽出用バッファ
     m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
     m_Device->CreateRenderTargetView(tempTex, NULL, &m_LumRTV);
     m_Device->CreateShaderResourceView(tempTex, NULL, &m_LumSRV);
     tempTex->Release();
 
-    // 3. ガウシアンぼかし用バッファ (1/4)
+    // 3. ガウシアンぼかし用バッファ
     m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
     m_Device->CreateRenderTargetView(tempTex, NULL, &m_BlurRTV);
     m_Device->CreateShaderResourceView(tempTex, NULL, &m_BlurSRV);
@@ -162,8 +163,8 @@ void Renderer::Init() {
 
     // === シャドウマップ ===
     D3D11_TEXTURE2D_DESC sdDesc = {};
-    sdDesc.Width = 2048;
-    sdDesc.Height = 2048;
+    sdDesc.Width = RenderConstants::Shadow::MAP_WIDTH;
+    sdDesc.Height = RenderConstants::Shadow::MAP_HEIGHT;
     sdDesc.MipLevels = 1;
     sdDesc.ArraySize = 1;
     // 高精度かつ安全なR32系フォーマットに変更
@@ -189,8 +190,8 @@ void Renderer::Init() {
 
     // ※シャドウマップテクスチャはUninitで解放するため、ここではReleaseしません！
 
-    m_ShadowViewport.Width = 2048.0f;
-    m_ShadowViewport.Height = 2048.0f;
+    m_ShadowViewport.Width = (float)RenderConstants::Shadow::MAP_WIDTH;
+    m_ShadowViewport.Height = (float)RenderConstants::Shadow::MAP_HEIGHT;
     m_ShadowViewport.MinDepth = 0.0f;
     m_ShadowViewport.MaxDepth = 1.0f;
 
@@ -280,8 +281,8 @@ void Renderer::Init() {
     m_Device->CreateRasterizerState(&rd, &m_RasterizerStateCullBack);
 
     rd.CullMode = D3D11_CULL_FRONT; // アウトライン用（裏面を描画）
-    rd.DepthBias = 5000;            // 固定深度バイアスを設定して奥に押しやる
-    rd.SlopeScaledDepthBias = 2.0f; // 傾斜（スロープ）に応じた深度バイアスを設定
+    rd.DepthBias = RenderConstants::Outline::DEPTH_BIAS; // 床面との深度遮蔽・隙間を防ぐため定数化
+    rd.SlopeScaledDepthBias = RenderConstants::Outline::SLOPE_SCALED_DEPTH_BIAS;
     m_Device->CreateRasterizerState(&rd, &m_RasterizerStateCullFront);
     m_DeviceContext->RSSetState(m_RasterizerStateCullBack);
 

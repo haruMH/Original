@@ -2,6 +2,7 @@
 #include <directxmath.h>
 #include <d3d11.h>
 #include "enemy.h"
+#include "game_constants.h"
 #include <vector>
 
 enum class BossState {
@@ -69,8 +70,8 @@ private:
     std::vector<RandomLightning> m_RandomLightnings; // 描画用ランダム落雷リスト
 
     // 特殊攻撃前の定位置復帰ジャンプ制御用変数
-    DirectX::XMFLOAT3 m_JumpStartPos  = DirectX::XMFLOAT3(0.0f, 1.5f, 0.0f);
-    DirectX::XMFLOAT3 m_JumpTargetPos = DirectX::XMFLOAT3(0.0f, 1.5f, 0.0f);
+    DirectX::XMFLOAT3 m_JumpStartPos  = DirectX::XMFLOAT3(0.0f, Constants::Boss::GROUND_Y, 0.0f);
+    DirectX::XMFLOAT3 m_JumpTargetPos = DirectX::XMFLOAT3(0.0f, Constants::Boss::GROUND_Y, 0.0f);
     int               m_JumpTimer     = 0;
     int               m_JumpDuration  = 45;
 
@@ -81,8 +82,8 @@ private:
     bool              m_HasDamagedPlayerInCharge = false;
 
     // 大ジャンプ・グラウンドスラム制御用変数
-    DirectX::XMFLOAT3 m_SlamStartPos            = DirectX::XMFLOAT3(0.0f, 1.5f, 0.0f);
-    DirectX::XMFLOAT3 m_SlamTargetPos           = DirectX::XMFLOAT3(0.0f, 1.5f, 0.0f);
+    DirectX::XMFLOAT3 m_SlamStartPos            = DirectX::XMFLOAT3(0.0f, Constants::Boss::GROUND_Y, 0.0f);
+    DirectX::XMFLOAT3 m_SlamTargetPos           = DirectX::XMFLOAT3(0.0f, Constants::Boss::GROUND_Y, 0.0f);
     int               m_SlamTimer               = 0;
 
     void UpdateBossAI();

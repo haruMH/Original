@@ -1,4 +1,4 @@
-﻿#include "boss_enemy.h"
+#include "boss_enemy.h"
 #include "camera.h"
 #include "enemy_bullet.h"
 #include "event_system.h"
@@ -95,7 +95,7 @@ void BossEnemy::Update() {
 
         // 定位置（ステージ北側中央 Z=BOSS_SPAWN_OFFSET_Z）への復帰大ジャンプを開始
         m_JumpStartPos = m_Position;
-        m_JumpTargetPos = XMFLOAT3(0.0f, 1.5f, Constants::Stage::BOSS_SPAWN_OFFSET_Z);
+        m_JumpTargetPos = XMFLOAT3(0.0f, Constants::Boss::GROUND_Y, Constants::Stage::BOSS_SPAWN_OFFSET_Z);
         m_JumpTimer = 0;
         m_JumpDuration = 45; // 約0.75秒の豪快な放物線跳躍
 
@@ -155,7 +155,7 @@ void BossEnemy::UpdateReturnJump() {
 
   // Y軸の放物線跳躍（頂点高度 +14.0f）
   float arcY = sinf(t * DirectX::XM_PI) * 14.0f;
-  m_Position.y = 1.5f + arcY;
+  m_Position.y = Constants::Boss::GROUND_Y + arcY;
 
   // 跳躍中のスカッシュ＆ストレッチ演出
   float stretch = sinf(t * DirectX::XM_PI);
@@ -453,7 +453,7 @@ void BossEnemy::StartSlamAttack() {
   Player *player = Manager::GetGameObject<Player>();
   if (player) {
     m_SlamTargetPos = player->GetPosition();
-    m_SlamTargetPos.y = 1.5f;
+    m_SlamTargetPos.y = Constants::Boss::GROUND_Y;
 
     // 壁の外に出ないように安全マージンでクランプ
     float limit = Constants::Stage::BOSS_ROOM_SIZE - 4.0f;
@@ -509,7 +509,7 @@ void BossEnemy::UpdateSlamAir() {
   // フェーズA: 急上昇（指定フレームで滞空高度へ打ち上げ）
   if (m_SlamTimer <= Constants::Boss::SLAM_RISE_FRAMES) {
     float t = (float)m_SlamTimer / (float)Constants::Boss::SLAM_RISE_FRAMES;
-    m_Position.y = 1.5f + sinf(t * DirectX::XM_PIDIV2) * (Constants::Boss::SLAM_JUMP_HEIGHT - 1.5f);
+    m_Position.y = Constants::Boss::GROUND_Y + sinf(t * DirectX::XM_PIDIV2) * (Constants::Boss::SLAM_JUMP_HEIGHT - Constants::Boss::GROUND_Y);
     m_Scale.y = 6.5f; // 縦長に伸びる
     m_Scale.x = m_Scale.z = 4.0f;
     return;
@@ -530,7 +530,7 @@ void BossEnemy::UpdateSlamAir() {
       // 徐々にプレイヤー位置へターゲットを移動
       m_SlamTargetPos.x += (pPos.x - m_SlamTargetPos.x) * 0.15f;
       m_SlamTargetPos.z += (pPos.z - m_SlamTargetPos.z) * 0.15f;
-      m_SlamTargetPos.y = 1.5f;
+      m_SlamTargetPos.y = Constants::Boss::GROUND_Y;
     }
 
     // ボス本体のXZ座標も目標地点へ空中移動
@@ -556,8 +556,8 @@ void BossEnemy::UpdateSlamAir() {
   m_Scale.x = m_Scale.z = 3.8f;
 
   // 地面着地判定（グラウンドスラム発動！）
-  if (m_Position.y <= 1.5f) {
-    m_Position.y = 1.5f;
+  if (m_Position.y <= Constants::Boss::GROUND_Y) {
+    m_Position.y = Constants::Boss::GROUND_Y;
 
     // 1. 巨大地響きリング衝撃波（ジャンプで回避可能な全方位波）
     XMFLOAT3 slamCenter = m_Position;

@@ -303,6 +303,9 @@
     <ClInclude Include="Source\Graphics\resource_manager.h">
       <Filter>Source\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Graphics\render_constants.h">
+      <Filter>Source\Graphics</Filter>
+    </ClInclude>
     <!-- UI -->
     <ClInclude Include="Source\UI\score_hud.h">
       <Filter>Source\UI</Filter>

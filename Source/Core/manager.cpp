@@ -1,10 +1,11 @@
-﻿#include "manager.h"
+#include "manager.h"
 #include <string>
 #include <unordered_set>
 #include "camera.h"
 #include "input.h"
 #include "main.h"
 #include "game_constants.h"
+#include "render_constants.h"
 #include "player.h"
 #include "renderer.h"
 #include "resource_manager.h"
@@ -120,12 +121,12 @@ void Manager::Init()
     LIGHT light;
     ZeroMemory(&light, sizeof(light));
     light.Enable = TRUE;
-    light.Direction = XMFLOAT4(0.5f, -1.0f, 0.5f, 0.0f);
-    light.Diffuse = XMFLOAT4(1.0f, 0.95f, 0.9f, 1.0f);
-    light.Ambient = XMFLOAT4(0.4f, 0.5f, 0.7f, 1.0f);
-    light.FogColor = XMFLOAT4(0.6f, 0.8f, 1.0f, 1.0f);
-    light.FogStart = 30.0f;
-    light.FogEnd = 60.0f;
+    light.Direction = RenderConstants::DefaultLight::LIGHT_DIRECTION;
+    light.Diffuse = RenderConstants::DefaultLight::LIGHT_DIFFUSE;
+    light.Ambient = RenderConstants::DefaultLight::LIGHT_AMBIENT;
+    light.FogColor = RenderConstants::DefaultLight::LIGHT_FOG_COLOR;
+    light.FogStart = RenderConstants::DefaultLight::FOG_START;
+    light.FogEnd = RenderConstants::DefaultLight::FOG_END;
     Renderer::SetLight(light);
 
     // 最初はタイトルシーンへ (即時実行)
@@ -329,7 +330,10 @@ void Manager::Draw()
     XMMATRIX lightView = XMMatrixLookAtLH(lightPos,
         XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f),
         XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
-    XMMATRIX lightProj = XMMatrixOrthographicLH(65.0f, 65.0f, 1.0f, 90.0f);
+    XMMATRIX lightProj = XMMatrixOrthographicLH(
+        RenderConstants::Shadow::PROJECTION_SIZE,
+        RenderConstants::Shadow::PROJECTION_SIZE,
+        1.0f, 90.0f);
     Renderer::SetShadowVPMatrix(lightView * lightProj);
     Renderer::SetViewMatrix(lightView);
     Renderer::SetProjectionMatrix(cameraProj); // カメラのプロジェクション行列を再設定

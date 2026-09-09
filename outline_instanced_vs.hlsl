@@ -35,6 +35,18 @@ VS_OUTPUT main(VS_INPUT input)
     // 頂点位置ベクトルを正規化してスムーズ法線を求める
     float3 smoothNormal = normalize(input.Position.xyz);
 
+    // 地面への潜り込みによる下辺アウトラインの遮蔽・欠けを防止するため、
+    // 底面頂点（Y < 0）は下方向(-Y)へは押し出さず、水平方向(XZ)にのみ外側へ押し出す
+    if (input.Position.y < -0.1f)
+    {
+        smoothNormal.y = 0.0f;
+        float xzLen = length(smoothNormal.xz);
+        if (xzLen > 0.0001f)
+        {
+            smoothNormal.xz /= xzLen;
+        }
+    }
+
     // ローカル空間でスムーズ法線方向に押し出す
     float3 expandedPos = input.Position.xyz + smoothNormal * outlineThickness;
 

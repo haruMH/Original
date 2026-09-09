@@ -1,4 +1,4 @@
-﻿#include "gameplay_scene.h"
+#include "gameplay_scene.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "score_popup.h"
@@ -173,9 +173,9 @@ void GameplayScene::Init()
         wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
         wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
 
-        // �{�X�G�l�~�[�̐���
+        // ボスエネミーの生成
         BossEnemy* boss = Manager::AddGameObject<BossEnemy>();
-        boss->SetPosition(XMFLOAT3(0.0f, 1.5f, Constants::Stage::BOSS_SPAWN_OFFSET_Z));
+        boss->SetPosition(XMFLOAT3(0.0f, Constants::Boss::GROUND_Y, Constants::Stage::BOSS_SPAWN_OFFSET_Z));
 
         GameRule::SetTotalEnemies(1);
     } else {

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // =================================================================
 // ゲーム定数定義ヘッダー (game_constants.h)
@@ -85,6 +85,7 @@ namespace Constants
     {
         const int   HP                      = 60;       // ボスの初期最大HP
         const int   SCORE                   = 1500;     // ボス撃破時のスコア
+        const float GROUND_Y                = 1.8f;    // ボスの接地基準Y座標（床面-1.0fとのZファイティング防止・アウトライン完全露出用）
 
         // フェーズ移行閾値 (HP)
         const int   PHASE1_HP_THRESHOLD     = 42;       // 第1フェーズ移行のHP閾値

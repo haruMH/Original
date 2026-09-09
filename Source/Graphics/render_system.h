@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <vector>
 #include <unordered_map>
 #include <string>
@@ -6,6 +6,7 @@
 #include <d3d11.h>
 #include <DirectXMath.h>
 #include "render_component.h"
+#include "render_constants.h"
 
 // 前方宣言
 class GameObject;
@@ -23,7 +24,7 @@ enum class RenderPass {
 class RenderSystem {
 public:
     // 1回の描画コールで処理できる最大インスタンス数
-    static const int MAX_INSTANCES = 512;
+    static constexpr int MAX_INSTANCES = RenderConstants::Instancing::MAX_INSTANCES;
 
     // インスタンスバッファに流し込むデータ構造（頂点シェーダーへ送る情報）
     struct InstanceData {
