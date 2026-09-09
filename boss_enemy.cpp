@@ -12,6 +12,7 @@
 #include "resource_manager.h"
 #include "score_popup.h"
 #include "shockwave.h"
+#include "sound_manager.h"
 #include <algorithm> // std::remove_if 使用のため
 
 // namespace BossLightningConfig は削除され、Constants::Boss (game_constants.h)
@@ -63,34 +64,134 @@ void BossEnemy::Update() {
     return;
   }
 
-  // フェーズ遷移演出中
+  // 1. 定位置復帰ジャンプ中
+  if (m_BossState == BossState::RETURN_TO_CENTER) {
+    UpdateReturnJump();
+    return;
+  }
+
+  // 2. フェーズ特別攻撃演出中
   if (m_BossState == BossState::PHASE_TRANSITION) {
     PerformPhaseAttack();
     return;
   }
 
-  // 通常状態の時にHPを監視してフェーズ移行を行う
-  if (m_BossState == BossState::NORMAL) {
+  // 3. 通常行動中（突進中・大ジャンプ中含む）のHP監視によるフェーズ移行
+  if (m_BossState == BossState::NORMAL ||
+      m_BossState == BossState::CHARGE_WINDUP ||
+      m_BossState == BossState::CHARGE_RUSH ||
+      m_BossState == BossState::CHARGE_STUN ||
+      m_BossState == BossState::SLAM_WINDUP ||
+      m_BossState == BossState::SLAM_AIR ||
+      m_BossState == BossState::SLAM_RECOVERY) {
     for (auto &phase : m_Phases) {
       if (m_HP <= phase.hpThreshold && !phase.triggered) {
-        m_BossState = BossState::PHASE_TRANSITION;
         m_PhaseIndex = phase.phaseIndex;
         m_IsInvincible = true;
         phase.triggered = true;
         m_PhaseAttackTimer = 0;
         m_LightningVisualTimer = 0;
-        m_Scale =
-            XMFLOAT3(5.0f, 5.0f,
-                     5.0f); // 変形タメ中の移行に備え、スケールを安全にリセット
+        m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f); // スケールをリセット
+
+        // 定位置（ステージ北側中央 Z=BOSS_SPAWN_OFFSET_Z）への復帰大ジャンプを開始
+        m_JumpStartPos = m_Position;
+        m_JumpTargetPos = XMFLOAT3(0.0f, 1.5f, Constants::Stage::BOSS_SPAWN_OFFSET_Z);
+        m_JumpTimer = 0;
+        m_JumpDuration = 45; // 約0.75秒の豪快な放物線跳躍
+
+        m_BossState = BossState::RETURN_TO_CENTER;
+
         char dbg[128];
-        sprintf_s(dbg, "[BossEnemy] Phase %d Triggered!\n", phase.phaseIndex);
+        sprintf_s(dbg, "[BossEnemy] Phase %d Triggered! Returning to center via jump.\n", phase.phaseIndex);
         OutputDebugStringA(dbg);
-        break;
+        return;
       }
     }
   }
 
+  // 4. 突進タックル各フェーズの更新
+  if (m_BossState == BossState::CHARGE_WINDUP) {
+    UpdateChargeWindup();
+    return;
+  }
+  if (m_BossState == BossState::CHARGE_RUSH) {
+    UpdateChargeRush();
+    return;
+  }
+  if (m_BossState == BossState::CHARGE_STUN) {
+    UpdateChargeStun();
+    return;
+  }
+
+  // 5. 大ジャンプ・グラウンドスラム各フェーズの更新
+  if (m_BossState == BossState::SLAM_WINDUP) {
+    UpdateSlamWindup();
+    return;
+  }
+  if (m_BossState == BossState::SLAM_AIR) {
+    UpdateSlamAir();
+    return;
+  }
+  if (m_BossState == BossState::SLAM_RECOVERY) {
+    UpdateSlamRecovery();
+    return;
+  }
+
+  // 6. 通常AI更新
   UpdateBossAI();
+}
+
+// ─────────────────────────────────────────────
+// 特殊攻撃開始前の定位置復帰ジャンプ処理
+// ─────────────────────────────────────────────
+void BossEnemy::UpdateReturnJump() {
+  m_JumpTimer++;
+  float t = (float)m_JumpTimer / (float)m_JumpDuration;
+  if (t > 1.0f) t = 1.0f;
+
+  // XZ平面の線形補間
+  m_Position.x = m_JumpStartPos.x + (m_JumpTargetPos.x - m_JumpStartPos.x) * t;
+  m_Position.z = m_JumpStartPos.z + (m_JumpTargetPos.z - m_JumpStartPos.z) * t;
+
+  // Y軸の放物線跳躍（頂点高度 +14.0f）
+  float arcY = sinf(t * DirectX::XM_PI) * 14.0f;
+  m_Position.y = 1.5f + arcY;
+
+  // 跳躍中のスカッシュ＆ストレッチ演出
+  float stretch = sinf(t * DirectX::XM_PI);
+  m_Scale.y = 5.0f + 1.5f * stretch;
+  m_Scale.x = m_Scale.z = 5.0f - 0.5f * stretch;
+
+  // プレイヤーの方向へ滑らかに向き直す
+  Player *player = Manager::GetGameObject<Player>();
+  if (player) {
+    XMFLOAT3 toPlayer = player->GetPosition() - m_Position;
+    toPlayer.y = 0.0f;
+    if (MathHelper::Length(toPlayer) > 0.001f) {
+      XMFLOAT3 dir = MathHelper::Normalize(toPlayer);
+      m_Rotation.y = atan2f(dir.x, dir.z);
+    }
+  }
+
+  // 着地（ジャンプ完了）
+  if (m_JumpTimer >= m_JumpDuration) {
+    m_Position = m_JumpTargetPos;
+    m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f);
+
+    // 着地時の巨大衝撃波エフェクト（ダメージなし・迫力ある波紋）
+    XMFLOAT3 slamPos = m_Position;
+    slamPos.y = -0.95f;
+    ShockwaveSystem::AddShockwave(slamPos, 22.0f, 3.0f, 0.5f, 0.0f, 35, 0.0f, 0, false);
+    ShockwaveSystem::AddShockwave(slamPos, 14.0f, 3.0f, 0.8f, 0.0f, 25, 0.0f, 0, false);
+
+    if (g_Camera) {
+      g_Camera->Shake(0.5f, 15);
+    }
+
+    // 着地完了！定位置での特殊攻撃フェーズを開始
+    m_BossState = BossState::PHASE_TRANSITION;
+    m_PhaseAttackTimer = 0;
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -115,20 +216,417 @@ void BossEnemy::UpdateBossAI() {
   }
   m_Velocity = XMFLOAT3(0.0f, 0.0f, 0.0f);
 
-  m_AttackTimer++;
-  if (m_AttackTimer >= 120) { // 攻撃間隔
-    m_AttackTimer = 0;
-    OutputDebugStringA(
-        "[BossEnemy] Attack timer reached 120. Performing attack.\n");
+  // HP/フェーズに応じた動的攻撃間隔の算出
+  int requiredInterval = Constants::Boss::ATTACK_INTERVAL_BASE;
+  if (m_PhaseIndex >= 3 || m_HP <= Constants::Boss::PHASE3_HP_THRESHOLD) {
+    requiredInterval = Constants::Boss::ATTACK_INTERVAL_PHASE3;
+  } else if (m_PhaseIndex >= 2 || m_HP <= Constants::Boss::PHASE2_HP_THRESHOLD) {
+    requiredInterval = Constants::Boss::ATTACK_INTERVAL_PHASE2;
+  } else if (m_PhaseIndex >= 1 || m_HP <= Constants::Boss::PHASE1_HP_THRESHOLD) {
+    requiredInterval = Constants::Boss::ATTACK_INTERVAL_PHASE1;
+  }
 
-    m_AttackPattern = (m_AttackPattern + 1) % 2;
-    if (m_AttackPattern == 0) {
-      OutputDebugStringA("[BossEnemy] Fire 3-Way Spread Bullet.\n");
-      Fire3WaySpread();
+  m_AttackTimer++;
+  if (m_AttackTimer >= requiredInterval) {
+    m_AttackTimer = 0;
+
+    // プレイヤーが近距離にいる場合: 迎撃として大ジャンプスラムまたは突進を優先
+    if (dist < Constants::Boss::CLOSE_RANGE_THRESHOLD) {
+      int r = rand() % 100;
+      if (r < 50) {
+        OutputDebugStringA("[BossEnemy] Close-range counter: Slam Jump Attack.\n");
+        StartSlamAttack();
+      } else if (r < 80) {
+        OutputDebugStringA("[BossEnemy] Close-range counter: Charge Tackle Attack.\n");
+        StartChargeAttack();
+      } else {
+        OutputDebugStringA("[BossEnemy] Close-range counter: 3-Way Spread Bullet.\n");
+        Fire3WaySpread();
+      }
     } else {
-      OutputDebugStringA("[BossEnemy] Fire Rapid Bullet.\n");
-      FireRapidShot();
+      // 中・遠距離の場合: 順繰りに多彩な攻撃パターンを実行
+      m_AttackPattern = (m_AttackPattern + 1) % 4;
+      if (m_AttackPattern == 0) {
+        OutputDebugStringA("[BossEnemy] Fire 3-Way Spread Bullet.\n");
+        Fire3WaySpread();
+      } else if (m_AttackPattern == 1) {
+        OutputDebugStringA("[BossEnemy] Fire Rapid Bullet.\n");
+        FireRapidShot();
+      } else if (m_AttackPattern == 2) {
+        OutputDebugStringA("[BossEnemy] Start Charge Tackle Attack.\n");
+        StartChargeAttack();
+      } else {
+        OutputDebugStringA("[BossEnemy] Start Slam Jump Attack.\n");
+        StartSlamAttack();
+      }
     }
+  }
+}
+
+// ─────────────────────────────────────────────
+// 突進タックルの開始
+// ─────────────────────────────────────────────
+void BossEnemy::StartChargeAttack() {
+  m_BossState = BossState::CHARGE_WINDUP;
+  m_ChargeTimer = 0;
+  m_ChargeTraveled = 0.0f;
+  m_HasDamagedPlayerInCharge = false;
+
+  Player *player = Manager::GetGameObject<Player>();
+  if (player) {
+    XMFLOAT3 toPlayer = player->GetPosition() - m_Position;
+    toPlayer.y = 0.0f;
+    if (MathHelper::Length(toPlayer) > 0.001f) {
+      m_ChargeDir = MathHelper::Normalize(toPlayer);
+      m_Rotation.y = atan2f(m_ChargeDir.x, m_ChargeDir.z);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
+// 突進タメ予兆処理（地面を擦るスクワット姿勢と方向ロック）
+// ─────────────────────────────────────────────
+void BossEnemy::UpdateChargeWindup() {
+  m_ChargeTimer++;
+  float progress = (float)m_ChargeTimer / (float)Constants::Boss::CHARGE_WINDUP_FRAMES;
+  if (progress > 1.0f) progress = 1.0f;
+
+  Player *player = Manager::GetGameObject<Player>();
+
+  // タメ前半（進捗80%まで）はプレイヤーを追尾して向き直る（残り20%で突進方向をロック！）
+  if (progress < 0.8f && player) {
+    XMFLOAT3 toPlayer = player->GetPosition() - m_Position;
+    toPlayer.y = 0.0f;
+    if (MathHelper::Length(toPlayer) > 0.001f) {
+      m_ChargeDir = MathHelper::Normalize(toPlayer);
+      m_Rotation.y = atan2f(m_ChargeDir.x, m_ChargeDir.z);
+    }
+  }
+
+  // 体を低く沈み込ませて力を溜めるスクワット演出（Yを縮め、XZを太らせる）
+  float squat = sinf(progress * DirectX::XM_PIDIV2);
+  m_Scale.y = 5.0f - 1.6f * squat; // 5.0 -> 3.4
+  m_Scale.x = m_Scale.z = 5.0f + 0.6f * squat; // 5.0 -> 5.6
+
+  // 足元から地面を擦る摩擦エフェクト（10フレームごとに小さな収縮波紋）
+  if (m_ChargeTimer % 10 == 0) {
+    XMFLOAT3 footPos = m_Position;
+    footPos.y = -0.95f;
+    ShockwaveSystem::AddShockwave(footPos, 6.0f, 2.0f, 0.2f, 0.0f, 15, 0.0f, 0, true);
+  }
+
+  // タメ完了 → 猛突進発進！
+  if (m_ChargeTimer >= Constants::Boss::CHARGE_WINDUP_FRAMES) {
+    m_BossState = BossState::CHARGE_RUSH;
+    m_ChargeTimer = 0;
+    m_ChargeTraveled = 0.0f;
+    m_HasDamagedPlayerInCharge = false;
+
+    // 発進時の土煙大衝撃波
+    XMFLOAT3 dashStartPos = m_Position;
+    dashStartPos.y = -0.95f;
+    ShockwaveSystem::AddShockwave(dashStartPos, 8.0f, 2.5f, 0.0f, 0.0f, 20, 1.0f, 0, false);
+
+    if (g_Camera) {
+      g_Camera->Shake(0.3f, 10);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
+// 突進中処理（高速移動・プレイヤー直撃判定・壁激突判定）
+// ─────────────────────────────────────────────
+void BossEnemy::UpdateChargeRush() {
+  m_ChargeTimer++;
+
+  // 前傾姿勢で突進（勢いのある形状）
+  m_Scale = XMFLOAT3(4.6f, 4.4f, 5.8f);
+
+  // 突進移動（フェーズが進むごとに突進スピードが向上）
+  float speed = Constants::Boss::CHARGE_SPEED * (1.0f + 0.1f * (float)m_PhaseIndex);
+  m_Position.x += m_ChargeDir.x * speed;
+  m_Position.z += m_ChargeDir.z * speed;
+  m_ChargeTraveled += speed;
+
+  // 突進の土煙軌跡エフェクト（6フレームごと）
+  if (m_ChargeTimer % 6 == 0) {
+    XMFLOAT3 trailPos = m_Position;
+    trailPos.y = -0.95f;
+    ShockwaveSystem::AddShockwave(trailPos, 4.5f, 1.8f, 0.2f, 0.0f, 12, 0.0f, 0, false);
+  }
+
+  // プレイヤー衝突判定
+  Player *player = Manager::GetGameObject<Player>();
+  if (player && !m_HasDamagedPlayerInCharge) {
+    XMFLOAT3 pPos = player->GetPosition();
+    float dx = pPos.x - m_Position.x;
+    float dz = pPos.z - m_Position.z;
+    float dist = sqrtf(dx * dx + dz * dz);
+
+    if (dist <= Constants::Boss::CHARGE_HIT_RADIUS && !player->IsInvincible()) {
+      HitInfo hitInfo;
+      hitInfo.damage = Constants::Boss::CHARGE_DAMAGE;
+      hitInfo.hitSourcePos = m_Position;
+      hitInfo.knockbackVel = XMFLOAT3(m_ChargeDir.x * 0.45f, 0.0f, m_ChargeDir.z * 0.45f);
+      player->OnHit(hitInfo);
+
+      SoundManager::PlaySE(SoundID::SE_PLAYER_HIT);
+      if (g_Camera) g_Camera->Shake(0.45f, 12);
+
+      m_HasDamagedPlayerInCharge = true;
+    }
+  }
+
+  // 壁衝突判定（部屋サイズ 28.0f、ボスの半幅 2.5f）
+  float wallLimit = Constants::Stage::BOSS_ROOM_SIZE - 2.5f;
+  bool hitWall = false;
+
+  if (m_Position.x >= wallLimit)  { m_Position.x = wallLimit;  hitWall = true; }
+  if (m_Position.x <= -wallLimit) { m_Position.x = -wallLimit; hitWall = true; }
+  if (m_Position.z >= wallLimit)  { m_Position.z = wallLimit;  hitWall = true; }
+  if (m_Position.z <= -wallLimit) { m_Position.z = -wallLimit; hitWall = true; }
+
+  // 壁激突！大衝撃波＆スタン移行
+  if (hitWall) {
+    XMFLOAT3 crashPos = m_Position;
+    crashPos.y = 0.5f;
+    ShockwaveSystem::AddShockwave(crashPos, 16.0f, 3.0f, 0.0f, 0.0f, 30, 2.5f, 0, false);
+
+    SoundManager::PlaySE(SoundID::SE_HIT_WALL);
+    if (g_Camera) g_Camera->Shake(0.6f, 20);
+
+    // 壁から少し跳ね返る
+    m_Position.x -= m_ChargeDir.x * 1.5f;
+    m_Position.z -= m_ChargeDir.z * 1.5f;
+
+    // スタン状態へ移行（攻撃チャンス！）
+    m_BossState = BossState::CHARGE_STUN;
+    m_ChargeTimer = 0;
+    m_Scale = XMFLOAT3(5.5f, 3.8f, 5.5f); // 激突で潰れる
+    return;
+  }
+
+  // 最大突進距離に達したら自然減速・通常復帰
+  if (m_ChargeTraveled >= Constants::Boss::CHARGE_MAX_DISTANCE) {
+    m_BossState = BossState::NORMAL;
+    m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f);
+    m_AttackTimer = 0;
+  }
+}
+
+// ─────────────────────────────────────────────
+// 壁激突後のスタン（気絶・無防備隙）処理
+// ─────────────────────────────────────────────
+void BossEnemy::UpdateChargeStun() {
+  m_ChargeTimer++;
+
+  // 気絶中の小刻みなピヨピヨ揺れ演出
+  float wobble = sinf((float)m_ChargeTimer * 0.4f) * 0.15f;
+  m_Rotation.z = wobble;
+  m_Scale.y = 4.0f + 0.3f * sinf((float)m_ChargeTimer * 0.2f);
+  m_Scale.x = m_Scale.z = 5.2f - 0.2f * sinf((float)m_ChargeTimer * 0.2f);
+
+  // 15フレームごとに気絶の星/電気火花エフェクト
+  if (m_ChargeTimer % 15 == 0) {
+    XMFLOAT3 sparkPos = m_Position;
+    sparkPos.y += 2.5f;
+    ShockwaveSystem::AddShockwave(sparkPos, 3.5f, 2.0f, 2.0f, 0.0f, 15, 0.0f, 0, false);
+  }
+
+  // スタン終了 → 体勢を立て直して通常AIへ復帰！
+  if (m_ChargeTimer >= Constants::Boss::CHARGE_STUN_FRAMES) {
+    m_BossState = BossState::NORMAL;
+    m_Rotation.z = 0.0f;
+    m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f);
+    m_AttackTimer = 0; // 次の行動へのクールダウン開始
+  }
+}
+
+// ─────────────────────────────────────────────
+// 大ジャンプ・グラウンドスラムの開始
+// ─────────────────────────────────────────────
+void BossEnemy::StartSlamAttack() {
+  m_BossState = BossState::SLAM_WINDUP;
+  m_SlamTimer = 0;
+  m_SlamStartPos = m_Position;
+
+  Player *player = Manager::GetGameObject<Player>();
+  if (player) {
+    m_SlamTargetPos = player->GetPosition();
+    m_SlamTargetPos.y = 1.5f;
+
+    // 壁の外に出ないように安全マージンでクランプ
+    float limit = Constants::Stage::BOSS_ROOM_SIZE - 4.0f;
+    m_SlamTargetPos.x = std::clamp(m_SlamTargetPos.x, -limit, limit);
+    m_SlamTargetPos.z = std::clamp(m_SlamTargetPos.z, -limit, limit);
+  } else {
+    m_SlamTargetPos = m_Position;
+  }
+}
+
+// ─────────────────────────────────────────────
+// 大ジャンプ前のタメ予兆処理（膝を深く曲げる圧縮姿勢）
+// ─────────────────────────────────────────────
+void BossEnemy::UpdateSlamWindup() {
+  m_SlamTimer++;
+  float progress = (float)m_SlamTimer / (float)Constants::Boss::SLAM_WINDUP_FRAMES;
+  if (progress > 1.0f) progress = 1.0f;
+
+  // 体を強く沈み込ませる（5.0 -> 2.8）
+  float squat = sinf(progress * DirectX::XM_PIDIV2);
+  m_Scale.y = 5.0f - 2.2f * squat;
+  m_Scale.x = m_Scale.z = 5.0f + 1.0f * squat;
+
+  // 足元に収縮衝撃波（エネルギー吸引演出）
+  if (m_SlamTimer % 8 == 0) {
+    XMFLOAT3 footPos = m_Position;
+    footPos.y = -0.95f;
+    ShockwaveSystem::AddShockwave(footPos, 7.0f, 2.0f, 0.3f, 0.0f, 15, 0.0f, 0, true);
+  }
+
+  // タメ完了 → 上空へ大ジャンプ発進！
+  if (m_SlamTimer >= Constants::Boss::SLAM_WINDUP_FRAMES) {
+    m_BossState = BossState::SLAM_AIR;
+    m_SlamTimer = 0;
+    m_SlamStartPos = m_Position;
+
+    // 踏み切り大土煙
+    XMFLOAT3 launchPos = m_Position;
+    launchPos.y = -0.95f;
+    ShockwaveSystem::AddShockwave(launchPos, 9.0f, 3.0f, 0.0f, 0.0f, 25, 0.5f, 0, false);
+    SoundManager::PlaySE(SoundID::SE_THROW, 1.2f);
+  }
+}
+
+// ─────────────────────────────────────────────
+// 上空への滞空・着地地点狙い・急降下スラム処理
+// ─────────────────────────────────────────────
+void BossEnemy::UpdateSlamAir() {
+  m_SlamTimer++;
+
+  Player *player = Manager::GetGameObject<Player>();
+
+  // フェーズA: 急上昇（指定フレームで滞空高度へ打ち上げ）
+  if (m_SlamTimer <= Constants::Boss::SLAM_RISE_FRAMES) {
+    float t = (float)m_SlamTimer / (float)Constants::Boss::SLAM_RISE_FRAMES;
+    m_Position.y = 1.5f + sinf(t * DirectX::XM_PIDIV2) * (Constants::Boss::SLAM_JUMP_HEIGHT - 1.5f);
+    m_Scale.y = 6.5f; // 縦長に伸びる
+    m_Scale.x = m_Scale.z = 4.0f;
+    return;
+  }
+
+  // フェーズB: 滞空・追尾と着地予兆サークル表示（落下前まで）
+  if (m_SlamTimer <= 45) {
+    m_Position.y = Constants::Boss::SLAM_JUMP_HEIGHT;
+    m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f);
+
+    // プレイヤーの位置を追従（着地予測地点の更新、一定フレームでターゲット位置を確定）
+    if (player && m_SlamTimer <= Constants::Boss::SLAM_LOCK_TARGET_FRAMES) {
+      XMFLOAT3 pPos = player->GetPosition();
+      float limit = Constants::Stage::BOSS_ROOM_SIZE - 4.0f;
+      pPos.x = std::clamp(pPos.x, -limit, limit);
+      pPos.z = std::clamp(pPos.z, -limit, limit);
+
+      // 徐々にプレイヤー位置へターゲットを移動
+      m_SlamTargetPos.x += (pPos.x - m_SlamTargetPos.x) * 0.15f;
+      m_SlamTargetPos.z += (pPos.z - m_SlamTargetPos.z) * 0.15f;
+      m_SlamTargetPos.y = 1.5f;
+    }
+
+    // ボス本体のXZ座標も目標地点へ空中移動
+    m_Position.x += (m_SlamTargetPos.x - m_Position.x) * 0.2f;
+    m_Position.z += (m_SlamTargetPos.z - m_Position.z) * 0.2f;
+
+    // 着地目標地点の床面に赤い警告サークル（落下地点インジケータ）
+    if (m_SlamTimer % 5 == 0) {
+      XMFLOAT3 warnPos = m_SlamTargetPos;
+      warnPos.y = -0.95f;
+      ShockwaveSystem::AddShockwave(warnPos, Constants::Boss::SLAM_SHOCKWAVE_RADIUS, 2.0f, 0.0f, 0.0f, 15, 0.0f, 0, false);
+    }
+    return;
+  }
+
+  // フェーズC: 急降下（46フレーム〜着地まで）
+  m_Position.x = m_SlamTargetPos.x;
+  m_Position.z = m_SlamTargetPos.z;
+  m_Position.y -= Constants::Boss::SLAM_FALL_SPEED * 1.5f;
+
+  // 落下時の高速ストレッチ演出
+  m_Scale.y = 7.5f;
+  m_Scale.x = m_Scale.z = 3.8f;
+
+  // 地面着地判定（グラウンドスラム発動！）
+  if (m_Position.y <= 1.5f) {
+    m_Position.y = 1.5f;
+
+    // 1. 巨大地響きリング衝撃波（ジャンプで回避可能な全方位波）
+    XMFLOAT3 slamCenter = m_Position;
+    slamCenter.y = -0.95f;
+    ShockwaveSystem::AddShockwave(
+        slamCenter,
+        Constants::Boss::SLAM_SHOCKWAVE_RADIUS,
+        2.5f,
+        0.35f,
+        0.0f,
+        25,
+        1.5f,
+        0,
+        false
+    );
+
+    // 2. 着地激突音＆カメラシェイク
+    SoundManager::PlaySE(SoundID::SE_HIT_WALL, 1.3f);
+    if (g_Camera) {
+      g_Camera->Shake(0.55f, 22);
+    }
+
+    // 3. プレイヤーへの着地衝撃ダメージ判定（プレイヤーがジャンプ中なら回避成功！）
+    if (player) {
+      XMFLOAT3 pPos = player->GetPosition();
+      XMFLOAT3 diff = pPos - m_Position;
+      diff.y = 0.0f;
+      float dist = MathHelper::Length(diff);
+
+      // 半径以内 かつ プレイヤーが地上（ジャンプでかわせるよう Y < 0.6f）
+      if (dist <= Constants::Boss::SLAM_SHOCKWAVE_RADIUS && pPos.y < 0.6f) {
+        HitInfo hit;
+        hit.damage = Constants::Boss::SLAM_SHOCKWAVE_DAMAGE;
+        hit.hitSourcePos = m_Position;
+        XMFLOAT3 kbDir = (dist > 0.001f) ? MathHelper::Normalize(diff) : XMFLOAT3(0.0f, 0.0f, 1.0f);
+        hit.knockbackVel = XMFLOAT3(kbDir.x * 0.45f, 0.35f, kbDir.z * 0.45f);
+        player->OnHit(hit);
+        SoundManager::PlaySE(SoundID::SE_PLAYER_HIT);
+      }
+    }
+
+    // 4. 着地衝撃で体が大きく潰れる（スカッシュ）
+    m_Scale.y = 2.6f;
+    m_Scale.x = m_Scale.z = 6.6f;
+
+    // 5. スラム後硬直（リカバリー）へ移行
+    m_BossState = BossState::SLAM_RECOVERY;
+    m_SlamTimer = 0;
+  }
+}
+
+// ─────────────────────────────────────────────
+// 着地グラウンドスラム後の隙（硬直リカバリー）処理
+// ─────────────────────────────────────────────
+void BossEnemy::UpdateSlamRecovery() {
+  m_SlamTimer++;
+
+  // 潰れた体勢から徐々に本来の 5.0x5.0x5.0 へ復元
+  float progress = (float)m_SlamTimer / (float)Constants::Boss::SLAM_RECOVERY_FRAMES;
+  if (progress > 1.0f) progress = 1.0f;
+
+  m_Scale.y = 2.6f + 2.4f * progress;
+  m_Scale.x = m_Scale.z = 6.6f - 1.6f * progress;
+
+  // 硬直終了 → 通常AIへ復帰
+  if (m_SlamTimer >= Constants::Boss::SLAM_RECOVERY_FRAMES) {
+    m_BossState = BossState::NORMAL;
+    m_Scale = XMFLOAT3(5.0f, 5.0f, 5.0f);
+    m_AttackTimer = 0;
   }
 }
 
@@ -475,9 +973,9 @@ void BossEnemy::PerformPhase2Attack() {
   float relX = pPos.x - m_Position.x;
   float relZ = pPos.z - m_Position.z;
 
-  // 棒の直線へのスカラー射影（-30 ≦ proj ≦ 30 の範囲が棒の存在域）
+  // 棒の直線へのスカラー射影（-BAR_LENGTH ≦ proj ≦ BAR_LENGTH の範囲が棒の存在域）
   float proj = relX * barDirX + relZ * barDirZ;
-  const float BAR_LENGTH = 30.0f;
+  const float BAR_LENGTH = Constants::Boss::PHASE2_BAR_LENGTH;
 
   // 棒の直線への垂直距離（点と直線の最短距離）
   float perpX = relX - proj * barDirX;
@@ -772,12 +1270,12 @@ void BossEnemy::DrawBarrierEffect() {
 
       float angles[2] = {angle, angle + XM_PI};
       for (int i = 0; i < 2; i++) {
-        // ボスの中心から前方30ユニット分に伸ばすワールド行列を作成
-        // 高さ Y = -0.6f (地面は -0.95f、プレイヤーの足元は Y=0
-        // なのでジャンプで超えられる高さ)
+        // ボスの中心から前方へ伸ばすワールド行列を作成
+        // 高さ Y = -0.6f (地面は -0.95f、プレイヤーの足元は Y=0 なのでジャンプで超えられる高さ)
+        const float barLen = Constants::Boss::PHASE2_BAR_LENGTH;
         XMMATRIX guideWorld =
-            XMMatrixScaling(0.5f, 0.5f, 30.0f) *
-            XMMatrixTranslation(0.0f, 0.0f, 15.0f) *
+            XMMatrixScaling(0.5f, 0.5f, barLen) *
+            XMMatrixTranslation(0.0f, 0.0f, barLen * 0.5f) *
             XMMatrixRotationRollPitchYaw(0.0f, angles[i], 0.0f) *
             XMMatrixTranslation(m_Position.x, -0.6f, m_Position.z);
 
@@ -899,6 +1397,51 @@ void BossEnemy::Draw() {
 DirectX::XMFLOAT3 BossEnemy::GetEmissive() const {
   if (m_DamageFlashTimer > 0) {
     return XMFLOAT3(5.0f, 0.0f, 0.0f); // 被弾時点滅は赤
+  }
+
+  if (m_BossState == BossState::RETURN_TO_CENTER) {
+    // 復帰大ジャンプ中は、次フェーズカラーに応じた強い予兆発光
+    if (m_PhaseIndex == 1) {
+      return XMFLOAT3(0.5f, 2.0f, 3.5f); // 青白
+    } else if (m_PhaseIndex == 2) {
+      return XMFLOAT3(3.5f, 3.0f, 0.2f); // 黄金
+    } else {
+      return XMFLOAT3(3.5f, 0.5f, 0.2f); // 紅蓮
+    }
+  }
+
+  if (m_BossState == BossState::CHARGE_WINDUP) {
+    // 突進タメ中: 危険を知らせる力強い赤橙パルス発光
+    float pulse = 0.5f + 0.5f * sinf((float)m_ChargeTimer * 0.35f);
+    return XMFLOAT3(3.0f + 2.0f * pulse, 0.6f * pulse, 0.0f);
+  }
+
+  if (m_BossState == BossState::CHARGE_RUSH) {
+    // 突進中: 灼熱の赤熱発光
+    return XMFLOAT3(4.5f, 0.8f, 0.0f);
+  }
+
+  if (m_BossState == BossState::CHARGE_STUN) {
+    // スタン中: 弱々しい黄色のピヨピヨ点滅
+    float blink = (m_ChargeTimer % 10 < 5) ? 1.0f : 0.2f;
+    return XMFLOAT3(1.8f * blink, 1.8f * blink, 0.2f * blink);
+  }
+
+  if (m_BossState == BossState::SLAM_WINDUP) {
+    // スラムタメ中: 橙〜黄色のエネルギー吸引発光
+    float pulse = 0.5f + 0.5f * sinf((float)m_SlamTimer * 0.4f);
+    return XMFLOAT3(3.2f, 1.8f * pulse, 0.2f);
+  }
+
+  if (m_BossState == BossState::SLAM_AIR) {
+    // 滞空・急降下中: 黄金の落下一撃発光
+    return XMFLOAT3(4.0f, 3.2f, 0.5f);
+  }
+
+  if (m_BossState == BossState::SLAM_RECOVERY) {
+    // 着地後隙: 余熱が冷めていくグラデーション
+    float cool = 1.0f - (float)m_SlamTimer / (float)Constants::Boss::SLAM_RECOVERY_FRAMES;
+    return XMFLOAT3(2.5f + 1.5f * cool, 1.0f * cool, 0.2f * cool);
   }
 
   if (m_BossState == BossState::PHASE_TRANSITION) {

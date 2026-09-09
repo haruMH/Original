@@ -1,4 +1,4 @@
-#include "enemy.h"
+﻿#include "enemy.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "enemy_affix.h"

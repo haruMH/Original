@@ -325,11 +325,11 @@ void Manager::Draw()
 
     LIGHT currentLight = Renderer::GetLight();
     XMVECTOR lightDir = XMLoadFloat4(&currentLight.Direction);
-    XMVECTOR lightPos = XMVector3Normalize(lightDir) * -20.0f;
+    XMVECTOR lightPos = XMVector3Normalize(lightDir) * -40.0f;
     XMMATRIX lightView = XMMatrixLookAtLH(lightPos,
         XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f),
         XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
-    XMMATRIX lightProj = XMMatrixOrthographicLH(30.0f, 30.0f, 1.0f, 50.0f);
+    XMMATRIX lightProj = XMMatrixOrthographicLH(65.0f, 65.0f, 1.0f, 90.0f);
     Renderer::SetShadowVPMatrix(lightView * lightProj);
     Renderer::SetViewMatrix(lightView);
     Renderer::SetProjectionMatrix(cameraProj); // カメラのプロジェクション行列を再設定

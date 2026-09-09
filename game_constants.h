@@ -96,12 +96,39 @@ namespace Constants
         const int   STRIKE_DAMAGE           = 1;        // プレイヤー狙い落雷のダメージ値
         const int   STRIKE_WARNING_FRAMES   = 65;       // プレイヤー狙い落雷の警告猶予フレーム（着弾までの時間）
         const int   STRIKE_INTERVAL_FRAMES  = 100;      // プレイヤー狙い落雷の発生間隔（フレーム数）
-        const float STAGE_HALF_WIDTH        = 17.0f;    // ランダム落雷が発生するステージの半幅
+        const float STAGE_HALF_WIDTH        = 26.0f;    // ランダム落雷が発生するステージの半幅（拡大部屋サイズに合わせて調整）
+        const float PHASE2_BAR_LENGTH       = 45.0f;    // フェーズ2回転ビームの長さ
         const int   RANDOM_STRIKE_MIN       = 3;        // ランダム落雷の最小発生箇所数
         const int   RANDOM_STRIKE_EXTRA     = 3;        // ランダム落雷の追加発生箇所数
         const int   ATTACK_START_FRAME      = 350;      // 落雷攻撃が開始するフレーム数（フェーズ移行後）
         const int   ATTACK_DURATION_FRAME   = 550;      // 落雷攻撃が持続するフレーム数
+
+        // 通常AI行動サイクル（HP低下による加速と距離判定）
+        const int   ATTACK_INTERVAL_BASE    = 110;      // 初期状態の攻撃間隔フレーム
+        const int   ATTACK_INTERVAL_PHASE1  = 95;       // フェーズ1時の攻撃間隔フレーム
+        const int   ATTACK_INTERVAL_PHASE2  = 80;       // フェーズ2時の攻撃間隔フレーム
+        const int   ATTACK_INTERVAL_PHASE3  = 65;       // フェーズ3時の攻撃間隔フレーム
+        const float CLOSE_RANGE_THRESHOLD   = 8.0f;     // 近距離判定（迎撃行動の優先閾値）
         
+        // 突進タックル関連
+        const float CHARGE_SPEED            = 0.52f;    // 突進速度
+        const int   CHARGE_WINDUP_FRAMES    = 45;       // 突進前のタメ予兆フレーム数（約0.75秒）
+        const int   CHARGE_STUN_FRAMES      = 90;       // 壁激突後のスタン（気絶・隙）フレーム数（約1.5秒）
+        const float CHARGE_HIT_RADIUS       = 3.2f;     // 突進時のプレイヤー衝突判定半径
+        const int   CHARGE_DAMAGE           = 1;        // 突進直撃ダメージ
+        const float CHARGE_MAX_DISTANCE     = 55.0f;    // 突進の最大移動距離
+
+        // 大ジャンプ・グラウンドスラム関連
+        const int   SLAM_WINDUP_FRAMES      = 40;       // ジャンプ前のタメ予兆フレーム数
+        const int   SLAM_AIR_FRAMES         = 60;       // 滞空・狙い・落下前フレーム数
+        const float SLAM_FALL_SPEED         = 0.85f;    // 急降下速度
+        const float SLAM_SHOCKWAVE_RADIUS   = 7.0f;     // 着地衝撃波の判定半径
+        const int   SLAM_SHOCKWAVE_DAMAGE   = 1;        // 着地衝撃波のダメージ
+        const int   SLAM_RECOVERY_FRAMES    = 45;       // 着地後の隙フレーム数
+        const float SLAM_JUMP_HEIGHT        = 24.0f;    // 大ジャンプ滞空高度
+        const int   SLAM_RISE_FRAMES        = 18;       // 上昇フレーム数
+        const int   SLAM_LOCK_TARGET_FRAMES = 38;       // 着地点確定フレーム数
+
         // 撃破後のリザルト移行ディレイ
         const int   CLEAR_DELAY_FRAMES      = 120;      // ボス撃破からクリア画面遷移までの待ち時間（フレーム）
 
@@ -179,7 +206,7 @@ namespace Constants
     namespace Stage
     {
         // ボスステージ設定
-        const float BOSS_ROOM_SIZE          = 18.0f;    // ボス部屋の広さ（四方の壁の距離）
+        const float BOSS_ROOM_SIZE          = 28.0f;    // ボス部屋の広さ（四方の壁の距離・横幅56mに拡大）
         const float BOSS_SPAWN_OFFSET_Z     = 10.0f;    // ボスの初期出現位置のZ座標
 
         // 通常ステージ設定

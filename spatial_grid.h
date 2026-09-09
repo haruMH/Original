@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <vector>
 #include <directxmath.h>
 #include "game_constants.h"

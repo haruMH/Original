@@ -6,6 +6,13 @@
 
 enum class BossState {
     NORMAL,            // 通常行動状態
+    CHARGE_WINDUP,     // 突進前のタメ予兆状態
+    CHARGE_RUSH,       // 突進中
+    CHARGE_STUN,       // 壁激突後のスタン（隙）状態
+    SLAM_WINDUP,       // 大ジャンプ前のタメ予兆状態
+    SLAM_AIR,          // 上空への滞空・着地地点狙い状態
+    SLAM_RECOVERY,     // 着地グラウンドスラム後の隙状態
+    RETURN_TO_CENTER,  // 特殊攻撃開始前の定位置復帰ジャンプ
     PHASE_TRANSITION,  // 特別攻撃（フェーズ移行演出）状態
     DEFEATED           // 撃破
 };
@@ -61,7 +68,33 @@ private:
     };
     std::vector<RandomLightning> m_RandomLightnings; // 描画用ランダム落雷リスト
 
+    // 特殊攻撃前の定位置復帰ジャンプ制御用変数
+    DirectX::XMFLOAT3 m_JumpStartPos  = DirectX::XMFLOAT3(0.0f, 1.5f, 0.0f);
+    DirectX::XMFLOAT3 m_JumpTargetPos = DirectX::XMFLOAT3(0.0f, 1.5f, 0.0f);
+    int               m_JumpTimer     = 0;
+    int               m_JumpDuration  = 45;
+
+    // 突進タックル制御用変数
+    DirectX::XMFLOAT3 m_ChargeDir               = DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f);
+    float             m_ChargeTraveled          = 0.0f;
+    int               m_ChargeTimer             = 0;
+    bool              m_HasDamagedPlayerInCharge = false;
+
+    // 大ジャンプ・グラウンドスラム制御用変数
+    DirectX::XMFLOAT3 m_SlamStartPos            = DirectX::XMFLOAT3(0.0f, 1.5f, 0.0f);
+    DirectX::XMFLOAT3 m_SlamTargetPos           = DirectX::XMFLOAT3(0.0f, 1.5f, 0.0f);
+    int               m_SlamTimer               = 0;
+
     void UpdateBossAI();
+    void UpdateReturnJump();
+    void StartChargeAttack();
+    void UpdateChargeWindup();
+    void UpdateChargeRush();
+    void UpdateChargeStun();
+    void StartSlamAttack();
+    void UpdateSlamWindup();
+    void UpdateSlamAir();
+    void UpdateSlamRecovery();
     void Fire3WaySpread();
     void FireRapidShot();
 
