@@ -265,7 +265,10 @@ void SoundManager::PlayBGM(SoundID id, bool loop, float volume)
     }
 
     m_CurrentBgmId = id;
-    m_BgmVolume = volume;
+    // 音量が指定されている場合（0以上）のみ更新し、未指定（負の値）の場合は現在の設定音量を維持
+    if (volume >= 0.0f) {
+        m_BgmVolume = (std::max)(0.0f, (std::min)(1.0f, volume));
+    }
     m_BgmVoice->SetVolume(m_BgmVolume);
 
     XAUDIO2_BUFFER xBuffer = { 0 };

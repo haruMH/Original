@@ -186,6 +186,7 @@
     <ClCompile Include="Source\Graphics\renderer.cpp" />
     <ClCompile Include="Source\Graphics\render_system.cpp" />
     <ClCompile Include="Source\Graphics\resource_manager.cpp" />
+    <ClCompile Include="Source\Graphics\shadow_system.cpp" />
     <!-- UI -->
     <ClCompile Include="Source\UI\score_hud.cpp" />
     <ClCompile Include="Source\UI\score_popup.cpp" />
@@ -194,6 +195,7 @@
     <ClCompile Include="Source\Effect\shockwave.cpp" />
     <ClCompile Include="Source\Effect\explosion_system.cpp" />
     <ClCompile Include="Source\Effect\fade_system.cpp" />
+    <ClCompile Include="Source\Effect\dust_system.cpp" />
     <!-- Audio -->
     <ClCompile Include="Source\Audio\sound_manager.cpp" />
     <!-- ImGui -->
@@ -250,6 +252,7 @@
     <ClInclude Include="Source\Graphics\render_component.h" />
     <ClInclude Include="Source\Graphics\resource_manager.h" />
     <ClInclude Include="Source\Graphics\render_constants.h" />
+    <ClInclude Include="Source\Graphics\shadow_system.h" />
     <!-- UI -->
     <ClInclude Include="Source\UI\score_hud.h" />
     <ClInclude Include="Source\UI\score_popup.h" />
@@ -258,6 +261,7 @@
     <ClInclude Include="Source\Effect\shockwave.h" />
     <ClInclude Include="Source\Effect\explosion_system.h" />
     <ClInclude Include="Source\Effect\fade_system.h" />
+    <ClInclude Include="Source\Effect\dust_system.h" />
     <!-- Audio -->
     <ClInclude Include="Source\Audio\sound_manager.h" />
     <!-- ImGui -->

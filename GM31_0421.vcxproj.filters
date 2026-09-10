@@ -138,6 +138,9 @@
     <ClCompile Include="Source\Graphics\resource_manager.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Graphics\shadow_system.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
     <!-- UI -->
     <ClCompile Include="Source\UI\score_hud.cpp">
       <Filter>Source\UI</Filter>
@@ -156,6 +159,9 @@
       <Filter>Source\Effect</Filter>
     </ClCompile>
     <ClCompile Include="Source\Effect\fade_system.cpp">
+      <Filter>Source\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Effect\dust_system.cpp">
       <Filter>Source\Effect</Filter>
     </ClCompile>
     <!-- Audio -->
@@ -306,6 +312,9 @@
     <ClInclude Include="Source\Graphics\render_constants.h">
       <Filter>Source\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Graphics\shadow_system.h">
+      <Filter>Source\Graphics</Filter>
+    </ClInclude>
     <!-- UI -->
     <ClInclude Include="Source\UI\score_hud.h">
       <Filter>Source\UI</Filter>
@@ -324,6 +333,9 @@
       <Filter>Source\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Source\Effect\fade_system.h">
+      <Filter>Source\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Effect\dust_system.h">
       <Filter>Source\Effect</Filter>
     </ClInclude>
     <!-- Audio -->

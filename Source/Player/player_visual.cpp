@@ -219,6 +219,99 @@ void PlayerVisual::Draw()
             }
         }
     }
+
+    // 正面方向を明示するフェイスパーツ（両目）を描画
+    DrawEyes();
+}
+
+// =================================================================
+// 正面方向を明示するフェイスパーツ（両目）の描画
+// =================================================================
+void PlayerVisual::DrawEyes()
+{
+    if (!m_Owner || !m_Owner->GetRenderComponent().visible) return;
+
+    XMFLOAT3 pPos = m_Owner->GetPosition();
+    XMFLOAT3 pRot = m_Owner->GetRotation();
+    XMFLOAT3 pScale = m_Owner->GetScale();
+
+    // プレイヤーの本体姿勢マトリクス
+    XMMATRIX parentMatrix = XMMatrixScaling(pScale.x, pScale.y, pScale.z) *
+                            XMMatrixRotationRollPitchYaw(pRot.x, pRot.y, pRot.z) *
+                            XMMatrixTranslation(pPos.x, pPos.y, pPos.z);
+
+    Renderer::SetupCubeDraw();
+
+    // 目の外枠マテリアル
+    MATERIAL eyeBaseMat;
+    ZeroMemory(&eyeBaseMat, sizeof(eyeBaseMat));
+    eyeBaseMat.Diffuse       = XMFLOAT4(0.05f, 0.05f, 0.08f, 1.0f);
+    eyeBaseMat.Ambient       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    eyeBaseMat.Specular      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+    eyeBaseMat.Emission      = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    eyeBaseMat.Shininess     = 0.0f;
+    eyeBaseMat.TextureEnable = FALSE;
+    eyeBaseMat.RimPower      = 0.0f;
+
+    // 光る瞳マテリアル
+    MATERIAL pupilMat;
+    ZeroMemory(&pupilMat, sizeof(pupilMat));
+    pupilMat.Diffuse       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    pupilMat.Ambient       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    pupilMat.Specular      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+    pupilMat.Shininess     = 0.0f;
+    pupilMat.TextureEnable = FALSE;
+    pupilMat.RimPower      = 0.0f;
+
+    if (m_Owner->GetDamageTimer() > 0) {
+        // 被弾時：赤く点滅発光
+        pupilMat.Emission = XMFLOAT4(2.5f, 0.3f, 0.3f, 1.0f);
+    } else if (m_Owner->GetState() == PlayerState::SPINNING) {
+        // スピン時：ゴールド発光
+        pupilMat.Emission = XMFLOAT4(2.5f, 2.0f, 0.2f, 1.0f);
+    } else {
+        // 通常時：鮮やかなネオンシアン発光（正面方向が遠目からでも明瞭に視認可能）
+        pupilMat.Emission = XMFLOAT4(0.4f, 2.0f, 2.5f, 1.0f);
+    }
+
+    // 1. 目の外枠
+    XMMATRIX leftEyeLocal = XMMatrixScaling(0.12f, 0.22f, 0.05f) * XMMatrixTranslation(-0.20f, 0.12f, 0.51f);
+    Renderer::SetWorldMatrix(leftEyeLocal * parentMatrix);
+    Renderer::SetMaterial(eyeBaseMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    XMMATRIX rightEyeLocal = XMMatrixScaling(0.12f, 0.22f, 0.05f) * XMMatrixTranslation(0.20f, 0.12f, 0.51f);
+    Renderer::SetWorldMatrix(rightEyeLocal * parentMatrix);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    // 2. 光る瞳
+    XMMATRIX leftPupilLocal = XMMatrixScaling(0.08f, 0.14f, 0.06f) * XMMatrixTranslation(-0.20f, 0.14f, 0.52f);
+    Renderer::SetWorldMatrix(leftPupilLocal * parentMatrix);
+    Renderer::SetMaterial(pupilMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    XMMATRIX rightPupilLocal = XMMatrixScaling(0.08f, 0.14f, 0.06f) * XMMatrixTranslation(0.20f, 0.14f, 0.52f);
+    Renderer::SetWorldMatrix(rightPupilLocal * parentMatrix);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    // 3. 頭頂部の前方インジケーター（見下ろし・斜め後方カメラからでも前方向が一目で視認できるサイバークレスト）
+    XMMATRIX crestCenter = XMMatrixScaling(0.08f, 0.04f, 0.36f) * XMMatrixTranslation(0.0f, 0.51f, 0.22f);
+    Renderer::SetWorldMatrix(crestCenter * parentMatrix);
+    Renderer::SetMaterial(pupilMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    // 前方を強調するシェブロン翼（左・右）
+    XMMATRIX crestLeft = XMMatrixScaling(0.06f, 0.04f, 0.16f) * 
+                         XMMatrixRotationY(XM_PIDIV4) * 
+                         XMMatrixTranslation(-0.08f, 0.51f, 0.30f);
+    Renderer::SetWorldMatrix(crestLeft * parentMatrix);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    XMMATRIX crestRight = XMMatrixScaling(0.06f, 0.04f, 0.16f) * 
+                          XMMatrixRotationY(-XM_PIDIV4) * 
+                          XMMatrixTranslation(0.08f, 0.51f, 0.30f);
+    Renderer::SetWorldMatrix(crestRight * parentMatrix);
+    Renderer::GetDeviceContext()->Draw(36, 0);
 }
 
 // =================================================================

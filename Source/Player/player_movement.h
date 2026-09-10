@@ -44,6 +44,13 @@ private:
     DirectX::XMFLOAT3 m_KnockbackVelocity = DirectX::XMFLOAT3(0, 0, 0); // 被弾時のノックバック速度
     float       m_MoveAnimation    = 0.0f;      // 歩行アニメーションの位相
 
+    // ロロロロ風体幹傾き（Tilt & Lean）パラメータ
+    float       m_CurrentPitch     = 0.0f;      // 前傾角度
+    float       m_CurrentRoll      = 0.0f;      // 左右バンク角度
+    float       m_PitchVelocity    = 0.0f;      // 前傾復元スプリング速度
+    float       m_RollVelocity     = 0.0f;      // 左右復元スプリング速度
+    int         m_RunDustTimer     = 0;         // 走行時の砂埃発生カウンタ
+
 public:
     // コンストラクタ / デストラクタ
     PlayerMovement(Player* owner);

@@ -16,6 +16,7 @@
 #include "spatial_grid.h"
 #include "boss_enemy.h"
 #include "sound_manager.h"
+#include "score_hud.h"
 
 // namespace LightningConfig は削除され、Constants::Lightning (game_constants.h) に統合されました。
 
@@ -144,6 +145,7 @@ static bool ResolveFlyingEnemyImpact(
         flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
         Manager::AddHitStop(10);
         if (g_Camera) g_Camera->Shake(0.4f, 15);
+        ScoreHUD::Shake(12.0f, 10);
         return true;
     }
 
@@ -166,6 +168,7 @@ static bool ResolveFlyingEnemyImpact(
             target->OnHit(hitInfo);
             Manager::AddHitStop(10);
             if (g_Camera) g_Camera->Shake(0.4f, 15);
+            ScoreHUD::Shake(14.0f, 12);
         } else {
             // 通常サイズ：玉突きして撃破
             XMFLOAT3 vel = dir * 0.5f;
@@ -174,6 +177,7 @@ static bool ResolveFlyingEnemyImpact(
             target->OnHit(hitInfo);
             Manager::AddHitStop(8);
             if (g_Camera) g_Camera->Shake(0.3f, 12);
+            ScoreHUD::Shake(9.0f, 8);
         }
 
         SoundManager::PlaySE(SoundID::SE_HIT_ENEMY);
@@ -290,6 +294,7 @@ static void HandleSpinSweep(Player* player, SpatialGrid& grid)
                     // ヒットインパクト演出（ヒットストップとカメラ揺れ）
                     Manager::AddHitStop(6);
                     if (g_Camera) g_Camera->Shake(0.18f + spinSpeed * 0.4f, 8);
+                    ScoreHUD::Shake(6.0f + spinSpeed * 8.0f, 6);
                 }
             }
         }
@@ -339,6 +344,7 @@ static void HandleFlyingVsWall(
 
         Manager::AddHitStop(6);
         if (g_Camera) g_Camera->Shake(0.15f, 10);
+        ScoreHUD::Shake(8.0f, 8);
         break;
     }
 }

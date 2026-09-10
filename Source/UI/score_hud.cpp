@@ -28,6 +28,9 @@ int   ScoreHUD::m_LastMaxHP   = 5;
 int   ScoreHUD::m_LastBossHP    = -1;
 int   ScoreHUD::m_LastBossMaxHP = -1;
 float ScoreHUD::m_ScaleEffect = 1.0f;
+float ScoreHUD::m_ShakeIntensity = 0.0f;
+int   ScoreHUD::m_ShakeTimer = 0;
+DirectX::XMFLOAT2 ScoreHUD::m_ShakeOffset = DirectX::XMFLOAT2(0.0f, 0.0f);
 
 // ─────────────────────────────────────────────────────────────────
 // GDI を使用してトータルスコアHUD用のテクスチャを生成する
@@ -765,11 +768,29 @@ void ScoreHUD::Uninit()
     if (m_QuadVB)     { m_QuadVB->Release();     m_QuadVB     = nullptr; }
 }
 
+void ScoreHUD::Shake(float intensity, int frames)
+{
+    m_ShakeIntensity = intensity;
+    m_ShakeTimer = frames;
+}
+
 // ─────────────────────────────────────────────────────────────────
 // 更新処理
 // ─────────────────────────────────────────────────────────────────
 void ScoreHUD::Update()
 {
+    // UIシェイクの更新
+    if (m_ShakeTimer > 0) {
+        m_ShakeTimer--;
+        float angle = ((float)rand() / RAND_MAX) * XM_2PI;
+        float factor = (float)m_ShakeTimer / (float)(std::max)(1, m_ShakeTimer + 1);
+        m_ShakeOffset.x = cosf(angle) * m_ShakeIntensity * factor;
+        m_ShakeOffset.y = sinf(angle) * m_ShakeIntensity * factor;
+    } else {
+        m_ShakeOffset = XMFLOAT2(0.0f, 0.0f);
+        m_ShakeIntensity = 0.0f;
+    }
+
     Scene currentScene = Manager::GetCurrentScene();
 
     if (currentScene == Scene::TITLE) {
@@ -942,7 +963,7 @@ void ScoreHUD::Draw()
         Renderer::SetViewMatrix(view2D);
         Renderer::SetProjectionMatrix(proj2D);
 
-        XMMATRIX world = XMMatrixScaling(w, h, 1.0f) * XMMatrixTranslation(posX, posY, 0.0f);
+        XMMATRIX world = XMMatrixScaling(w, h, 1.0f) * XMMatrixTranslation(posX + m_ShakeOffset.x, posY + m_ShakeOffset.y, 0.0f);
         Renderer::SetWorldMatrix(world);
 
         MATERIAL mat = {};
@@ -978,7 +999,7 @@ void ScoreHUD::Draw()
         Renderer::SetViewMatrix(view2D);
         Renderer::SetProjectionMatrix(proj2D);
 
-        XMMATRIX worldPlayer = XMMatrixScaling(pBarW, pBarH, 1.0f) * XMMatrixTranslation(pBarX, pBarY, 0.0f);
+        XMMATRIX worldPlayer = XMMatrixScaling(pBarW, pBarH, 1.0f) * XMMatrixTranslation(pBarX + m_ShakeOffset.x, pBarY + m_ShakeOffset.y, 0.0f);
         Renderer::SetWorldMatrix(worldPlayer);
 
         MATERIAL matPlayer = {};
@@ -1013,7 +1034,7 @@ void ScoreHUD::Draw()
         Renderer::SetViewMatrix(view2D);
         Renderer::SetProjectionMatrix(proj2D);
 
-        XMMATRIX worldBoss = XMMatrixScaling(bossBarW, bossBarH, 1.0f) * XMMatrixTranslation(bossBarX, bossBarY, 0.0f);
+        XMMATRIX worldBoss = XMMatrixScaling(bossBarW, bossBarH, 1.0f) * XMMatrixTranslation(bossBarX + m_ShakeOffset.x, bossBarY + m_ShakeOffset.y, 0.0f);
         Renderer::SetWorldMatrix(worldBoss);
 
         MATERIAL matBoss = {};

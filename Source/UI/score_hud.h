@@ -57,6 +57,11 @@ private:
         int maxHp
     );
 
+    // UIシェイクパラメータ
+    static float m_ShakeIntensity;
+    static int   m_ShakeTimer;
+    static DirectX::XMFLOAT2 m_ShakeOffset;
+
 public:
     // 初期化・終了処理
     static bool Init(ID3D11Device* device);
@@ -67,4 +72,7 @@ public:
 
     // 毎フレーム描画処理（Renderer::End() の直前に呼ぶ）
     static void Draw();
+
+    // UIシェイクの発生（強い打撃時やボス被弾時にUI全体を振動させる）
+    static void Shake(float intensity = 10.0f, int frames = 8);
 };

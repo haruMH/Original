@@ -1,4 +1,4 @@
-#include "manager.h"
+﻿#include "manager.h"
 #include <string>
 #include <unordered_set>
 #include "camera.h"
@@ -23,6 +23,8 @@
 #include "score_popup.h"
 #include "score_hud.h"
 #include "shockwave.h"
+#include "dust_system.h"
+#include "shadow_system.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "sound_manager.h"
@@ -108,6 +110,12 @@ void Manager::Init()
     // 衝撃波システムの初期化
     ShockwaveSystem::Init(Renderer::GetDevice());
 
+    // 砂埃パーティクルシステムの初期化
+    DustSystem::Init();
+
+    // 接地丸影（ドロップシャドウ）システムの初期化
+    ShadowSystem::Init();
+
     // フェードシステムの初期化
     FadeSystem::Init(Renderer::GetDevice());
 
@@ -154,6 +162,12 @@ void Manager::Uninit()
 
     // 衝撃波システムの終了処理
     ShockwaveSystem::Uninit();
+
+    // 砂埃パーティクルシステムの終了処理
+    DustSystem::Uninit();
+
+    // 接地丸影（ドロップシャドウ）システムの終了処理
+    ShadowSystem::Uninit();
 
     // フェードシステムの終了処理
     FadeSystem::Uninit();
@@ -214,6 +228,9 @@ void Manager::Update()
 
     // スコアHUDの更新
     ScoreHUD::Update();
+
+    // 砂埃パーティクルシステムの更新
+    DustSystem::Update();
 
     // 現在アクティブなシーンオブジェクトの更新を実行
     if (m_ActiveScene) {
@@ -360,6 +377,9 @@ void Manager::Draw()
     }
     Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+    // 全キャラクター・敵・アイテムの接地丸影（ドロップシャドウ）を描画
+    ShadowSystem::Draw(m_GameObjects);
+
     Renderer::SetupCubeDraw();
     for (GameObject* obj : m_GameObjects) {
         ObjectType type = obj->GetObjectType();
@@ -384,6 +404,7 @@ void Manager::Draw()
 
     ScorePopupSystem::Draw();
     ShockwaveSystem::Draw();
+    DustSystem::Draw();
     ScoreHUD::Draw();
 
     if (m_ActiveScene) {

@@ -19,6 +19,9 @@ void Enemy::Init()
     m_Rotation = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_Scale    = XMFLOAT3(1.0f, 1.0f, 1.0f);
     m_Size     = XMFLOAT3(1.0f, 1.0f, 1.0f);
+    m_OriginalScale = m_Scale;
+    m_HitFlashTimer = 0;
+    m_HitSquashTimer = 0;
     m_UprightTimer = 0;
     m_Affix        = nullptr;
     m_IsDefeatedCounted = false;
@@ -36,6 +39,14 @@ void Enemy::Uninit()
 
 void Enemy::Update()
 {
+    if (m_HitFlashTimer > 0) m_HitFlashTimer--;
+    if (m_HitSquashTimer > 0) {
+        m_HitSquashTimer--;
+        if (m_HitSquashTimer == 0) {
+            m_Scale = m_OriginalScale;
+        }
+    }
+
     if (m_Affix) m_Affix->Update(this);
 
     if (m_EnemyState == EnemyState::FLYING) {
@@ -260,6 +271,9 @@ void Enemy::Defeat(float colorR, float colorG, float colorB)
 
 XMFLOAT3 Enemy::GetEmissive() const
 {
+    if (m_HitFlashTimer > 0) {
+        return XMFLOAT3(2.5f, 2.5f, 2.5f); // カービィ風の被弾純白フラッシュ
+    }
     if (m_Affix) {
         return m_Affix->GetEmissive();
     }
@@ -276,6 +290,12 @@ void Enemy::OnHit(const HitInfo& info)
     if (info.setLightning) {
         SetLightning(true);
     }
+
+    // カービィディスカバリー風の被弾潰れ（Squash & Stretch）と白フラッシュ
+    m_HitFlashTimer = 4;
+    m_HitSquashTimer = 4;
+    m_OriginalScale = m_Scale;
+    m_Scale = XMFLOAT3(m_OriginalScale.x * 1.45f, m_OriginalScale.y * 0.55f, m_OriginalScale.z * 1.45f);
 
     Defeat(info.popupColor.x, info.popupColor.y, info.popupColor.z);
 }

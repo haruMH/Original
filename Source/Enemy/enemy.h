@@ -27,6 +27,11 @@ protected:
     int        m_UprightTimer = 0;   // 着地後、起き上がるまでのタイマー
     bool       m_IsDefeatedCounted = false; // 二重撃破ガード用フラグ
 
+    // カービィディスカバリー風ヒット演出（Squash & Stretch、被弾フラッシュ）
+    int        m_HitFlashTimer = 0;  // 白発光タイマー
+    int        m_HitSquashTimer = 0; // モデル潰れ演出タイマー
+    XMFLOAT3   m_OriginalScale = XMFLOAT3(1.0f, 1.0f, 1.0f); // 基準スケール
+
 public:
     void Init()   override;
     void Uninit() override;

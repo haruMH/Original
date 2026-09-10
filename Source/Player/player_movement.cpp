@@ -10,8 +10,44 @@
 #include "enemy.h"
 #include "boss_enemy.h"
 #include "sound_manager.h"
+#include "dust_system.h"
+#include <algorithm>
 
 using namespace DirectX;
+
+namespace {
+    // 傾き（Pitch, Yaw, Roll）およびスケールに応じた、底面の全角が地面（GROUND_Y）に接するプレイヤー中心高さを計算
+    float CalculateGroundCenterY(float pitch, float yaw, float roll, const XMFLOAT3& scale, float groundY = -1.0f)
+    {
+        // 底面4頂点のローカルオフセット（直方体の下半分）
+        float hx = 0.5f * scale.x;
+        float hy = 0.5f * scale.y;
+        float hz = 0.5f * scale.z;
+
+        XMVECTOR corners[4] = {
+            XMVectorSet(-hx, -hy, -hz, 0.0f),
+            XMVectorSet( hx, -hy, -hz, 0.0f),
+            XMVectorSet(-hx, -hy,  hz, 0.0f),
+            XMVectorSet( hx, -hy,  hz, 0.0f),
+        };
+
+        // 本体の回転行列
+        XMMATRIX rotM = XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
+
+        float minY = 0.0f;
+        for (int i = 0; i < 4; ++i) {
+            XMVECTOR rotated = XMVector3Transform(corners[i], rotM);
+            float y = XMVectorGetY(rotated);
+            if (i == 0 || y < minY) {
+                minY = y;
+            }
+        }
+
+        // 中心高さ = groundY - minY + 微小マージン（床面とのZファイティング防止・底面輪郭線の完全露出用）
+        const float MARGIN_Y = 0.02f;
+        return groundY - minY + MARGIN_Y;
+    }
+}
 
 // =================================================================
 // Constructor / Destructor
@@ -46,6 +82,12 @@ void PlayerMovement::Init()
     
     m_KnockbackVelocity = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_MoveAnimation = 0.0f;
+
+    m_CurrentPitch = 0.0f;
+    m_CurrentRoll = 0.0f;
+    m_PitchVelocity = 0.0f;
+    m_RollVelocity = 0.0f;
+    m_RunDustTimer = 0;
 }
 
 // =================================================================
@@ -95,6 +137,9 @@ void PlayerMovement::Update()
             m_ScaleVelocityZ = 0.08f;
             
             m_Owner->SetInvincibleTimer(Constants::Player::DASH_INVINCIBLE_TIME);
+
+            // ダッシュ噴射土煙
+            DustSystem::AddDashDust(m_Owner->GetPosition(), m_DashDirection);
         }
     }
 
@@ -106,6 +151,11 @@ void PlayerMovement::Update()
         XMFLOAT3 nextPos = m_Owner->GetPosition();
         nextPos.x += m_DashDirection.x * dashSpeed;
         nextPos.z += m_DashDirection.z * dashSpeed;
+
+        // ダッシュ中も足元から勢いよく煙を引く
+        if (m_DashTimer % 2 == 0) {
+            DustSystem::AddRunDust(m_Owner->GetPosition(), m_DashDirection);
+        }
 
         if (m_Owner->GetTackleTimer() > 0) {
             Enemy* hitTarget = nullptr;
@@ -187,6 +237,14 @@ void PlayerMovement::Update()
         }
 
         UpdateSpringPhysics();
+        // ダッシュ中も地上であれば最新スケールに合わせて接地高さを維持
+        if (!m_IsJumping && m_VelocityY == 0.0f) {
+            XMFLOAT3 rot = m_Owner->GetRotation();
+            float exactGroundY = CalculateGroundCenterY(rot.x, rot.y, rot.z, m_Owner->GetScale(), -1.0f);
+            XMFLOAT3 p = m_Owner->GetPosition();
+            p.y = exactGroundY;
+            m_Owner->SetPosition(p);
+        }
         return;
     }
 
@@ -222,13 +280,18 @@ void PlayerMovement::Update()
     }
 
     // Gravity & Ground checks
+    const float GROUND_Y = -1.0f; // 地面の高さ
+    XMFLOAT3 curScale = m_Owner->GetScale();
+    XMFLOAT3 curRot = m_Owner->GetRotation();
+    // 傾き（Pitch, Yaw, Roll）およびスケールに応じた厳密な接地中心高さを計算
+    float targetGroundY = CalculateGroundCenterY(m_CurrentPitch, curRot.y, m_CurrentRoll, curScale, GROUND_Y);
+
     XMFLOAT3 curPos = m_Owner->GetPosition();
-    if (curPos.y > -0.5f || m_VelocityY != 0.0f) {
+    if (curPos.y > targetGroundY || m_VelocityY != 0.0f) {
         m_VelocityY -= Constants::Player::GRAVITY;
         curPos.y += m_VelocityY;
         m_Owner->SetPosition(curPos);
 
-        XMFLOAT3 curScale = m_Owner->GetScale();
         if (m_VelocityY > 0.01f) {
             curScale.y += (1.0f + m_VelocityY * 1.5f - curScale.y) * 0.2f;
             curScale.x += (1.0f - m_VelocityY * 0.75f - curScale.x) * 0.2f;
@@ -237,8 +300,9 @@ void PlayerMovement::Update()
         }
 
         curPos = m_Owner->GetPosition();
-        if (curPos.y <= -0.5f) {
-            curPos.y = -0.5f;
+        if (curPos.y <= targetGroundY) {
+            bool wasInAir = (m_VelocityY < -0.05f || m_IsJumping);
+            curPos.y = targetGroundY;
             m_Owner->SetPosition(curPos);
             m_VelocityY = 0.0f;
             m_IsJumping = false;
@@ -249,7 +313,16 @@ void PlayerMovement::Update()
             m_ScaleVelocityY = -0.1f;
             m_ScaleVelocityX = 0.05f;
             m_ScaleVelocityZ = 0.05f;
+
+            // 着地時の砂埃エフェクト（地面高さで発生）
+            if (wasInAir) {
+                DustSystem::AddLandDust(curPos, 8);
+            }
         }
+    } else {
+        // 地上移動中も傾きやスケール変形による沈み込みを解消し、常に地面の上に接地させる
+        curPos.y = targetGroundY;
+        m_Owner->SetPosition(curPos);
     }
 
     // Angular velocity
@@ -263,16 +336,89 @@ void PlayerMovement::Update()
 
     curPos = m_Owner->GetPosition();
     XMFLOAT3 actualVel = XMFLOAT3(curPos.x - oldPos.x, curPos.y - oldPos.y, curPos.z - oldPos.z);
-    float speed = sqrtf(actualVel.x * actualVel.x + actualVel.y * actualVel.y + actualVel.z * actualVel.z);
+    float horizontalSpeed = sqrtf(actualVel.x * actualVel.x + actualVel.z * actualVel.z);
     float dt = 1.0f / 60.0f;
 
-    if (speed > 0.005f) {
-        m_MoveAnimation += speed * dt * 30.0f;
+    if (horizontalSpeed > 0.005f) {
+        m_MoveAnimation += horizontalSpeed * dt * 30.0f;
         XMFLOAT3 curScale = m_Owner->GetScale();
         curScale.y += sinf(m_MoveAnimation * 3.0f) * 0.03f;
         curScale.x -= sinf(m_MoveAnimation * 3.0f) * 0.015f;
         curScale.z -= sinf(m_MoveAnimation * 3.0f) * 0.015f;
         m_Owner->SetScale(curScale);
+
+        // 走行中の足元砂埃（接地中かつ通常走行時）
+        bool isGrounded = (!m_IsJumping && m_VelocityY == 0.0f);
+        if (isGrounded && horizontalSpeed > 0.02f && m_Owner->GetState() != PlayerState::SPINNING) {
+            m_RunDustTimer++;
+            if (m_RunDustTimer >= 4) { // 約0.06秒ごとにリズミカルにポコッと発生
+                m_RunDustTimer = 0;
+                DustSystem::AddRunDust(curPos, actualVel);
+            }
+        }
+    } else {
+        m_RunDustTimer = 0;
+    }
+
+    // ロロロロ風の体幹傾き（Tilt / Lean）計算
+    float targetPitch = 0.0f;
+    float targetRoll  = 0.0f;
+
+    if (m_Owner->GetState() != PlayerState::SPINNING) {
+        if (horizontalSpeed > 0.01f) {
+            float yaw = m_Owner->GetRotation().y;
+            float cosY = cosf(yaw);
+            float sinY = sinf(yaw);
+
+            // ローカル前方・横方向の速度成分
+            float forwardComp = (actualVel.x * sinY + actualVel.z * cosY) / (Constants::Player::MOVE_SPEED + 0.001f);
+            float rightComp   = (actualVel.x * cosY - actualVel.z * sinY) / (Constants::Player::MOVE_SPEED + 0.001f);
+
+            forwardComp = (std::max)(-1.2f, (std::min)(1.2f, forwardComp));
+            rightComp   = (std::max)(-1.2f, (std::min)(1.2f, rightComp));
+
+            // 前傾姿勢（前進時に前へ傾き、歩行リズムで微小に上下振動）
+            float bob = sinf(m_MoveAnimation * 3.0f) * 0.03f;
+            targetPitch = forwardComp * 0.26f + bob;
+
+            // バンク（旋回・左右移動時に少し傾く）
+            targetRoll = -rightComp * 0.20f;
+        }
+
+        // スプリング補間（移動時は素早く傾き、静止時はバネのようにぷるんと立ち直る）
+        float springK = 0.22f;
+        float damping = 0.78f;
+
+        float diffPitch = targetPitch - m_CurrentPitch;
+        m_PitchVelocity = (m_PitchVelocity + diffPitch * springK) * damping;
+        m_CurrentPitch += m_PitchVelocity;
+
+        float diffRoll = targetRoll - m_CurrentRoll;
+        m_RollVelocity = (m_RollVelocity + diffRoll * springK) * damping;
+        m_CurrentRoll += m_RollVelocity;
+
+        XMFLOAT3 rot = m_Owner->GetRotation();
+        rot.x = m_CurrentPitch;
+        rot.z = m_CurrentRoll;
+        m_Owner->SetRotation(rot);
+    } else {
+        m_CurrentPitch *= 0.8f;
+        m_CurrentRoll  *= 0.8f;
+        m_PitchVelocity = 0.0f;
+        m_RollVelocity  = 0.0f;
+        XMFLOAT3 rot = m_Owner->GetRotation();
+        rot.x = m_CurrentPitch;
+        rot.z = m_CurrentRoll;
+        m_Owner->SetRotation(rot);
+    }
+
+    // 傾き・スケール更新後の最新姿勢に基づいて、接地中であれば地面の上に即座に再密着させる
+    if (!m_IsJumping && m_VelocityY == 0.0f) {
+        XMFLOAT3 rot = m_Owner->GetRotation();
+        float exactGroundY = CalculateGroundCenterY(rot.x, rot.y, rot.z, m_Owner->GetScale(), -1.0f);
+        XMFLOAT3 p = m_Owner->GetPosition();
+        p.y = exactGroundY;
+        m_Owner->SetPosition(p);
     }
 
     // Resolve push out of collision

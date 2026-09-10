@@ -1,4 +1,4 @@
-#include "gameplay_scene.h"
+﻿#include "gameplay_scene.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "score_popup.h"

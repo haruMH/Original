@@ -83,8 +83,8 @@ public:
     // オーディオファイルの事前登録
     static bool RegisterSound(SoundID id, const std::string& relativePath);
 
-    // BGM 制御
-    static void  PlayBGM(SoundID id, bool loop = true, float volume = 1.0f);
+    // BGM 制御（volume < 0 の場合は現在の m_BgmVolume を維持）
+    static void  PlayBGM(SoundID id, bool loop = true, float volume = -1.0f);
     static void  StopBGM();
     static void  SetBGMVolume(float volume);
     static float GetBGMVolume() { return m_BgmVolume; }

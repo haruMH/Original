@@ -25,6 +25,12 @@ public:
     // エフェクトの描画（通常パス時のみ実行）
     void Draw();
 
+private:
+    // 正面方向を明示するフェイス（両目）パーツの描画
+    void DrawEyes();
+
+public:
+
     // 2点間にジグザグの稲妻を描画する（外部公開）
     void DrawLightningBolt(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness, const DirectX::XMFLOAT4& color);
 
