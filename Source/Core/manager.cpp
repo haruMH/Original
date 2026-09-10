@@ -507,6 +507,10 @@ void Manager::TransitionToBossStage()
     
     // ボス登場カットシーンのトリガー
     TriggerBossSpawnCutscene();
+
+    if (g_Camera) {
+        g_Camera->Update();
+    }
     LOG_INFO("[Manager] TransitionToBossStage - 正常終了\n");
 }
 
@@ -626,6 +630,12 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     // 新しいシーンオブジェクトの初期化を実行
     if (m_ActiveScene) {
         m_ActiveScene->Init();
+    }
+
+    // 新シーン構築直後にカメラの初期姿勢・ビュー行列を即座に確定させる
+    // （初描画フレームで古いビュー行列が使われてアウトラインや影が画面全体に四角く歪む現象を完全防止）
+    if (g_Camera) {
+        g_Camera->Update();
     }
 }
 

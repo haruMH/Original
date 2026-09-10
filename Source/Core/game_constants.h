@@ -203,6 +203,26 @@ namespace Constants
         constexpr float GRID_MIN_Z      = -60.0f;
     }
 
+    // 影（丸影／ドロップシャドウ）に関する調整パラメータ
+    namespace Shadow
+    {
+        // プレイヤーの影
+        const float PLAYER_RADIUS_SCALE     = 1.85f;    // プレイヤーの影の大きさ倍率
+        const float PLAYER_ALPHA            = 0.78f;    // プレイヤーの影の黒さ (0.0=透明 〜 1.0=完全な黒)
+
+        // 通常エネミーの影
+        const float ENEMY_RADIUS_SCALE      = 1.70f;    // 通常敵の影の大きさ倍率
+        const float ENEMY_ALPHA             = 0.72f;    // 通常敵の影の黒さ (0.0〜1.0)
+
+        // ボスの影
+        const float BOSS_RADIUS_SCALE       = 1.50f;    // ボスの影の大きさ（小さく: 1.2〜1.4 / 大きく: 1.8〜2.0）
+        const float BOSS_ALPHA              = 0.95f;    // ボスの影の黒さ（★0.95fで重厚感のある漆黒）
+
+        // アイテムの影
+        const float ITEM_RADIUS             = 1.30f;    // アイテムの影の大きさ
+        const float ITEM_ALPHA              = 0.60f;    // アイテムの影の黒さ (0.0〜1.0)
+    }
+
     // ステージ構築・配置に関するパラメータ
     namespace Stage
     {

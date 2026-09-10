@@ -33,7 +33,7 @@ constexpr float SLOPE_SCALED_DEPTH_BIAS = 1.0f;
 
 // デフォルトライティング・フォグ環境設定
 namespace DefaultLight {
-inline const DirectX::XMFLOAT4 LIGHT_DIRECTION = DirectX::XMFLOAT4(0.5f, -1.0f, 0.5f, 0.0f);
+inline const DirectX::XMFLOAT4 LIGHT_DIRECTION = DirectX::XMFLOAT4(0.45f, -0.85f, 0.35f, 0.0f);
 inline const DirectX::XMFLOAT4 LIGHT_DIFFUSE   = DirectX::XMFLOAT4(1.0f, 0.95f, 0.9f, 1.0f);
 inline const DirectX::XMFLOAT4 LIGHT_AMBIENT   = DirectX::XMFLOAT4(0.4f, 0.5f, 0.7f, 1.0f);
 inline const DirectX::XMFLOAT4 LIGHT_FOG_COLOR = DirectX::XMFLOAT4(0.6f, 0.8f, 1.0f, 1.0f);

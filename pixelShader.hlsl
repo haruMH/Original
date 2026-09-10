@@ -62,7 +62,7 @@ float4 main(PS_INPUT input) : SV_TARGET
                     sum += g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler,
                                proj.xy + float2(x, y) * ts, proj.z - bias);
             shadow = sum / 9.0f;
-            if (shadow < 0.5f) shadow = 0.4f;  // 影の最低輝度（明るめ）
+            if (shadow < 0.5f) shadow = 0.28f;  // 影の最低輝度（コントラスト強化）
             else               shadow = 1.0f;
         }
 

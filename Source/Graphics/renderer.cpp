@@ -509,6 +509,12 @@ void Renderer::Begin() {
     m_DeviceContext->OMSetRenderTargets(1, &m_SceneRTV, m_DepthStencilView);
     m_DeviceContext->ClearRenderTargetView(m_SceneRTV, c);
     m_DeviceContext->ClearDepthStencilView(m_DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+    // 前フレームのポストプロセス・フェード・ImGuiによるパイプラインステート汚染をリセット
+    float f[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    m_DeviceContext->OMSetBlendState(m_BlendState, f, 0xffffffff);
+    m_DeviceContext->OMSetDepthStencilState(m_DepthStateEnable, 0);
+    m_DeviceContext->RSSetState(m_RasterizerStateCullBack);
 }
 
 void Renderer::BeginNewFrame() {

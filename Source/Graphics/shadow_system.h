@@ -9,6 +9,7 @@ class GameObject;
 // =================================================================
 // 3D空間におけるキャラクター・敵・ボスの距離感と接地感を正確に
 // 把握できるように、オブジェクト直下の床面に半透明の丸影を描画します。
+// 各種サイズや濃さの設定は game_constants.h の Constants::Shadow に集約されています。
 class ShadowSystem {
 private:
     // GPU リソース
@@ -16,11 +17,7 @@ private:
     static ID3D11VertexShader*      m_VS;           // 頂点シェーダー
     static ID3D11PixelShader*       m_PS;           // ピクセルシェーダー
     static ID3D11InputLayout*       m_IL;           // 入力レイアウト
-    static ID3D11DepthStencilState* m_DepthState;   // 深度ステート（テストON / 書き込みOFF）
-    static ID3D11ShaderResourceView* m_ShadowTexture; // 円形グラデーションテクスチャ
-
-    // プロシージャルに中心が濃く外側が滑らかに減衰する円形テクスチャを生成
-    static ID3D11ShaderResourceView* CreateCircleTexture(ID3D11Device* device);
+    static ID3D11DepthStencilState*  m_DepthState;    // 深度ステート（テストON / 書き込みOFF）
 
 public:
     static void Init();
