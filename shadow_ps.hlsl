@@ -37,19 +37,21 @@ float4 main(PS_INPUT input) : SV_TARGET
         discard;
     }
 
-    // 0.0〜0.15f: 濃い中心影、0.15f〜0.48f: 滑らかなコサインフォールオフ
-    float innerR = 0.15f;
+    // 0.0〜0.20f: しっかり濃い中心核（接地コンタクトシャドウ）、0.20f〜0.48f: ソフトな半影拡散
+    float innerR = 0.20f;
     float outerR = 0.48f;
     float alpha = 1.0f;
 
     if (dist > innerR) {
         float t = (dist - innerR) / (outerR - innerR);
-        alpha = 0.5f * (1.0f + cos(t * 3.14159265f));
+        float cosFalloff = 0.5f * (1.0f + cos(t * 3.14159265f));
+        alpha = cosFalloff * cosFalloff; // 2乗カーブで柔らかな半影フォールオフ
     }
 
     // 最終アルファ = 計算された円形減衰 × マテリアルのアルファ値
     float finalAlpha = alpha * Material.Diffuse.a;
 
-    // 黒色の影
-    return float4(0.0f, 0.0f, 0.0f, finalAlpha);
+    // わずかに環境青紫を含ませた深みのあるトゥーンシャドウカラー
+    float3 shadowColor = float3(0.012f, 0.015f, 0.035f);
+    return float4(shadowColor, finalAlpha);
 }

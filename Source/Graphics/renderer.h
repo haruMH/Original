@@ -35,11 +35,14 @@ struct LIGHT {
 };
 
 struct POSTEFFECT {
-    int   Mode;
-    float Threshold;
-    float BlurIntensity;
-    float SlowMotionIntensity; // スローモーション中のカラー彩度・色調補正度
-    XMFLOAT4 FlashColor;       // 画面フラッシュ / 調色カラー (RGB: 色, A: 強度)
+    int      Mode;
+    float    Threshold;
+    float    BlurIntensity;
+    float    SlowMotionIntensity;  // スローモーション中のカラー彩度・色調補正度
+    XMFLOAT4 FlashColor;           // 画面フラッシュ / 調色カラー (RGB: 色, A: 強度)
+    float    RadialBlurIntensity;  // 放射ブラー強度 (0.0〜1.0)
+    float    ChromaticAberration;  // 色収差強度 (0.0〜1.0)
+    XMFLOAT2 RadialBlurCenter;     // 放射ブラー中心UV (0.5, 0.5)
 };
 
 // 水面シェーダー用定数バッファ構造体 (VS)

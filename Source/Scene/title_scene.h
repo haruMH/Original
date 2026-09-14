@@ -16,4 +16,7 @@ public:
     void Uninit() override;
     void Update() override;
     void Draw() override;
+
+private:
+    float m_OrbitAngle = 0.0f; // カメラ旋回用アングル
 };

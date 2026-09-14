@@ -43,6 +43,7 @@ void GameplayScene::Init()
         if (g_Camera) g_Camera->Shake(0.35f, 12);
         Manager::AddHitStop(5);
         Manager::TriggerFlash(XMFLOAT4(1.0f, 0.0f, 0.0f, 0.4f), 0.04f); // 被弾時に赤いフラッシュ
+        Manager::TriggerChromaticAberration(0.55f); // 被弾ショックによる色収差
     });
 
     EventSystem::Subscribe<EnemyDefeatedEvent>([this](const EnemyDefeatedEvent& ev) {
@@ -64,6 +65,7 @@ void GameplayScene::Init()
             ScorePopupSystem::AddPopup(ev.position.x, ev.position.y + 0.8f, ev.position.z, m_ComboCount, 2.5f, 1.8f, 0.0f);
             Manager::AddHitStop(3); // コンボ時の手応えヒットストップ
             if (g_Camera) g_Camera->Shake(0.15f, 6);
+            Manager::TriggerRadialBlur(0.20f);
         }
     });
 
@@ -71,12 +73,16 @@ void GameplayScene::Init()
         Manager::AddHitStop(12);
         if (g_Camera) g_Camera->Shake(0.40f, 12);
         Manager::TriggerFlash(XMFLOAT4(1.0f, 0.8f, 0.0f, 0.3f), 0.05f); // ボス被弾時に黄色閃光
+        Manager::TriggerRadialBlur(0.50f);
+        Manager::TriggerChromaticAberration(0.35f);
     });
 
     EventSystem::Subscribe<PlayerParriedEvent>([](const PlayerParriedEvent& ev) {
         Manager::TriggerFlash(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.02f); // パリィ成功時に真っ白閃光
         Manager::StartSlowMotion(90); // 1.5秒のスローモーション (彩度補正ON)
         Manager::AddHitStop(15);      // 手応えヒットストップ
+        Manager::TriggerRadialBlur(0.75f);
+        Manager::TriggerChromaticAberration(0.60f);
     });
 
     EventSystem::Subscribe<BossSpawnEvent>([](const BossSpawnEvent& ev) {

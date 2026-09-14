@@ -67,6 +67,7 @@ private:
     int         m_LockOnFrame      = 0;         // ロックオン確定からの経過フレーム数
     int         m_WarpSlashCount   = 0;         // テレポートスラッシュのチェイン回数
     bool        m_CanWarpSlash     = true;      // テレポートスラッシュの実行可否
+    bool        m_WarpSlashSuccess = false;     // テレポートスラッシュ成功フラグ
     int         m_TackleTimer      = 0;         // タックル有効時間
 
 private:
@@ -159,7 +160,10 @@ public:
     void        IncrementLockOnFrame() { m_LockOnFrame++; }
     int         GetWarpSlashCount() const { return m_WarpSlashCount; }
     void        SetWarpSlashCount(int count) { m_WarpSlashCount = count; }
-    void        IncrementWarpSlashCount() { m_WarpSlashCount++; }
+    void        IncrementWarpSlashCount() { m_WarpSlashCount++; m_WarpSlashSuccess = true; }
+    bool        GetWarpSlashSuccess() const { return m_WarpSlashSuccess; }
+    void        SetWarpSlashSuccess(bool success) { m_WarpSlashSuccess = success; }
+    void        ResetWarpSlashSuccess() { m_WarpSlashSuccess = false; }
     bool        CanWarpSlash() const { return m_CanWarpSlash; }
     void        SetCanWarpSlash(bool enable) { m_CanWarpSlash = enable; }
     int         GetTackleTimer() const { return m_TackleTimer; }

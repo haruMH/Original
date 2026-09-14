@@ -8,6 +8,7 @@ class Wall : public GameObject
 {
 private:
     ID3D11ShaderResourceView* m_Texture = nullptr;
+    DirectX::XMFLOAT3         m_Emissive = { 0.0f, 0.0f, 0.0f };
 
 public:
     void Init()   override;
@@ -19,4 +20,7 @@ public:
     ObjectType GetObjectType() const override { return GetStaticType(); }
     
     void SetVisible(bool visible) { m_RenderComponent.visible = visible; }
+    void SetTexture(std::string_view textureName);
+    void SetEmissive(const DirectX::XMFLOAT3& emissive) { m_Emissive = emissive; }
+    DirectX::XMFLOAT3 GetEmissive() const override { return m_Emissive; }
 };

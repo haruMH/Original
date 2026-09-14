@@ -6,6 +6,7 @@
 #include "manager.h"
 #include "boss_enemy.h"
 #include <vector>
+#include <algorithm>
 
 // =================================================================
 // 静的メンバ変数の実体定義
@@ -36,6 +37,10 @@ DirectX::XMFLOAT2 ScoreHUD::m_ShakeOffset = DirectX::XMFLOAT2(0.0f, 0.0f);
 // GDI を使用してトータルスコアHUD用のテクスチャを生成する
 // テキスト部分がアルファ（輝度）として抽出され、ui_ps.hlsl で発光描画される
 // ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// GDI を使用してトータルスコアHUD用のテクスチャを生成する
+// センタートップ・スラッシュプレート（逆台形ダークグラス + ゴールドネオン）
+// ─────────────────────────────────────────────────────────────────
 ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
     ID3D11Device* device,
     int score
@@ -47,55 +52,116 @@ ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
     BITMAPINFO bmi = {};
     bmi.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
     bmi.bmiHeader.biWidth       = W;
-    bmi.bmiHeader.biHeight      = -H;  // トップダウン形式（上から下）
+    bmi.bmiHeader.biHeight      = -H;  // トップダウン
     bmi.bmiHeader.biPlanes      = 1;
-    bmi.bmiHeader.biBitCount    = 32;  // BGRA 32bit
+    bmi.bmiHeader.biBitCount    = 32;
     bmi.bmiHeader.biCompression = BI_RGB;
 
     BYTE* bits = nullptr;
     HDC hdc     = CreateCompatibleDC(nullptr);
     HBITMAP hBmp = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, (void**)&bits, nullptr, 0);
     HGDIOBJ oldBmp = SelectObject(hdc, hBmp);
-
-    // 背景を黒（アルファ=0用）でクリア
     memset(bits, 0, W * H * 4);
 
-    // ─── フォントの作成 ───
-    HFONT hFont = CreateFontW(
-        46, 0, 0, 0, FW_HEAVY,
+    // ─── 1. センタートップ・スラッシュベースパネル（逆台形ヘックス） ───
+    const int padX = 70;
+    const int insetBot = 36;
+    POINT platePts[6] = {
+        { padX + 20, 2 },
+        { W - padX - 20, 2 },
+        { W - padX, 16 },
+        { W - padX - insetBot, H - 4 },
+        { padX + insetBot, H - 4 },
+        { padX, 16 }
+    };
+
+    HBRUSH plateBrush = CreateSolidBrush(RGB(15, 14, 25)); // 漆黒パープル
+    HPEN   goldPen = CreatePen(PS_SOLID, 2, RGB(255, 190, 40)); // ゴールドネオン外枠
+    HGDIOBJ oldPen = SelectObject(hdc, goldPen);
+    HGDIOBJ oldBrush = SelectObject(hdc, plateBrush);
+    Polygon(hdc, platePts, 6);
+
+    // パネル底面のダブルアクセントライン
+    HPEN thinGoldPen = CreatePen(PS_SOLID, 1, RGB(255, 230, 120));
+    SelectObject(hdc, thinGoldPen);
+    MoveToEx(hdc, padX + insetBot + 12, H - 9, nullptr);
+    LineTo(hdc, W - padX - insetBot - 12, H - 9);
+
+    // ─── 2. "SCORE" ミニバッジ（中央上部） ───
+    POINT badgePts[4] = {
+        { W / 2 - 42, 4 },
+        { W / 2 + 42, 4 },
+        { W / 2 + 35, 18 },
+        { W / 2 - 35, 18 }
+    };
+    HBRUSH badgeBrush = CreateSolidBrush(RGB(255, 180, 20));
+    SelectObject(hdc, badgeBrush);
+    Polygon(hdc, badgePts, 4);
+    DeleteObject(badgeBrush);
+
+    HFONT hFontBadge = CreateFontW(
+        13, 0, 0, 0, FW_BLACK,
         FALSE, FALSE, FALSE,
-        DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,
-        CLIP_DEFAULT_PRECIS,
-        ANTIALIASED_QUALITY,
-        DEFAULT_PITCH | FF_DONTCARE,
-        L"Impact"
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
     );
-    HGDIOBJ oldFont = SelectObject(hdc, hFont);
-
-    // ─── テキストの描画 ───
+    HGDIOBJ oldFont = SelectObject(hdc, hFontBadge);
     SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(255, 255, 255)); // 白色で描画
+    SetTextColor(hdc, RGB(20, 15, 5)); // 濃黒文字
+    RECT rcBadge = { W / 2 - 40, 5, W / 2 + 40, 18 };
+    DrawTextW(hdc, L"SCORE", -1, &rcBadge, DT_CENTER | DT_SINGLELINE);
 
-    wchar_t buf[64];
-    swprintf_s(buf, L"SCORE: %06d", score);
+    // ─── 3. スコア数値の描画（大きく洗練されたイタリック体） ───
+    HFONT hFontScore = CreateFontW(
+        34, 0, 0, 0, FW_BLACK,
+        TRUE, FALSE, FALSE, // 斜体
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
+    );
+    SelectObject(hdc, hFontScore);
 
-    RECT rc = { 0, 0, W, H };
-    DrawTextW(hdc, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    wchar_t buf[32];
+    swprintf_s(buf, L"%06d", score);
+
+    // ドロップシャドウ
+    SetTextColor(hdc, RGB(60, 45, 10));
+    RECT rcShadow = { 0, 21, W + 2, H - 3 };
+    DrawTextW(hdc, buf, -1, &rcShadow, DT_CENTER | DT_SINGLELINE);
+
+    // メインスコア数値（ゴールドホワイト）
+    SetTextColor(hdc, RGB(255, 245, 210));
+    RECT rcScore = { 0, 19, W, H - 5 };
+    DrawTextW(hdc, buf, -1, &rcScore, DT_CENTER | DT_SINGLELINE);
+
+    // GDI 描画完了
+    SelectObject(hdc, oldPen);
+    SelectObject(hdc, oldBrush);
+    DeleteObject(plateBrush);
+    DeleteObject(goldPen);
+    DeleteObject(thinGoldPen);
 
     GdiFlush();
 
-    // ─── アルファ値への変換処理 ───
+    // ─── 4. アルファ変換（背景半透明 + 枠線・文字不透明） ───
     std::vector<BYTE> rgba(W * H * 4);
     for (int i = 0; i < W * H; i++) {
         BYTE b = bits[i * 4 + 0];
         BYTE g = bits[i * 4 + 1];
         BYTE r = bits[i * 4 + 2];
-        BYTE a = (BYTE)(((int)r + (int)g + (int)b) / 3); // 輝度をアルファにする
-        rgba[i * 4 + 0] = 255; // R: 白（Emission で色を変えるため白）
-        rgba[i * 4 + 1] = 255; // G
-        rgba[i * 4 + 2] = 255; // B
-        rgba[i * 4 + 3] = a;   // A: テキストの形
+
+        if (r == 0 && g == 0 && b == 0) {
+            rgba[i * 4 + 3] = 0; // 完全透過
+        } else {
+            int lum = (r * 299 + g * 587 + b * 114) / 1000;
+            if (lum < 35) {
+                rgba[i * 4 + 3] = (BYTE)(190 + lum); // 背景プレートはダークグラス半透明
+            } else {
+                rgba[i * 4 + 3] = 255; // 枠線・バッジ・数字は鮮明不透明
+            }
+        }
+        rgba[i * 4 + 0] = r;
+        rgba[i * 4 + 1] = g;
+        rgba[i * 4 + 2] = b;
     }
 
     // ─── D3D11 テクスチャの生成 ───
@@ -122,10 +188,10 @@ ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
         tex->Release();
     }
 
-    // GDI リソースの解放
     SelectObject(hdc, oldFont);
     SelectObject(hdc, oldBmp);
-    DeleteObject(hFont);
+    DeleteObject(hFontBadge);
+    DeleteObject(hFontScore);
     DeleteObject(hBmp);
     DeleteDC(hdc);
 
@@ -134,7 +200,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
 
 // ─────────────────────────────────────────────────────────────────
 // GDI を使用してボスHPバー用のテクスチャを生成する
-// 画面下部に魔王名 + カラーゲージを描画
+// ヘックス・ウィングフレーム（左右対称六角形ダークグラス + クリムゾンネオン）
 // ─────────────────────────────────────────────────────────────────
 ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
     ID3D11Device* device,
@@ -160,114 +226,146 @@ ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
     HGDIOBJ oldBmp = SelectObject(hdc, hBmp);
     memset(bits, 0, W * H * 4);
 
-    // ─── 輝度バックグラウンド（半透明の深灰） ───
-    HBRUSH bgBrush = CreateSolidBrush(RGB(Constants::UI::BossHP::PANEL_BG.R, Constants::UI::BossHP::PANEL_BG.G, Constants::UI::BossHP::PANEL_BG.B));
-    RECT bgRect = { 0, 0, W, H };
-    FillRect(hdc, &bgRect, bgBrush);
-    DeleteObject(bgBrush);
+    // ─── 1. 左右対称ヘックス・ウィング背景パネル ───
+    const int wingCut = 22;
+    POINT wingPts[6] = {
+        { wingCut, 2 },
+        { W - wingCut, 2 },
+        { W - 4, H / 2 },
+        { W - wingCut, H - 2 },
+        { wingCut, H - 2 },
+        { 4, H / 2 }
+    };
 
-    // ─── "BOSS" ラベルテキスト ───
+    HBRUSH bgBrush = CreateSolidBrush(RGB(18, 10, 20)); // 深紅ブラック
+    HPEN   borderPen = CreatePen(PS_SOLID, 2, RGB(255, 45, 75)); // クリムゾンネオン枠線
+    HGDIOBJ oldPen = SelectObject(hdc, borderPen);
+    HGDIOBJ oldBrush = SelectObject(hdc, bgBrush);
+    Polygon(hdc, wingPts, 6);
+
+    // 左右先端のネオンアクセントシェブロン
+    HPEN thinPen = CreatePen(PS_SOLID, 1, RGB(255, 140, 160));
+    SelectObject(hdc, thinPen);
+    MoveToEx(hdc, 12, H / 2, nullptr);
+    LineTo(hdc, wingCut + 4, 6);
+    MoveToEx(hdc, 12, H / 2, nullptr);
+    LineTo(hdc, wingCut + 4, H - 6);
+
+    MoveToEx(hdc, W - 12, H / 2, nullptr);
+    LineTo(hdc, W - wingCut - 4, 6);
+    MoveToEx(hdc, W - 12, H / 2, nullptr);
+    LineTo(hdc, W - wingCut - 4, H - 6);
+    DeleteObject(thinPen);
+
+    // ─── 2. "BOSS // OVERLORD" ラベルテキスト ───
     HFONT hFontLabel = CreateFontW(
-        28, 0, 0, 0, FW_HEAVY,
-        FALSE, FALSE, FALSE,
+        24, 0, 0, 0, FW_BLACK,
+        TRUE, FALSE, FALSE, // 斜体
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Impact"
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
     );
     HGDIOBJ oldFont = SelectObject(hdc, hFontLabel);
     SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(Constants::UI::BossHP::TEXT_LABEL.R, Constants::UI::BossHP::TEXT_LABEL.G, Constants::UI::BossHP::TEXT_LABEL.B));
-    RECT rcLabel = { 10, 8, 100, 38 };
-    DrawTextW(hdc, L"BOSS", -1, &rcLabel, DT_LEFT | DT_SINGLELINE);
+    SetTextColor(hdc, RGB(255, 60, 90)); // クリムゾンピンク
+    RECT rcLabel = { 28, 8, 300, 36 };
+    DrawTextW(hdc, L"WARNING // BOSS", -1, &rcLabel, DT_LEFT | DT_SINGLELINE);
 
-    // ─── HP 数値テキスト ───
+    // ─── 3. HP 数値テキスト ───
     HFONT hFontHP = CreateFontW(
-        22, 0, 0, 0, FW_NORMAL,
-        FALSE, FALSE, FALSE,
+        20, 0, 0, 0, FW_HEAVY,
+        TRUE, FALSE, FALSE, // 斜体
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Arial"
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
     );
     SelectObject(hdc, hFontHP);
-    SetTextColor(hdc, RGB(Constants::UI::BossHP::TEXT_HP.R, Constants::UI::BossHP::TEXT_HP.G, Constants::UI::BossHP::TEXT_HP.B));
+    SetTextColor(hdc, RGB(255, 235, 235));
     wchar_t hpBuf[32];
     swprintf_s(hpBuf, L"%d / %d", hp, maxHp);
-    RECT rcHP = { W - 120, 8, W - 10, 38 };
+    RECT rcHP = { W - 220, 10, W - 28, 36 };
     DrawTextW(hdc, hpBuf, -1, &rcHP, DT_RIGHT | DT_SINGLELINE);
 
-    // ─── HPゲージ暀外枕（ダークグレー） ───
-    const int barLeft   = 10;
-    const int barTop    = 44;
-    const int barRight  = W - 10;
-    const int barBottom = 70;
-    HBRUSH barBgBrush = CreateSolidBrush(RGB(Constants::UI::BossHP::BAR_BG.R, Constants::UI::BossHP::BAR_BG.G, Constants::UI::BossHP::BAR_BG.B));
+    // ─── 4. ボスHPゲージ ───
+    const int barLeft   = 28;
+    const int barTop    = 42;
+    const int barRight  = W - 28;
+    const int barBottom = H - 12;
+
+    // ゲージスロット背景（暗いバーガンディ）
+    HBRUSH barBgBrush = CreateSolidBrush(RGB(38, 16, 26));
     RECT barBgRect = { barLeft, barTop, barRight, barBottom };
     FillRect(hdc, &barBgRect, barBgBrush);
     DeleteObject(barBgBrush);
 
-    // ─── HPゲージ内側（赤から黄のグラデーション） ───
     if (maxHp > 0 && hp > 0) {
         float ratio = (float)hp / (float)maxHp;
+        if (ratio > 1.0f) ratio = 1.0f;
         int fillRight = barLeft + (int)((barRight - barLeft) * ratio);
 
-        // HP比率に応じて色を変化（高HP: 緑、中間: 黄、低HP: 赤）
-        int rCol = 0;
-        int gCol = 0;
-        int bCol = 0;
-        if (ratio > 0.5f) {
-            // 緑から黄への変化
-            float t = (ratio - 0.5f) * 2.0f; // 0.0(黄) から 1.0(緑)
-            rCol = (int)(Constants::UI::BossHP::HP_MID.R * (1.0f - t) + Constants::UI::BossHP::HP_HIGH.R * t);
-            gCol = (int)(Constants::UI::BossHP::HP_MID.G * (1.0f - t) + Constants::UI::BossHP::HP_HIGH.G * t);
-            bCol = (int)(Constants::UI::BossHP::HP_MID.B * (1.0f - t) + Constants::UI::BossHP::HP_HIGH.B * t);
-        } else {
-            // 黄から赤への変化
-            float t = ratio * 2.0f; // 0.0(赤) から 1.0(黄)
-            rCol = (int)(Constants::UI::BossHP::HP_LOW.R * (1.0f - t) + Constants::UI::BossHP::HP_MID.R * t);
-            gCol = (int)(Constants::UI::BossHP::HP_LOW.G * (1.0f - t) + Constants::UI::BossHP::HP_MID.G * t);
-            bCol = (int)(Constants::UI::BossHP::HP_LOW.B * (1.0f - t) + Constants::UI::BossHP::HP_MID.B * t);
-        }
-        rCol = (rCol < 0) ? 0 : (rCol > 255 ? 255 : rCol);
-        gCol = (gCol < 0) ? 0 : (gCol > 255 ? 255 : gCol);
-        bCol = (bCol < 0) ? 0 : (bCol > 255 ? 255 : bCol);
+        // クリムゾンレッドからネオンアンバーへの変化
+        int rCol = 255;
+        int gCol = (int)(30 + ratio * 150);
+        int bCol = (int)(60 * (1.0f - ratio));
+        rCol = std::min(255, std::max(0, rCol));
+        gCol = std::min(255, std::max(0, gCol));
+        bCol = std::min(255, std::max(0, bCol));
 
         HBRUSH hpBrush = CreateSolidBrush(RGB(rCol, gCol, bCol));
         RECT fillRect = { barLeft, barTop, fillRight, barBottom };
         FillRect(hdc, &fillRect, hpBrush);
         DeleteObject(hpBrush);
 
-        // ハイライト（ゲージ上部の白い親線）
-        HBRUSH hlBrush = CreateSolidBrush(RGB(255, 220, 220));
-        RECT hlRect = { barLeft, barTop, fillRight, barTop + 4 };
+        // 天面ホワイトハイライト
+        HBRUSH hlBrush = CreateSolidBrush(RGB(255, 230, 235));
+        RECT hlRect = { barLeft, barTop, fillRight, barTop + 3 };
         FillRect(hdc, &hlRect, hlBrush);
         DeleteObject(hlBrush);
     }
 
-    // ─── ゲージ枚線 ───
-    HPEN borderPen = CreatePen(PS_SOLID, 2, RGB(Constants::UI::BossHP::BAR_BORDER.R, Constants::UI::BossHP::BAR_BORDER.G, Constants::UI::BossHP::BAR_BORDER.B));
-    HGDIOBJ oldPen = SelectObject(hdc, borderPen);
-    HBRUSH nullBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
-    HGDIOBJ oldBrush = SelectObject(hdc, nullBrush);
+    // 10%刻みの目盛りスリット線
+    HPEN tickPen = CreatePen(PS_SOLID, 1, RGB(18, 10, 20));
+    SelectObject(hdc, tickPen);
+    for (int t = 1; t < 10; ++t) {
+        int tx = barLeft + (int)((barRight - barLeft) * (t * 0.1f));
+        MoveToEx(hdc, tx, barTop, nullptr);
+        LineTo(hdc, tx, barBottom);
+    }
+    DeleteObject(tickPen);
+
+    // ゲージ枠線
+    HPEN gaugeBorderPen = CreatePen(PS_SOLID, 1, RGB(255, 90, 120));
+    SelectObject(hdc, gaugeBorderPen);
+    SelectObject(hdc, GetStockObject(NULL_BRUSH));
     Rectangle(hdc, barLeft, barTop, barRight, barBottom);
+    DeleteObject(gaugeBorderPen);
+
+    // GDI 描画完了
     SelectObject(hdc, oldPen);
     SelectObject(hdc, oldBrush);
+    DeleteObject(bgBrush);
     DeleteObject(borderPen);
 
     GdiFlush();
 
-    // ─── アルファを踏まえた RGBA 変換 ───
+    // ─── 5. アルファ変換（背景半透明 + 枠線・文字不透明） ───
     std::vector<BYTE> rgba(W * H * 4);
     for (int i = 0; i < W * H; i++) {
         BYTE b = bits[i * 4 + 0];
         BYTE g = bits[i * 4 + 1];
         BYTE r = bits[i * 4 + 2];
-        
-        // 色が完全に黒 (RGB: 0, 0, 0) の部分のみ透過させ、それ以外は完全に不透明にする
-        // これにより、GDIで塗った背景パネルやゲージの色が透過して消えてしまうのを防ぎます
-        BYTE alpha = (r == 0 && g == 0 && b == 0) ? 0 : 255;
-        
+
+        if (r == 0 && g == 0 && b == 0) {
+            rgba[i * 4 + 3] = 0; // 完全透過
+        } else {
+            int lum = (r * 299 + g * 587 + b * 114) / 1000;
+            if (lum < 35) {
+                rgba[i * 4 + 3] = (BYTE)(205 + lum); // 背景プレートはダークグラス半透明
+            } else {
+                rgba[i * 4 + 3] = 255; // ゲージ、枠線、テキストは鮮明不透明
+            }
+        }
         rgba[i * 4 + 0] = r;
         rgba[i * 4 + 1] = g;
         rgba[i * 4 + 2] = b;
-        rgba[i * 4 + 3] = alpha;
     }
 
     // ─── D3D11 テクスチャの生成 ───
@@ -308,6 +406,10 @@ ID3D11ShaderResourceView* ScoreHUD::CreateBossHPTexture(
 // GDI を使用してプレイヤーHPバー用のテクスチャを生成する
 // 画面上部にプレイヤー名/ステータス + カラーゲージを描画
 // ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// GDI を使用してプレイヤーHPバー用のテクスチャを生成する
+// スラッシュ＆ネオン・トゥーン調のスラント（傾斜）フレーム + セグメントゲージ
+// ─────────────────────────────────────────────────────────────────
 ID3D11ShaderResourceView* ScoreHUD::CreatePlayerHPTexture(
     ID3D11Device* device,
     int hp,
@@ -316,6 +418,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreatePlayerHPTexture(
 {
     const int W = static_cast<int>(Constants::UI::PlayerHP::BAR_WIDTH);
     const int H = static_cast<int>(Constants::UI::PlayerHP::BAR_HEIGHT);
+    const int SLANT = 14; // スラント（平行四辺形の傾斜オフセット）
 
     // ─── GDI DIB セクションの作成 ───
     BITMAPINFO bmi = {};
@@ -332,109 +435,173 @@ ID3D11ShaderResourceView* ScoreHUD::CreatePlayerHPTexture(
     HGDIOBJ oldBmp = SelectObject(hdc, hBmp);
     memset(bits, 0, W * H * 4);
 
-    // ─── 輝度バックグラウンド（深青色の半透明パネル） ───
-    HBRUSH bgBrush = CreateSolidBrush(RGB(Constants::UI::PlayerHP::PANEL_BG.R, Constants::UI::PlayerHP::PANEL_BG.G, Constants::UI::PlayerHP::PANEL_BG.B));
-    RECT bgRect = { 0, 0, W, H };
-    FillRect(hdc, &bgRect, bgBrush);
-    DeleteObject(bgBrush);
+    // ─── 1. スラント背景パネル（ダークグラス調・平行四辺形） ───
+    POINT panelPts[4] = {
+        { SLANT + 2, 2 },
+        { W - 4, 2 },
+        { W - 4 - SLANT, H - 2 },
+        { 2, H - 2 }
+    };
+    HBRUSH panelBgBrush = CreateSolidBrush(RGB(14, 20, 32)); // 深いサイバーネイビー
+    HPEN   panelBorderPen = CreatePen(PS_SOLID, 2, RGB(0, 210, 255)); // ネオンシアン枠線
+    HGDIOBJ oldPen = SelectObject(hdc, panelBorderPen);
+    HGDIOBJ oldBrush = SelectObject(hdc, panelBgBrush);
+    Polygon(hdc, panelPts, 4);
 
-    // ─── "PLAYER" ラベルテキスト ───
-    HFONT hFontLabel = CreateFontW(
-        22, 0, 0, 0, FW_HEAVY,
-        FALSE, FALSE, FALSE,
+    // パネル右上のアクセント小三角
+    POINT decoPts[3] = {
+        { W - 4, 2 },
+        { W - 18, 2 },
+        { W - 4, 16 }
+    };
+    HBRUSH decoBrush = CreateSolidBrush(RGB(0, 240, 255));
+    SelectObject(hdc, decoBrush);
+    Polygon(hdc, decoPts, 3);
+    DeleteObject(decoBrush);
+
+    // ─── 2. "HERO / P1" スタイリッシュバッジ（左上） ───
+    POINT badgePts[4] = {
+        { SLANT + 6, 6 },
+        { SLANT + 68, 6 },
+        { 68, 24 },
+        { 6, 24 }
+    };
+    HBRUSH badgeBrush = CreateSolidBrush(RGB(0, 210, 255));
+    SelectObject(hdc, badgeBrush);
+    Polygon(hdc, badgePts, 4);
+    DeleteObject(badgeBrush);
+
+    // バッジ内テキスト "HERO"
+    HFONT hFontBadge = CreateFontW(
+        15, 0, 0, 0, FW_BLACK,
+        TRUE, FALSE, FALSE, // 斜体
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Impact"
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
     );
-    HGDIOBJ oldFont = SelectObject(hdc, hFontLabel);
+    HGDIOBJ oldFont = SelectObject(hdc, hFontBadge);
     SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(Constants::UI::PlayerHP::TEXT_LABEL.R, Constants::UI::PlayerHP::TEXT_LABEL.G, Constants::UI::PlayerHP::TEXT_LABEL.B));
-    RECT rcLabel = { 8, 4, 120, 26 };
-    DrawTextW(hdc, L"PLAYER", -1, &rcLabel, DT_LEFT | DT_SINGLELINE);
+    SetTextColor(hdc, RGB(10, 20, 35)); // 濃紺文字
+    RECT rcBadge = { 10, 7, 72, 25 };
+    DrawTextW(hdc, L"HERO", -1, &rcBadge, DT_CENTER | DT_SINGLELINE);
 
-    // ─── HP 数値テキスト ───
+    // ─── 3. HP 数値テキスト（右側） ───
     HFONT hFontHP = CreateFontW(
-        18, 0, 0, 0, FW_BOLD,
-        FALSE, FALSE, FALSE,
+        19, 0, 0, 0, FW_HEAVY,
+        TRUE, FALSE, FALSE, // 斜体
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Arial"
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
     );
     SelectObject(hdc, hFontHP);
-    SetTextColor(hdc, RGB(Constants::UI::PlayerHP::TEXT_HP.R, Constants::UI::PlayerHP::TEXT_HP.G, Constants::UI::PlayerHP::TEXT_HP.B));
+    SetTextColor(hdc, RGB(225, 245, 255));
     wchar_t hpBuf[32];
-    swprintf_s(hpBuf, L"%d / %d", hp, maxHp);
-    RECT rcHP = { W - 110, 4, W - 8, 26 };
+    swprintf_s(hpBuf, L"HP  %d / %d", hp, maxHp);
+    RECT rcHP = { W - 150, 5, W - 24, 25 };
     DrawTextW(hdc, hpBuf, -1, &rcHP, DT_RIGHT | DT_SINGLELINE);
 
-    // ─── HPゲージ背景（ダークブルー） ───
-    const int barLeft   = 8;
-    const int barTop    = 28;
-    const int barRight  = W - 8;
-    const int barBottom = H - 6;
-    HBRUSH barBgBrush = CreateSolidBrush(RGB(Constants::UI::PlayerHP::BAR_BG.R, Constants::UI::PlayerHP::BAR_BG.G, Constants::UI::PlayerHP::BAR_BG.B));
-    RECT barBgRect = { barLeft, barTop, barRight, barBottom };
-    FillRect(hdc, &barBgRect, barBgBrush);
-    DeleteObject(barBgBrush);
+    // ─── 4. スラント・セグメントHPゲージ ───
+    const int barTop    = 30;
+    const int barBottom = H - 8;
+    const int barLeft   = 16;
+    const int barRight  = W - 22;
+    const int totalBarW = barRight - barLeft;
+    const int segCount  = (maxHp > 0) ? maxHp : 5;
+    const int segGap    = 4; // セグメント間のスリット隙間
+    const float segW    = (float)(totalBarW - segGap * (segCount - 1)) / (float)segCount;
 
-    // ─── HPゲージ内側（高HP: シアン、中HP: 黄、低HP: 赤） ───
-    if (maxHp > 0 && hp > 0) {
-        float ratio = (float)hp / (float)maxHp;
-        if (ratio > 1.0f) ratio = 1.0f;
-        int fillRight = barLeft + (int)((barRight - barLeft) * ratio);
+    // HP残量比率に応じたカラー算出
+    float ratio = (maxHp > 0) ? ((float)hp / (float)maxHp) : 1.0f;
+    if (ratio > 1.0f) ratio = 1.0f;
 
-        int rCol = 0, gCol = 0, bCol = 0;
-        if (ratio > 0.5f) {
-            float t = (ratio - 0.5f) * 2.0f;
-            rCol = (int)(Constants::UI::PlayerHP::HP_MID.R * (1.0f - t) + Constants::UI::PlayerHP::HP_HIGH.R * t);
-            gCol = (int)(Constants::UI::PlayerHP::HP_MID.G * (1.0f - t) + Constants::UI::PlayerHP::HP_HIGH.G * t);
-            bCol = (int)(Constants::UI::PlayerHP::HP_MID.B * (1.0f - t) + Constants::UI::PlayerHP::HP_HIGH.B * t);
-        } else {
-            float t = ratio * 2.0f;
-            rCol = (int)(Constants::UI::PlayerHP::HP_LOW.R * (1.0f - t) + Constants::UI::PlayerHP::HP_MID.R * t);
-            gCol = (int)(Constants::UI::PlayerHP::HP_LOW.G * (1.0f - t) + Constants::UI::PlayerHP::HP_MID.G * t);
-            bCol = (int)(Constants::UI::PlayerHP::HP_LOW.B * (1.0f - t) + Constants::UI::PlayerHP::HP_MID.B * t);
+    int rCol = 0, gCol = 230, bCol = 255;
+    if (ratio > 0.5f) {
+        // シアンからエメラルドグリーン
+        float t = (ratio - 0.5f) * 2.0f;
+        rCol = (int)(0 * (1.0f - t) + 0 * t);
+        gCol = (int)(220 * (1.0f - t) + 255 * t);
+        bCol = (int)(255 * (1.0f - t) + 140 * t);
+    } else {
+        // イエローからクリムゾンレッド（ピンチ）
+        float t = ratio * 2.0f;
+        rCol = (int)(255 * (1.0f - t) + 255 * t);
+        gCol = (int)(40 * (1.0f - t) + 210 * t);
+        bCol = (int)(40 * (1.0f - t) + 0 * t);
+    }
+    rCol = std::min(255, std::max(0, rCol));
+    gCol = std::min(255, std::max(0, gCol));
+    bCol = std::min(255, std::max(0, bCol));
+
+    HBRUSH fillBrush = CreateSolidBrush(RGB(rCol, gCol, bCol));
+    HBRUSH emptyBrush = CreateSolidBrush(RGB(24, 32, 48)); // 未充填スロット（ダークスレート）
+    HBRUSH hlBrush = CreateSolidBrush(RGB(220, 250, 255));   // 上部ハイライト光彩
+    HPEN   segPen = CreatePen(PS_SOLID, 1, RGB(0, 160, 210)); // セグメント枠線
+
+    for (int i = 0; i < segCount; ++i) {
+        float x0 = barLeft + i * (segW + segGap);
+        float x1 = x0 + segW;
+        bool isFilled = (i < hp);
+
+        // 各セグメントの平行四辺形頂点
+        POINT segPts[4] = {
+            { (int)(x0 + 6), barTop },
+            { (int)(x1 + 6), barTop },
+            { (int)(x1), barBottom },
+            { (int)(x0), barBottom }
+        };
+
+        SelectObject(hdc, isFilled ? fillBrush : emptyBrush);
+        SelectObject(hdc, isFilled ? segPen : (HGDIOBJ)GetStockObject(NULL_PEN));
+        Polygon(hdc, segPts, 4);
+
+        // 充填ブロックの上部ハイライトライン
+        if (isFilled) {
+            POINT hlPts[4] = {
+                { (int)(x0 + 6), barTop },
+                { (int)(x1 + 6), barTop },
+                { (int)(x1 + 5), barTop + 3 },
+                { (int)(x0 + 5), barTop + 3 }
+            };
+            SelectObject(hdc, hlBrush);
+            SelectObject(hdc, GetStockObject(NULL_PEN));
+            Polygon(hdc, hlPts, 4);
         }
-        rCol = (rCol < 0) ? 0 : (rCol > 255 ? 255 : rCol);
-        gCol = (gCol < 0) ? 0 : (gCol > 255 ? 255 : gCol);
-        bCol = (bCol < 0) ? 0 : (bCol > 255 ? 255 : bCol);
-
-        HBRUSH hpBrush = CreateSolidBrush(RGB(rCol, gCol, bCol));
-        RECT fillRect = { barLeft, barTop, fillRight, barBottom };
-        FillRect(hdc, &fillRect, hpBrush);
-        DeleteObject(hpBrush);
-
-        // 上部のホワイト/ライトシアンハイライト線
-        HBRUSH hlBrush = CreateSolidBrush(RGB(220, 245, 255));
-        RECT hlRect = { barLeft, barTop, fillRight, barTop + 3 };
-        FillRect(hdc, &hlRect, hlBrush);
-        DeleteObject(hlBrush);
     }
 
-    // ─── ゲージ枠線 ───
-    HPEN borderPen = CreatePen(PS_SOLID, 2, RGB(Constants::UI::PlayerHP::BAR_BORDER.R, Constants::UI::PlayerHP::BAR_BORDER.G, Constants::UI::PlayerHP::BAR_BORDER.B));
-    HGDIOBJ oldPen = SelectObject(hdc, borderPen);
-    HBRUSH nullBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
-    HGDIOBJ oldBrush = SelectObject(hdc, nullBrush);
-    Rectangle(hdc, barLeft, barTop, barRight, barBottom);
+    DeleteObject(fillBrush);
+    DeleteObject(emptyBrush);
+    DeleteObject(hlBrush);
+    DeleteObject(segPen);
+
+    // GDI 描画完了
     SelectObject(hdc, oldPen);
     SelectObject(hdc, oldBrush);
-    DeleteObject(borderPen);
+    DeleteObject(panelBgBrush);
+    DeleteObject(panelBorderPen);
 
     GdiFlush();
 
-    // ─── アルファ変換 ───
+    // ─── 5. 高品質アルファチャンネル変換（ダークグラス半透明 ＆ 鮮明発光） ───
     std::vector<BYTE> rgba(W * H * 4);
     for (int i = 0; i < W * H; i++) {
         BYTE b = bits[i * 4 + 0];
         BYTE g = bits[i * 4 + 1];
         BYTE r = bits[i * 4 + 2];
-        BYTE alpha = (r == 0 && g == 0 && b == 0) ? 0 : 255;
-        
+
+        if (r == 0 && g == 0 && b == 0) {
+            rgba[i * 4 + 3] = 0; // 完全透過
+        } else {
+            int lum = (r * 299 + g * 587 + b * 114) / 1000;
+            if (lum < 40) {
+                rgba[i * 4 + 3] = (BYTE)(195 + lum); // 背景は美しいダークグラス半透明
+            } else {
+                rgba[i * 4 + 3] = 255; // ゲージ、枠線、テキストは完全不透明
+            }
+        }
         rgba[i * 4 + 0] = r;
         rgba[i * 4 + 1] = g;
         rgba[i * 4 + 2] = b;
-        rgba[i * 4 + 3] = alpha;
     }
 
+    // ─── D3D11 テクスチャの生成 ───
     D3D11_TEXTURE2D_DESC td = {};
     td.Width            = W;
     td.Height           = H;
@@ -460,7 +627,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreatePlayerHPTexture(
 
     SelectObject(hdc, oldFont);
     SelectObject(hdc, oldBmp);
-    DeleteObject(hFontLabel);
+    DeleteObject(hFontBadge);
     DeleteObject(hFontHP);
     DeleteObject(hBmp);
     DeleteDC(hdc);
@@ -470,6 +637,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreatePlayerHPTexture(
 
 // ─────────────────────────────────────────────────────────────────
 // GDI を使用してタイトル画面用のテクスチャを生成する
+// スタイリッシュ・トゥーンタイトルパネル（立体デュアルトーンロゴ + キーバッジ）
 // ─────────────────────────────────────────────────────────────────
 ID3D11ShaderResourceView* ScoreHUD::CreateTitleTexture(ID3D11Device* device)
 {
@@ -487,54 +655,135 @@ ID3D11ShaderResourceView* ScoreHUD::CreateTitleTexture(ID3D11Device* device)
     HDC hdc     = CreateCompatibleDC(nullptr);
     HBITMAP hBmp = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, (void**)&bits, nullptr, 0);
     HGDIOBJ oldBmp = SelectObject(hdc, hBmp);
-
     memset(bits, 0, W * H * 4);
 
-    HFONT hFontTitle = CreateFontW(
-        64, 0, 0, 0, FW_HEAVY,
-        FALSE, FALSE, FALSE,
-        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Impact"
-    );
-    HFONT hFontDesc = CreateFontW(
-        22, 0, 0, 0, FW_NORMAL,
-        FALSE, FALSE, FALSE,
-        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Arial"
-    );
+    // ─── 1. 背景のスラント・ダークグラスパネル ───
+    POINT bgPts[6] = {
+        { 24, 6 },
+        { W - 24, 6 },
+        { W - 6, 36 },
+        { W - 24, H - 6 },
+        { 24, H - 6 },
+        { 6, H - 36 }
+    };
+    HBRUSH bgBrush = CreateSolidBrush(RGB(14, 16, 26)); // 深いダークパープルネイビー
+    HPEN borderPen = CreatePen(PS_SOLID, 2, RGB(0, 210, 255)); // ネオンシアン枠線
+    HGDIOBJ oldPen = SelectObject(hdc, borderPen);
+    HGDIOBJ oldBrush = SelectObject(hdc, bgBrush);
+    Polygon(hdc, bgPts, 6);
 
+    // ─── 2. サブタイトル・リボン ───
+    HFONT hFontSub = CreateFontW(
+        13, 0, 0, 0, FW_BOLD,
+        TRUE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
+    );
+    HGDIOBJ oldFont = SelectObject(hdc, hFontSub);
     SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, RGB(255, 190, 40)); // ゴールド
+    RECT rcSub = { 0, 18, W, 34 };
+    DrawTextW(hdc, L"◆ HIGH SPEED SLASH ACTION ◆", -1, &rcSub, DT_CENTER | DT_SINGLELINE);
 
-    // 1. タイトルを描画
-    HGDIOBJ oldFont = SelectObject(hdc, hFontTitle);
-    SetTextColor(hdc, RGB(255, 255, 255));
-    RECT rcTitle = { 0, 20, W, 100 };
+    // ─── 3. メインタイトルロゴ "TOON SLASHER" ───
+    HFONT hFontTitle = CreateFontW(
+        54, 0, 0, 0, FW_BLACK,
+        TRUE, FALSE, FALSE, // 斜体
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
+    );
+    SelectObject(hdc, hFontTitle);
+
+    // 立体黒シャドウ
+    SetTextColor(hdc, RGB(6, 8, 14));
+    RECT rcShadow = { 0, 44, W + 4, 114 };
+    DrawTextW(hdc, L"TOON SLASHER", -1, &rcShadow, DT_CENTER | DT_SINGLELINE);
+
+    // メインロゴ（ホワイト〜シアン発光）
+    SetTextColor(hdc, RGB(245, 255, 255));
+    RECT rcTitle = { 0, 40, W, 110 };
     DrawTextW(hdc, L"TOON SLASHER", -1, &rcTitle, DT_CENTER | DT_SINGLELINE);
 
-    // 2. 説明を描画
-    SelectObject(hdc, hFontDesc);
-    SetTextColor(hdc, RGB(200, 200, 200));
-    RECT rcDesc = { 0, 120, W, 250 };
-    DrawTextW(hdc, L"PRESS ENTER TO START\n\n[Controls]\nMove: WASD / Dash: Shift\nGrab/Throw: Left Click / Spin: Right Click", -1, &rcDesc, DT_CENTER);
+    // セパレーターライン
+    HPEN sepPen = CreatePen(PS_SOLID, 1, RGB(0, 220, 255));
+    SelectObject(hdc, sepPen);
+    MoveToEx(hdc, 40, 114, nullptr);
+    LineTo(hdc, W - 40, 114);
+    DeleteObject(sepPen);
+
+    // ─── 4. "PRESS ENTER TO START" バッジ ───
+    POINT enterBadgePts[4] = {
+        { W / 2 - 130, 126 },
+        { W / 2 + 130, 126 },
+        { W / 2 + 120, 154 },
+        { W / 2 - 120, 154 }
+    };
+    HBRUSH enterBadgeBrush = CreateSolidBrush(RGB(255, 190, 30));
+    SelectObject(hdc, enterBadgeBrush);
+    Polygon(hdc, enterBadgePts, 4);
+    DeleteObject(enterBadgeBrush);
+
+    HFONT hFontEnter = CreateFontW(
+        17, 0, 0, 0, FW_BLACK,
+        TRUE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
+    );
+    SelectObject(hdc, hFontEnter);
+    SetTextColor(hdc, RGB(20, 15, 5));
+    RECT rcEnter = { W / 2 - 120, 131, W / 2 + 120, 152 };
+    DrawTextW(hdc, L"PRESS ENTER TO START", -1, &rcEnter, DT_CENTER | DT_SINGLELINE);
+
+    // ─── 5. 操作キーガイド ───
+    HFONT hFontGuide = CreateFontW(
+        14, 0, 0, 0, FW_BOLD,
+        FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI"
+    );
+    SelectObject(hdc, hFontGuide);
+    SetTextColor(hdc, RGB(180, 210, 235));
+    RECT rcGuide1 = { 0, 172, W, 194 };
+    DrawTextW(hdc, L"[WASD] MOVE    |    [SHIFT] DASH / DODGE", -1, &rcGuide1, DT_CENTER | DT_SINGLELINE);
+    RECT rcGuide2 = { 0, 198, W, 220 };
+    DrawTextW(hdc, L"[L-CLICK] GRAB / THROW    |    [R-CLICK] SPIN ATTACK", -1, &rcGuide2, DT_CENTER | DT_SINGLELINE);
+
+    // GDI 描画完了
+    SelectObject(hdc, oldPen);
+    SelectObject(hdc, oldBrush);
+    DeleteObject(bgBrush);
+    DeleteObject(borderPen);
 
     GdiFlush();
 
+    // ─── 6. アルファ変換 ───
     std::vector<BYTE> rgba(W * H * 4);
     for (int i = 0; i < W * H; i++) {
         BYTE b = bits[i * 4 + 0];
         BYTE g = bits[i * 4 + 1];
         BYTE r = bits[i * 4 + 2];
-        BYTE a = (BYTE)(((int)r + (int)g + (int)b) / 3);
-        rgba[i * 4 + 0] = 255;
-        rgba[i * 4 + 1] = 255;
-        rgba[i * 4 + 2] = 255;
-        rgba[i * 4 + 3] = a;
+
+        if (r == 0 && g == 0 && b == 0) {
+            rgba[i * 4 + 3] = 0;
+        } else {
+            int lum = (r * 299 + g * 587 + b * 114) / 1000;
+            if (lum < 35) {
+                rgba[i * 4 + 3] = (BYTE)(205 + lum); // 背景はダークグラス半透明
+            } else {
+                rgba[i * 4 + 3] = 255;
+            }
+        }
+        rgba[i * 4 + 0] = r;
+        rgba[i * 4 + 1] = g;
+        rgba[i * 4 + 2] = b;
     }
 
     SelectObject(hdc, oldFont);
     SelectObject(hdc, oldBmp);
     DeleteObject(hFontTitle);
-    DeleteObject(hFontDesc);
+    DeleteObject(hFontSub);
+    DeleteObject(hFontEnter);
+    DeleteObject(hFontGuide);
     DeleteObject(hBmp);
     DeleteDC(hdc);
 
@@ -580,45 +829,88 @@ ID3D11ShaderResourceView* ScoreHUD::CreateResultTexture(ID3D11Device* device, bo
     HDC hdc     = CreateCompatibleDC(nullptr);
     HBITMAP hBmp = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, (void**)&bits, nullptr, 0);
     HGDIOBJ oldBmp = SelectObject(hdc, hBmp);
-
     memset(bits, 0, W * H * 4);
 
-    HFONT hFontResult = CreateFontW(
-        64, 0, 0, 0, FW_HEAVY,
-        FALSE, FALSE, FALSE,
-        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Impact"
-    );
-    HFONT hFontDesc = CreateFontW(
-        24, 0, 0, 0, FW_NORMAL,
-        FALSE, FALSE, FALSE,
-        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Arial"
-    );
+    // ─── 1. 背景パネル ───
+    POINT bgPts[6] = {
+        { 24, 6 },
+        { W - 24, 6 },
+        { W - 6, 36 },
+        { W - 24, H - 6 },
+        { 24, H - 6 },
+        { 6, H - 36 }
+    };
+    HBRUSH bgBrush = CreateSolidBrush(RGB(15, 14, 24));
+    HPEN borderPen = CreatePen(PS_SOLID, 2, isClear ? RGB(255, 190, 40) : RGB(255, 45, 75));
+    HGDIOBJ oldPen = SelectObject(hdc, borderPen);
+    HGDIOBJ oldBrush = SelectObject(hdc, bgBrush);
+    Polygon(hdc, bgPts, 6);
 
+    // ─── 2. リザルトタイトル ───
+    HFONT hFontTitle = CreateFontW(
+        50, 0, 0, 0, FW_BLACK,
+        TRUE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
+    );
+    HGDIOBJ oldFont = SelectObject(hdc, hFontTitle);
     SetBkMode(hdc, TRANSPARENT);
 
-    // 1. タイトルを描画
-    HGDIOBJ oldFont = SelectObject(hdc, hFontResult);
-    SetTextColor(hdc, RGB(255, 255, 255));
-    RECT rcTitle = { 0, 20, W, 100 };
+    // シャドウ
+    SetTextColor(hdc, RGB(6, 6, 12));
+    RECT rcShadow = { 0, 26, W + 4, 86 };
+    DrawTextW(hdc, isClear ? L"MISSION CLEAR" : L"GAME OVER", -1, &rcShadow, DT_CENTER | DT_SINGLELINE);
+
+    // メイン文字
+    SetTextColor(hdc, isClear ? RGB(255, 220, 60) : RGB(255, 60, 80));
+    RECT rcTitle = { 0, 24, W, 84 };
+    DrawTextW(hdc, isClear ? L"MISSION CLEAR" : L"GAME OVER", -1, &rcTitle, DT_CENTER | DT_SINGLELINE);
+
+    // ─── 3. スコア表示 ───
     if (isClear) {
-        DrawTextW(hdc, L"GAME CLEAR", -1, &rcTitle, DT_CENTER | DT_SINGLELINE);
-    } else {
-        DrawTextW(hdc, L"GAME OVER", -1, &rcTitle, DT_CENTER | DT_SINGLELINE);
+        HFONT hFontScoreLabel = CreateFontW(
+            15, 0, 0, 0, FW_BLACK,
+            FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
+        );
+        SelectObject(hdc, hFontScoreLabel);
+        SetTextColor(hdc, RGB(0, 220, 255));
+        RECT rcScLabel = { 0, 100, W, 120 };
+        DrawTextW(hdc, L"★ FINAL SCORE ★", -1, &rcScLabel, DT_CENTER | DT_SINGLELINE);
+        DeleteObject(hFontScoreLabel);
+
+        HFONT hFontScoreNum = CreateFontW(
+            38, 0, 0, 0, FW_BLACK,
+            TRUE, FALSE, FALSE,
+            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
+        );
+        SelectObject(hdc, hFontScoreNum);
+        SetTextColor(hdc, RGB(255, 245, 210));
+        wchar_t scoreBuf[32];
+        swprintf_s(scoreBuf, L"%06d", score);
+        RECT rcScNum = { 0, 122, W, 172 };
+        DrawTextW(hdc, scoreBuf, -1, &rcScNum, DT_CENTER | DT_SINGLELINE);
+        DeleteObject(hFontScoreNum);
     }
 
-    // 2. スコアとタイトル戻る案内を描画
+    // ─── 4. 操作案内 ───
+    HFONT hFontDesc = CreateFontW(
+        16, 0, 0, 0, FW_BOLD,
+        FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI"
+    );
     SelectObject(hdc, hFontDesc);
-    SetTextColor(hdc, RGB(200, 200, 200));
-    wchar_t buf[128];
-    if (isClear) {
-        swprintf_s(buf, L"FINAL SCORE: %06d\n\nPRESS ENTER TO RETURN TITLE", score);
-    } else {
-        swprintf_s(buf, L"PRESS ENTER TO RETURN TITLE");
-    }
-    RECT rcDesc = { 0, 130, W, 250 };
-    DrawTextW(hdc, buf, -1, &rcDesc, DT_CENTER);
+    SetTextColor(hdc, RGB(200, 215, 230));
+    RECT rcDesc = { 0, 194, W, 226 };
+    DrawTextW(hdc, L"PRESS ENTER TO RETURN TITLE", -1, &rcDesc, DT_CENTER | DT_SINGLELINE);
+
+    SelectObject(hdc, oldPen);
+    SelectObject(hdc, oldBrush);
+    DeleteObject(bgBrush);
+    DeleteObject(borderPen);
 
     GdiFlush();
 
@@ -627,16 +919,25 @@ ID3D11ShaderResourceView* ScoreHUD::CreateResultTexture(ID3D11Device* device, bo
         BYTE b = bits[i * 4 + 0];
         BYTE g = bits[i * 4 + 1];
         BYTE r = bits[i * 4 + 2];
-        BYTE a = (BYTE)(((int)r + (int)g + (int)b) / 3);
-        rgba[i * 4 + 0] = 255;
-        rgba[i * 4 + 1] = 255;
-        rgba[i * 4 + 2] = 255;
-        rgba[i * 4 + 3] = a;
+
+        if (r == 0 && g == 0 && b == 0) {
+            rgba[i * 4 + 3] = 0;
+        } else {
+            int lum = (r * 299 + g * 587 + b * 114) / 1000;
+            if (lum < 35) {
+                rgba[i * 4 + 3] = (BYTE)(210 + lum);
+            } else {
+                rgba[i * 4 + 3] = 255;
+            }
+        }
+        rgba[i * 4 + 0] = r;
+        rgba[i * 4 + 1] = g;
+        rgba[i * 4 + 2] = b;
     }
 
     SelectObject(hdc, oldFont);
     SelectObject(hdc, oldBmp);
-    DeleteObject(hFontResult);
+    DeleteObject(hFontTitle);
     DeleteObject(hFontDesc);
     DeleteObject(hBmp);
     DeleteDC(hdc);
@@ -912,7 +1213,11 @@ void ScoreHUD::Draw()
         texToDraw = m_TitleTexture;
         w = 512.0f;
         h = 256.0f;
-        posY = (float)SCREEN_HEIGHT * 0.5f; // 画面中央
+        {
+            static float titleFloatTime = 0.0f;
+            titleFloatTime += 0.035f;
+            posY = (float)SCREEN_HEIGHT * 0.5f + sinf(titleFloatTime) * 7.0f; // 上下にフワフワ浮遊
+        }
         emissionColor = XMFLOAT4(0.0f, 1.2f, 1.8f, 0.0f); // タイトルは青白発光
         break;
     case Scene::GAMEPLAY:
@@ -968,8 +1273,8 @@ void ScoreHUD::Draw()
 
         MATERIAL mat = {};
         mat.Diffuse  = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-        mat.Emission = emissionColor;
-        mat.TextureEnable = FALSE;
+        mat.Emission = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+        mat.TextureEnable = TRUE;
         Renderer::SetMaterial(mat);
 
         Renderer::SetTexture(texToDraw);

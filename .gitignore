@@ -375,4 +375,7 @@ debug_log*.txt
 temp_*.cpp
 temp_*.h
 *_backup.cpp
-*_backup.h
+*_backup.h
+
+# スクラッチ領域・一時ファイル
+scratch/

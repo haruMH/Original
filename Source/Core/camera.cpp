@@ -13,23 +13,23 @@ void Camera::Init()
     m_Target = XMFLOAT3(0.0f, 0.0f, 5.0f);      // 壁の方向を初期注視点に設定
     m_Up = XMFLOAT3(0.0f, 1.0f, 0.0f);
 
-    m_AngleY = 0.0f;    // 左右回転初期値（正面向き）
-    m_AngleX = 0.2f;    // 少し下向き（壁全体が見えるように）
-    m_Distance = 6.0f;    // プレイヤーとの距離
+    m_AngleY = Constants::Camera::DEFAULT_ANGLE_Y;    // 左右回転初期値（正面向き）
+    m_AngleX = Constants::Camera::DEFAULT_ANGLE_X;    // 少し下向き（壁全体が見えるように）
+    m_Distance = Constants::Camera::DEFAULT_DISTANCE; // プレイヤーとの距離
 
     m_ShakeIntensity = 0.0f;
     m_ShakeTimer = 0;
 
     // プロジェクション行列の設定
     XMMATRIX proj = XMMatrixPerspectiveFovLH(
-        XM_PIDIV4,
+        Constants::Camera::FOV,
         (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
-        0.1f,
-        1000.0f);
+        Constants::Camera::NEAR_CLIP,
+        Constants::Camera::FAR_CLIP);
     Renderer::SetProjectionMatrix(proj);
 }
 
-float Camera::m_Sensitivity = 0.002f;
+float Camera::m_Sensitivity = Constants::Camera::DEFAULT_SENSITIVITY;
 bool  Camera::m_InvertY = false;
 
 void Camera::Uninit() {}
@@ -40,7 +40,7 @@ void Camera::Update()
     GameObject* player = Manager::GetGameObject<Player>();
 
     // --- 回転速度の設定 ---
-    float keyRotationSpeed = 0.03f; // キーボードでの回転速度
+    float keyRotationSpeed = Constants::Camera::KEY_ROTATION_SPEED; // キーボードでの回転速度
     float sensitivity = m_Sensitivity; // 設定されたマウス感度
 
     // カットシーン中はプレイヤーによるカメラ操作を無効化する
@@ -71,8 +71,8 @@ void Camera::Update()
     {
         // === プレイヤーがいない場合：フリーカメラモード ===
         // 上下回転の制限（フリーカメラ時はほぼ真上・真下まで向けるように緩和）
-        if (m_AngleX > 1.4f) m_AngleX = 1.4f;
-        if (m_AngleX < -1.4f) m_AngleX = -1.4f;
+        if (m_AngleX > Constants::Camera::FREE_CAM_ANGLE_X_MAX) m_AngleX = Constants::Camera::FREE_CAM_ANGLE_X_MAX;
+        if (m_AngleX < Constants::Camera::FREE_CAM_ANGLE_X_MIN) m_AngleX = Constants::Camera::FREE_CAM_ANGLE_X_MIN;
 
         // カメラの向きベクトルを計算
         float cosPitch = cosf(m_AngleX);
@@ -89,7 +89,7 @@ void Camera::Update()
         rightVec = XMVector3Normalize(rightVec);
 
         // キー入力による座標更新 (W/S/A/D/R/F)
-        float moveSpeed = 0.15f;
+        float moveSpeed = Constants::Camera::FREE_CAM_MOVE_SPEED;
         XMVECTOR pos = XMLoadFloat3(&m_Position);
         if (Input::GetKeyPress('W')) pos += fwd * moveSpeed;
         if (Input::GetKeyPress('S')) pos -= fwd * moveSpeed;
@@ -100,27 +100,37 @@ void Camera::Update()
         XMStoreFloat3(&m_Position, pos);
 
         // 注視点の設定 (カメラの少し先)
-        XMVECTOR target = pos + fwd * 5.0f;
+        XMVECTOR target = pos + fwd * Constants::Camera::FREE_CAM_TARGET_DIST;
         XMStoreFloat3(&m_Target, target);
     }
     else
     {
         // === プレイヤーがいる場合：追従カメラモード ===
         // 上下回転の制限（反転防止）
-        if (m_AngleX > 1.4f) m_AngleX = 1.4f;
-        if (m_AngleX < -0.3f) m_AngleX = -0.3f;
+        if (m_AngleX > Constants::Camera::ANGLE_X_LIMIT_MAX) m_AngleX = Constants::Camera::ANGLE_X_LIMIT_MAX;
+        if (m_AngleX < Constants::Camera::ANGLE_X_LIMIT_MIN) m_AngleX = Constants::Camera::ANGLE_X_LIMIT_MIN;
 
         XMFLOAT3 playerPos = player->GetPosition();
 
         float horizontalDistance = m_Distance * cosf(m_AngleX);
         float verticalDistance = m_Distance * sinf(m_AngleX);
 
-        m_Position.x = playerPos.x - horizontalDistance * sinf(m_AngleY);
-        m_Position.y = playerPos.y + verticalDistance + 1.5f;
-        m_Position.z = playerPos.z - horizontalDistance * cosf(m_AngleY);
+        XMFLOAT3 desiredPos;
+        desiredPos.x = playerPos.x - horizontalDistance * sinf(m_AngleY);
+        desiredPos.y = playerPos.y + verticalDistance + Constants::Camera::HEIGHT_OFFSET;
+        desiredPos.z = playerPos.z - horizontalDistance * cosf(m_AngleY);
 
-        m_Target = playerPos;
-        m_Target.y += 1.2f; // プレイヤーの胸元あたりを注視する
+        XMFLOAT3 desiredTarget = playerPos;
+        desiredTarget.y += Constants::Camera::TARGET_HEIGHT_OFFSET; // プレイヤーの胸元あたりを注視する
+
+        // 水平方向はダイレクト追従し、垂直方向（Y）はスムージングして歩行や傾きによる画面の上下ブレを吸収
+        m_Position.x = desiredPos.x;
+        m_Position.z = desiredPos.z;
+        m_Position.y += (desiredPos.y - m_Position.y) * Constants::Camera::VERTICAL_SMOOTH;
+
+        m_Target.x = desiredTarget.x;
+        m_Target.z = desiredTarget.z;
+        m_Target.y += (desiredTarget.y - m_Target.y) * Constants::Camera::VERTICAL_SMOOTH;
 
         // --- 壁との衝突によるカメラの押し戻し処理 ---
         using namespace DirectX;
@@ -152,9 +162,9 @@ void Camera::Update()
                     }
                 }
             }
-            // 壁に衝突している場合、衝突位置より少し手前（マージン0.3m）にカメラを配置する
-            float finalDist = nearestDist - 0.3f;
-            if (finalDist < 0.5f) finalDist = 0.5f; // 最低でもプレイヤーから0.5mは離す
+            // 壁に衝突している場合、衝突位置より少し手前（マージン）にカメラを配置する
+            float finalDist = nearestDist - Constants::Camera::COLLISION_MARGIN;
+            if (finalDist < Constants::Camera::MIN_DISTANCE) finalDist = Constants::Camera::MIN_DISTANCE; // 最低距離制限
             
             XMVECTOR vNewCamPos = vTarget + vRayDir * finalDist;
             XMStoreFloat3(&m_Position, vNewCamPos);
@@ -163,9 +173,9 @@ void Camera::Update()
 
     // --- カットシーン補間の更新 ---
     if (m_IsCutsceneMode) {
-        m_InterpolationFactor += (1.0f - m_InterpolationFactor) * 0.1f; // 滑らかに 1.0 へ
+        m_InterpolationFactor += (1.0f - m_InterpolationFactor) * Constants::Camera::CUTSCENE_LERP_SPEED; // 滑らかに 1.0 へ
     } else {
-        m_InterpolationFactor += (0.0f - m_InterpolationFactor) * 0.1f; // 滑らかに 0.0 へ
+        m_InterpolationFactor += (0.0f - m_InterpolationFactor) * Constants::Camera::CUTSCENE_LERP_SPEED; // 滑らかに 0.0 へ
     }
 
     if (m_InterpolationFactor > 0.001f) {
@@ -198,7 +208,7 @@ void Camera::Update()
         finalTarget.z += rz;
 
         m_ShakeTimer--;
-        m_ShakeIntensity *= 0.9f; // 徐々に減衰
+        m_ShakeIntensity *= Constants::Camera::SHAKE_DAMPING; // 徐々に減衰
     }
 
     // 行列設定

@@ -28,6 +28,7 @@ private:
     int          m_StepTimer = 0;              // ステップ内の経過時間/ディレイタイマー
     int          m_TransitionDelay = 0;        // ステップ完了時の次への遷移ディレイ
     bool         m_StepCleared = false;        // 現在のステップを達成したフラグ
+    bool         m_WarpSlashDone = false;      // WARP_SLASHステップの完了フラグ（リセット耐性）
     float        m_InitialPlayerDistance = 0.0f; // 移動判定用の初期距離
     DirectX::XMFLOAT3 m_StartPlayerPos = { 0.0f, 0.0f, 0.0f };
 
@@ -45,6 +46,7 @@ private:
 
     bool         m_HasPendingStep = false;
     TutorialStep m_PendingStep = TutorialStep::MOVE_AND_DASH;
+    float        m_PulseTimer = 0.0f;          // 発光パルス・呼吸アニメーションタイマー
 
     // ステップごとのセットアップ
     void RequestNextStep(TutorialStep nextStep);
@@ -53,7 +55,7 @@ private:
     void CompleteCurrentStep();
 
     // ガイドUIテクスチャ生成
-    void CreateGuideTexture(const std::wstring& mainText, const std::wstring& subText);
+    void CreateGuideTexture(int stepNumber, int totalSteps, const std::wstring& mainText, const std::wstring& subText, bool isCleared = false);
     void CreateSkipTexture();
     void DrawUIQuad(ID3D11ShaderResourceView* srv, float posX, float posY, float width, float height, DirectX::XMFLOAT4 emission);
 

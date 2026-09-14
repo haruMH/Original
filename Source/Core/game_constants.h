@@ -6,10 +6,59 @@
 // ゲームのバランスや挙動を調整するための定数を一元管理します。
 // プログラミング学習時の値調整や、ゲームの面白さを左右するパラメータはすべてここに集約します。
 
+#include <DirectXMath.h>
+
 namespace Constants
 {
     // 構造体定義
     struct ColorRGB { unsigned char R, G, B; };
+
+    // カメラに関する調整パラメータ
+    namespace Camera
+    {
+        // 視体積・プロジェクション設定
+        const float FOV                     = DirectX::XM_PIDIV4; // 画角（視野角: 約45度）
+        const float NEAR_CLIP               = 0.1f;               // ニアクリップ距離（これより近いものは非描画）
+        const float FAR_CLIP                = 1000.0f;            // ファークリップ距離（これより遠いものは非描画）
+
+        // プレイヤー追従・距離・オフセット
+        const float DEFAULT_DISTANCE        = 6.0f;               // プレイヤーとカメラの基準距離
+        const float HEIGHT_OFFSET           = 1.5f;               // プレイヤー基準のカメラ高さオフセット
+        const float TARGET_HEIGHT_OFFSET    = 1.2f;               // プレイヤー注視点（胸元）の高さオフセット
+
+        // 初期角度（ラジアン）
+        const float DEFAULT_ANGLE_X         = 0.2f;               // 初期ピッチ角（上下角度: やや見下ろし）
+        const float DEFAULT_ANGLE_Y         = 0.0f;               // 初期ヨー角（左右角度: 正面向き）
+
+        // ピッチ角制限（プレイヤー追従時: 上下回転の可動域）
+        const float ANGLE_X_LIMIT_MAX       = 1.4f;               // 見上げ限界（ラジアン）
+        const float ANGLE_X_LIMIT_MIN       = -0.3f;              // 見下ろし限界（ラジアン）
+
+        // 操作感度・回転速度
+        const float DEFAULT_SENSITIVITY     = 0.002f;             // マウス操作感度の初期値
+        const float KEY_ROTATION_SPEED      = 0.03f;              // キーボード（Q/E/矢印キー）操作時の回転速度
+
+        // 壁との衝突・遮蔽防止（カメラ押し戻し）
+        const float COLLISION_MARGIN        = 0.3f;               // 壁衝突時の手前マージン距離
+        const float MIN_DISTANCE            = 0.5f;               // 壁衝突時のプレイヤーとの最小距離
+
+        // カットシーン補間
+        const float CUTSCENE_LERP_SPEED     = 0.1f;               // カットシーン移行／解除時の補間速度
+        const float CUTSCENE_RESET_ANGLE_X  = 0.2f;               // カットシーン終了時の復旧ピッチ角
+        const float CUTSCENE_RESET_ANGLE_Y  = 0.0f;               // カットシーン終了時の復旧ヨー角
+
+        // カメラシェイク（振動演出）
+        const float SHAKE_DAMPING           = 0.9f;               // 毎フレームの振動減衰率 (0.0〜1.0)
+
+        // 垂直方向追従のスムージング（歩行揺れ・接地バウンスによるカメラのガタつき吸収: 0.0=追従なし, 1.0=即時）
+        const float VERTICAL_SMOOTH         = 0.25f;
+
+        // フリーカメラ（プレイヤー不在時 / デバッグ用）
+        const float FREE_CAM_MOVE_SPEED     = 0.15f;              // フリーカメラ移動速度
+        const float FREE_CAM_TARGET_DIST    = 5.0f;               // フリーカメラ注視点距離
+        const float FREE_CAM_ANGLE_X_MAX    = 1.4f;               // フリーカメラ時の見上げ限界
+        const float FREE_CAM_ANGLE_X_MIN    = -1.4f;              // フリーカメラ時の見下ろし限界
+    }
 
     // プレイヤーに関するパラメータ
     namespace Player
@@ -24,6 +73,12 @@ namespace Constants
         const float JUMP_VELOCITY           = 0.22f;    // ジャンプの初期上向き速度
         const float GRAVITY                 = 0.008f;   // 毎フレームかかる重力の強さ
         const int   MAX_JUMP_COUNT          = 2;        // 最大空中ジャンプ回数（2段ジャンプ）
+
+        // 歩行・移動時の姿勢傾き（バンク・前傾）
+        const float MOVE_TILT_ROLL          = 0.05f;    // 左右移動（A/D）時のバンク傾き角（過剰な傾き・カメラ揺れを抑制）
+        const float MOVE_TILT_PITCH         = 0.20f;    // 前進時の前傾姿勢角度
+        const float MOVE_TILT_SPRING_K      = 0.15f;    // 傾き復元のばね係数
+        const float MOVE_TILT_DAMPING       = 0.85f;    // 傾き復元の減衰係数（ブレを抑制）
 
         // スプリング物理（もちもち変形演出用）
         const float SPRING_K                = 0.18f;    // ばね定数（復元力の強さ）
@@ -257,6 +312,13 @@ namespace Constants
         const float ITEM_NORMAL_GIGANT_Z    = 4.0f;
         const float ITEM_NORMAL_LIGHTNING_X = 2.0f;
         const float ITEM_NORMAL_LIGHTNING_Z = 6.0f;
+
+        // タイトル画面の背景壁設定（浮きの解消や高さ調整用）
+        const float TITLE_WALL_DIST         = 20.0f;    // 中央からの距離
+        const float TITLE_WALL_POS_Y        = 1.0f;     // 壁の中心Y座標（小さくすると下がり、大きくすると浮きます）
+        const float TITLE_WALL_HEIGHT       = 4.5f;     // 壁の高さ（Scale Y）
+        const float TITLE_WALL_WIDTH        = 8.0f;     // 壁の横幅
+        const float TITLE_WALL_THICKNESS    = 1.0f;     // 壁の厚み
     }
 
     // デバッグ・テスト用パラメータ
