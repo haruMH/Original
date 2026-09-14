@@ -69,6 +69,11 @@ private:
     static bool              m_IsLowHPWarning;
     static float             m_LowHPPulseTime;
 
+    // ラジアルブラー/色収差制御用
+    static float             m_RadialBlurIntensity;
+    static float             m_ChromaticAberration;
+    static DirectX::XMFLOAT2 m_RadialBlurCenter;
+
     // ボス登場カットシーン制御用
     static bool m_IsCutsceneActive;
     static int  m_CutsceneTimer;
@@ -217,4 +222,20 @@ public:
         }
     }
     static DirectX::XMFLOAT4 GetFlashColor() { return m_FlashColor; }
+
+    // ラジアルブラー / 色収差演出制御
+    static void TriggerRadialBlur(float intensity, DirectX::XMFLOAT2 center = DirectX::XMFLOAT2(0.5f, 0.5f)) {
+        if (intensity > m_RadialBlurIntensity) {
+            m_RadialBlurIntensity = intensity;
+            m_RadialBlurCenter = center;
+        }
+    }
+    static void TriggerChromaticAberration(float intensity) {
+        if (intensity > m_ChromaticAberration) {
+            m_ChromaticAberration = intensity;
+        }
+    }
+    static float GetRadialBlurIntensity() { return m_RadialBlurIntensity; }
+    static float GetChromaticAberration() { return m_ChromaticAberration; }
+    static DirectX::XMFLOAT2 GetRadialBlurCenter() { return m_RadialBlurCenter; }
 };

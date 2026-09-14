@@ -14,6 +14,7 @@
 #include "enemy_bullet.h"
 #include "shockwave.h"
 #include "sound_manager.h"
+#include "main.h"
 
 using namespace DirectX;
 
@@ -56,6 +57,9 @@ void PlayerCombat::Update()
     if (Manager::IsSlowMotionActive()) {
         FindLockOnTarget();
     } else {
+        if (m_Owner->GetWarpSlashCount() > 0) {
+            LOG_INFO("[PlayerCombat] SlowMotion 終了: WarpSlashCount(%d) をリセット\n", m_Owner->GetWarpSlashCount());
+        }
         m_Owner->SetLockOnTarget(nullptr);
         m_Owner->SetLockOnFrame(0);
         m_Owner->SetWarpSlashCount(0);
@@ -85,89 +89,16 @@ void PlayerCombat::Update()
 // =================================================================
 void PlayerCombat::UpdateIdle()
 {
-    // Tackle Warp Attack
-    if (m_Owner->GetTackleTimer() > 0 && PlayerController::IsGrabOrThrowAction()) {
-        Enemy* target = nullptr;
-        
-        if (m_Owner->GetLockOnTarget() && !m_Owner->GetLockOnTarget()->IsDestroy()) {
-            target = m_Owner->GetLockOnTarget();
-        } else {
-            float nearestDist = 15.0f;
-            for (GameObject* obj : Manager::GetGameObjectList()) {
-                if (!obj || obj == m_Owner || obj->IsDestroy()) continue;
-                if (obj->GetObjectType() != ObjectType::Enemy && obj->GetObjectType() != ObjectType::Boss) continue;
-                Enemy* e = static_cast<Enemy*>(obj);
-                if (e->GetEnemyState() == EnemyState::DEFEATED) continue;
-                
-                float dist = MathHelper::Length(e->GetPosition() - m_Owner->GetPosition());
-                if (dist < nearestDist) {
-                    nearestDist = dist;
-                    target = e;
-                }
-            }
-        }
-        
-        if (target) {
-            XMFLOAT3 targetPos = target->GetPosition();
-            XMFLOAT3 startPos = m_Owner->GetPosition();
-            
-            XMVECTOR vStart = XMLoadFloat3(&startPos);
-            XMVECTOR vTarget = XMLoadFloat3(&targetPos);
-            XMVECTOR vDiff = vTarget - vStart;
-            vDiff = XMVectorSetY(vDiff, 0.0f);
-            float dist = XMVectorGetX(XMVector3Length(vDiff));
-            
-            XMVECTOR vDir = (dist > 0.001f) ? (vDiff / dist) : XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-            
-            float targetRadius = target->GetRadius();
-            float warpDistance = targetRadius + 0.8f;
-            
-            XMVECTOR vWarpPos = vTarget - vDir * warpDistance;
-            XMFLOAT3 warpPos;
-            XMStoreFloat3(&warpPos, vWarpPos);
-            warpPos.y = m_Owner->GetPosition().y;
-            
-            m_Owner->SetPosition(warpPos);
-            XMFLOAT3 dir;
-            XMStoreFloat3(&dir, vDir);
-            
-            XMFLOAT3 rot = m_Owner->GetRotation();
-            rot.y = atan2f(dir.x, dir.z);
-            m_Owner->SetRotation(rot);
-            
-            m_Owner->SetScale(XMFLOAT3(1.8f, 0.4f, 1.8f));
-            if (m_Owner->GetMovementModule()) {
-                m_Owner->GetMovementModule()->SetScaleVelocity(0.08f, -0.1f, 0.08f);
-            }
-            
-            ShockwaveSystem::AddShockwave(warpPos, 5.0f, 0.0f, 2.5f, 4.0f, 20, 1.5f, 0);
-            
-            if (target->GetObjectType() == ObjectType::Boss) {
-                BossEnemy* boss = static_cast<BossEnemy*>(target);
-                HitInfo hitInfo;
-                hitInfo.damage = 3;
-                hitInfo.hitSourcePos = m_Owner->GetPosition();
-                boss->OnHit(hitInfo);
-            } else {
-                XMFLOAT3 pushVel = XMFLOAT3(dir.x * 1.8f, 0.6f, dir.z * 1.8f);
-                target->SetVelocity(pushVel);
-                target->SetEnemyState(EnemyState::BLOWN_AWAY);
-                target->Defeat(0.0f, 1.0f, 2.0f);
-            }
-            
-            Manager::AddHitStop(12);
-            if (g_Camera) {
-                g_Camera->Shake(0.35f, 12);
-            }
-            
-            m_Owner->SetTackleTimer(0);
-            return;
-        }
-    }
-
-    // Warp Slash Counter (during Witch Time / Slow Motion)
+    // ─────────────────────────────────────────────────────────────
+    // 1. Warp Slash Counter (during Witch Time / Slow Motion with LockOn)
+    // ※ ジャスト回避時に TackleTimer が付与されるため、Tackle Warp よりも
+    //    Warp Slash を優先して評価する必要がある。
+    // ─────────────────────────────────────────────────────────────
     if (Manager::IsSlowMotionActive() && m_Owner->CanWarpSlash() && m_Owner->GetLockOnTarget() && m_Owner->GetWarpSlashCount() < 3) {
         if (PlayerController::IsGrabOrThrowAction()) {
+            LOG_INFO("[PlayerCombat] Action Check: SlowMotion=1, CanWarp=%d, LockOn=%p, Count=%d\n",
+                     m_Owner->CanWarpSlash() ? 1 : 0, m_Owner->GetLockOnTarget(), m_Owner->GetWarpSlashCount());
+
             bool hasGrabTarget = false;
             float grabRange = Constants::Player::GRAB_RANGE;
             for (GameObject* obj : Manager::GetGameObjectList()) {
@@ -184,7 +115,11 @@ void PlayerCombat::UpdateIdle()
             }
 
             if (!hasGrabTarget) {
+                LOG_INFO("[PlayerCombat] ★★★ Warp Slash Counter 実行開始! target=%p ★★★\n", m_Owner->GetLockOnTarget());
                 m_Owner->IncrementWarpSlashCount();
+                m_Owner->SetWarpSlashSuccess(true);
+                m_Owner->SetTackleTimer(0); // タックルタイマーも消費
+
                 Enemy* target = m_Owner->GetLockOnTarget();
                 XMFLOAT3 targetPos = target->GetPosition();
                 XMFLOAT3 startPos = m_Owner->GetPosition();
@@ -244,9 +179,101 @@ void PlayerCombat::UpdateIdle()
                     g_Camera->Shake(0.45f, 15);
                 }
                 
+                // ワープスラッシュ命中時の衝撃演出（強ラジアルブラー＆色収差）
+                Manager::TriggerRadialBlur(0.70f);
+                Manager::TriggerChromaticAberration(0.50f);
+
                 Manager::StartSlowMotion(90);
+                LOG_INFO("[PlayerCombat] ★★★ Warp Slash Counter 完了 (Count=%d, Success=%d) ★★★\n",
+                         m_Owner->GetWarpSlashCount(), m_Owner->GetWarpSlashSuccess() ? 1 : 0);
                 return;
+            } else {
+                LOG_INFO("[PlayerCombat] Warp Slash blocked by nearby grab target (dist < grabRange)\n");
             }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 2. Tackle Warp Attack
+    // ─────────────────────────────────────────────────────────────
+    if (m_Owner->GetTackleTimer() > 0 && PlayerController::IsGrabOrThrowAction()) {
+        Enemy* target = nullptr;
+        
+        if (m_Owner->GetLockOnTarget() && !m_Owner->GetLockOnTarget()->IsDestroy()) {
+            target = m_Owner->GetLockOnTarget();
+        } else {
+            float nearestDist = 15.0f;
+            for (GameObject* obj : Manager::GetGameObjectList()) {
+                if (!obj || obj == m_Owner || obj->IsDestroy()) continue;
+                if (obj->GetObjectType() != ObjectType::Enemy && obj->GetObjectType() != ObjectType::Boss) continue;
+                Enemy* e = static_cast<Enemy*>(obj);
+                if (e->GetEnemyState() == EnemyState::DEFEATED) continue;
+                
+                float dist = MathHelper::Length(e->GetPosition() - m_Owner->GetPosition());
+                if (dist < nearestDist) {
+                    nearestDist = dist;
+                    target = e;
+                }
+            }
+        }
+        
+        if (target) {
+            LOG_INFO("[PlayerCombat] Tackle Warp Attack 実行 (TackleTimer=%d, target=%p)\n",
+                     m_Owner->GetTackleTimer(), target);
+            XMFLOAT3 targetPos = target->GetPosition();
+            XMFLOAT3 startPos = m_Owner->GetPosition();
+            
+            XMVECTOR vStart = XMLoadFloat3(&startPos);
+            XMVECTOR vTarget = XMLoadFloat3(&targetPos);
+            XMVECTOR vDiff = vTarget - vStart;
+            vDiff = XMVectorSetY(vDiff, 0.0f);
+            float dist = XMVectorGetX(XMVector3Length(vDiff));
+            
+            XMVECTOR vDir = (dist > 0.001f) ? (vDiff / dist) : XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+            
+            float targetRadius = target->GetRadius();
+            float warpDistance = targetRadius + 0.8f;
+            
+            XMVECTOR vWarpPos = vTarget - vDir * warpDistance;
+            XMFLOAT3 warpPos;
+            XMStoreFloat3(&warpPos, vWarpPos);
+            warpPos.y = m_Owner->GetPosition().y;
+            
+            m_Owner->SetPosition(warpPos);
+            XMFLOAT3 dir;
+            XMStoreFloat3(&dir, vDir);
+            
+            XMFLOAT3 rot = m_Owner->GetRotation();
+            rot.y = atan2f(dir.x, dir.z);
+            m_Owner->SetRotation(rot);
+            
+            m_Owner->SetScale(XMFLOAT3(1.8f, 0.4f, 1.8f));
+            if (m_Owner->GetMovementModule()) {
+                m_Owner->GetMovementModule()->SetScaleVelocity(0.08f, -0.1f, 0.08f);
+            }
+            
+            ShockwaveSystem::AddShockwave(warpPos, 5.0f, 0.0f, 2.5f, 4.0f, 20, 1.5f, 0);
+            
+            if (target->GetObjectType() == ObjectType::Boss) {
+                BossEnemy* boss = static_cast<BossEnemy*>(target);
+                HitInfo hitInfo;
+                hitInfo.damage = 3;
+                hitInfo.hitSourcePos = m_Owner->GetPosition();
+                boss->OnHit(hitInfo);
+            } else {
+                XMFLOAT3 pushVel = XMFLOAT3(dir.x * 1.8f, 0.6f, dir.z * 1.8f);
+                target->SetVelocity(pushVel);
+                target->SetEnemyState(EnemyState::BLOWN_AWAY);
+                target->Defeat(0.0f, 1.0f, 2.0f);
+            }
+            
+            Manager::AddHitStop(12);
+            if (g_Camera) {
+                g_Camera->Shake(0.35f, 12);
+            }
+            
+            m_Owner->SetTackleTimer(0);
+            return;
         }
     }
 
@@ -315,6 +342,12 @@ void PlayerCombat::UpdateSpinning()
     if (g_Camera) {
         float dynamicShake = 0.01f + currentSpeed * 0.15f;
         g_Camera->Shake(dynamicShake, 2);
+    }
+
+    // スピン加速に応じたスピードブラー
+    float spinRatio = currentSpeed / Constants::Player::MAX_SPIN_SPEED;
+    if (spinRatio > 0.4f) {
+        Manager::TriggerRadialBlur(spinRatio * 0.25f);
     }
 
     // Vacuum absorption effect
@@ -432,6 +465,11 @@ void PlayerCombat::Throw()
         float throwShake = 0.08f + abs(m_Owner->GetAngularVelocity()) * 1.8f;
         if (throwShake > 0.40f) throwShake = 0.40f;
         g_Camera->Shake(throwShake, 12);
+
+        // 投擲リリースの瞬間的ブラートリガー
+        float throwBlur = 0.35f + (throwShake * 0.6f);
+        Manager::TriggerRadialBlur(throwBlur);
+        Manager::TriggerChromaticAberration(0.25f);
     }
 }
 

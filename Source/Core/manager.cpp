@@ -71,6 +71,10 @@ float                  Manager::m_LowHPPulseTime = 0.0f;
 bool                   Manager::m_IsCutsceneActive = false;
 int                    Manager::m_CutsceneTimer = 0;
 
+float                  Manager::m_RadialBlurIntensity = 0.0f;
+float                  Manager::m_ChromaticAberration = 0.0f;
+DirectX::XMFLOAT2      Manager::m_RadialBlurCenter = DirectX::XMFLOAT2(0.5f, 0.5f);
+
 Camera*                g_Camera = nullptr;
 
 // ─────────────────────────────────────────────
@@ -84,6 +88,9 @@ void Manager::Init()
     EnemyBullet::InitPool(); // 弾薬メモリプールの初期化
     m_IsCutsceneActive = false;
     m_CutsceneTimer = 0;
+    m_RadialBlurIntensity = 0.0f;
+    m_ChromaticAberration = 0.0f;
+    m_RadialBlurCenter = XMFLOAT2(0.5f, 0.5f);
     m_HitStopFrames = 0;
     m_SlowMotionTimer = 0;
     m_SlowMotionDuration = 0;
@@ -243,6 +250,16 @@ void Manager::Update()
     if (m_FlashColor.w > 0.0f) {
         m_FlashColor.w -= m_FlashFadeSpeed;
         if (m_FlashColor.w < 0.0f) m_FlashColor.w = 0.0f;
+    }
+
+    // ラジアルブラーと色収差の自然減衰
+    if (m_RadialBlurIntensity > 0.001f) {
+        m_RadialBlurIntensity *= 0.85f;
+        if (m_RadialBlurIntensity < 0.001f) m_RadialBlurIntensity = 0.0f;
+    }
+    if (m_ChromaticAberration > 0.001f) {
+        m_ChromaticAberration *= 0.85f;
+        if (m_ChromaticAberration < 0.001f) m_ChromaticAberration = 0.0f;
     }
 
     // ボス登場カットシーンのタイムライン更新
@@ -507,6 +524,10 @@ void Manager::TransitionToBossStage()
     
     // ボス登場カットシーンのトリガー
     TriggerBossSpawnCutscene();
+
+    if (g_Camera) {
+        g_Camera->Update();
+    }
     LOG_INFO("[Manager] TransitionToBossStage - 正常終了\n");
 }
 
@@ -626,6 +647,12 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     // 新しいシーンオブジェクトの初期化を実行
     if (m_ActiveScene) {
         m_ActiveScene->Init();
+    }
+
+    // 新シーン構築直後にカメラの初期姿勢・ビュー行列を即座に確定させる
+    // （初描画フレームで古いビュー行列が使われてアウトラインや影が画面全体に四角く歪む現象を完全防止）
+    if (g_Camera) {
+        g_Camera->Update();
     }
 }
 

@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "main.h"
+#include "game_constants.h"
 
 class Camera
 {
@@ -62,8 +63,8 @@ public:
         }
         else if (!enable && m_IsCutsceneMode) {
             // カットシーン終了時: ボス正面（Z+方向）を捉える標準アングルにリセット
-            m_AngleX = 0.2f;
-            m_AngleY = 0.0f;
+            m_AngleX = Constants::Camera::CUTSCENE_RESET_ANGLE_X;
+            m_AngleY = Constants::Camera::CUTSCENE_RESET_ANGLE_Y;
             m_InterpolationFactor = 0.0f; // 演出用補間係数を即時リセット
         }
 

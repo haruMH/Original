@@ -34,11 +34,17 @@ VS_OUTPUT main(VS_INPUT input) {
         }
     }
 
-    // ローカル空間でスムーズ法線方向に押し出す
-    float3 expandedPos = input.Position + smoothNormal * outlineThickness;
-
-    // WVP 行列を合成してクリップ座標に変換
+    // WVP 行列を合成
     matrix wvp = mul(mul(World, View), Projection);
+    float4 clipBase = mul(float4(input.Position, 1.0f), wvp);
+
+    // カメラ距離（clipBase.w）に応じたアウトライン太さの適応補正
+    // 至近距離での肥大化や、遠距離でのモデルの黒潰れ（アウトライン埋没）を防止
+    float distScale = clamp(clipBase.w * 0.09f, 0.45f, 1.60f);
+    float finalThickness = outlineThickness * distScale;
+
+    // ローカル空間でスムーズ法線方向に押し出す
+    float3 expandedPos = input.Position + smoothNormal * finalThickness;
     output.Position = mul(float4(expandedPos, 1.0f), wvp);
 
     return output;

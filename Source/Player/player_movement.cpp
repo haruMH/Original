@@ -140,6 +140,10 @@ void PlayerMovement::Update()
 
             // ダッシュ噴射土煙
             DustSystem::AddDashDust(m_Owner->GetPosition(), m_DashDirection);
+
+            // ダッシュ時のスピード感演出（ラジアルブラー＆色収差）
+            Manager::TriggerRadialBlur(0.35f);
+            Manager::TriggerChromaticAberration(0.20f);
         }
     }
 
@@ -378,16 +382,16 @@ void PlayerMovement::Update()
             rightComp   = (std::max)(-1.2f, (std::min)(1.2f, rightComp));
 
             // 前傾姿勢（前進時に前へ傾き、歩行リズムで微小に上下振動）
-            float bob = sinf(m_MoveAnimation * 3.0f) * 0.03f;
-            targetPitch = forwardComp * 0.26f + bob;
+            float bob = sinf(m_MoveAnimation * 3.0f) * 0.02f;
+            targetPitch = forwardComp * Constants::Player::MOVE_TILT_PITCH + bob;
 
-            // バンク（旋回・左右移動時に少し傾く）
-            targetRoll = -rightComp * 0.20f;
+            // バンク（左右移動 A/D 時の適度な傾き: 過度な傾きによる画面ブレを防止）
+            targetRoll = -rightComp * Constants::Player::MOVE_TILT_ROLL;
         }
 
-        // スプリング補間（移動時は素早く傾き、静止時はバネのようにぷるんと立ち直る）
-        float springK = 0.22f;
-        float damping = 0.78f;
+        // スプリング補間（移動時は滑らかに傾き、静止時は安定して立ち直る）
+        float springK = Constants::Player::MOVE_TILT_SPRING_K;
+        float damping = Constants::Player::MOVE_TILT_DAMPING;
 
         float diffPitch = targetPitch - m_CurrentPitch;
         m_PitchVelocity = (m_PitchVelocity + diffPitch * springK) * damping;

@@ -90,7 +90,7 @@ void EnemyBullet::Update()
                     ShockwaveSystem::AddShockwave(player->GetPosition(), 10.0f, 0.0f, 3.5f, 5.0f, 30, 0.0f, 0);
 
                     player->ResetDashCooldown();
-                    player->DisableWarpSlash();
+                    player->SetCanWarpSlash(true);
                     // �W���X�g��𐬌����Ƀ^�b�N����L�����i���u�e�E�{�X�e��킸�j
                     player->EnableTackle(90);
 

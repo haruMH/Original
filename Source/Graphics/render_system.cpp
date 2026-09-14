@@ -53,16 +53,21 @@ bool RenderSystem::Init(ID3D11Device* device)
     log << "[RenderSystem::Init] Instance Buffer created successfully" << std::endl;
 
     // テクスチャインデックスマップの初期化
-    // リリースビルド時は Assets/texture/ サブフォルダのパスを使用する
-#ifdef NDEBUG
-    m_TextureIndexMap["Assets/texture/enemy.png"]  = 0.0f;
-    m_TextureIndexMap["Assets/texture/player.png"] = 1.0f;
-    m_TextureIndexMap["Assets/texture/grid.png"]   = 2.0f;
-#else
-    m_TextureIndexMap["enemy.png"]  = 0.0f;
-    m_TextureIndexMap["player.png"] = 1.0f;
-    m_TextureIndexMap["grid.png"]   = 2.0f;
-#endif
+    auto registerTex = [this](const std::string& name, float index) {
+        m_TextureIndexMap[name] = index;
+        m_TextureIndexMap["Assets/texture/" + name] = index;
+    };
+
+    registerTex("enemy.png", 0.0f);
+    registerTex("player.png", 1.0f);
+    registerTex("grid.png", 2.0f);
+    registerTex("wall.png", 3.0f);
+    registerTex("wall_cyber_neon.png", 3.0f);
+    registerTex("wall_honeycomb.png", 4.0f);
+    registerTex("wall_comic_block.png", 5.0f);
+    registerTex("wall_comic_cyan.png", 6.0f);
+    registerTex("wall_comic_gold.png", 7.0f);
+    registerTex("wall_comic_crimson.png", 8.0f);
 
     // シェーダーおよびインプットレイアウトの作成
     bool res = CreateResources(device);
@@ -457,7 +462,13 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
     std::vector<std::string> textureKeys = {
         "enemy.png",
         "player.png",
-        "grid.png"
+        "grid.png",
+        "wall.png",
+        "wall_honeycomb.png",
+        "wall_comic_block.png",
+        "wall_comic_cyan.png",
+        "wall_comic_gold.png",
+        "wall_comic_crimson.png"
     };
 
     std::vector<ID3D11Texture2D*> textures;

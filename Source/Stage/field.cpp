@@ -41,7 +41,6 @@ void Field::Init()
             float v0 = UV_TILE / GRID_DIV * z;
             float v1 = UV_TILE / GRID_DIV * (z + 1);
 
-            VERTEX_3D v[4];
             auto mkv = [](float px, float pz, float u, float v) -> VERTEX_3D {
                 VERTEX_3D vt;
                 vt.Position = XMFLOAT3(px, 0.0f, pz);
@@ -114,6 +113,8 @@ void Field::Draw()
     ZeroMemory(&material, sizeof(material));
     material.Diffuse       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     material.Ambient       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.Specular      = XMFLOAT4(0.35f, 0.35f, 0.45f, 1.0f); // 上品な青白いスペキュラ反射
+    material.Shininess     = 36.0f;                                // 磨かれたアリーナ風の光沢
     material.TextureEnable = TRUE;
     Renderer::SetMaterial(material);
 

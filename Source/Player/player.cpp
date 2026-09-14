@@ -47,6 +47,7 @@ void Player::Init()
     m_LockOnFrame      = 0;
     m_WarpSlashCount   = 0;
     m_CanWarpSlash     = true;
+    m_WarpSlashSuccess = false;
     m_TackleTimer      = 0;
 
     // 各サブモジュールの初期化

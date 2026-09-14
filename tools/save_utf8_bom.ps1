@@ -85,10 +85,11 @@ $files = @(
     "c:\Users\HARU17\Desktop\GM31\DX11_Original\.agents\AGENTS.md"
 )
 
-foreach ($file in $files) {
+$sourceFiles = Get-ChildItem -Path "$PSScriptRoot\..\Source" -Recurse -Include *.h, *.cpp | Select-Object -ExpandProperty FullName
+
+foreach ($file in $sourceFiles) {
     if (Test-Path $file) {
         $content = [System.IO.File]::ReadAllText($file, [System.Text.Encoding]::UTF8)
-        # 明示的にBOM付きUTF-8のエンコーディングオブジェクトを作成
         $utf8WithBom = New-Object System.Text.UTF8Encoding($true)
         [System.IO.File]::WriteAllText($file, $content, $utf8WithBom)
         Write-Output "Saved $file with UTF-8 BOM"
