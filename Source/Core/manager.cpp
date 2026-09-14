@@ -397,18 +397,20 @@ void Manager::Draw()
     // 全キャラクター・敵・アイテムの接地丸影（ドロップシャドウ）を描画
     ShadowSystem::Draw(m_GameObjects);
 
+    // 1. 本体キューブのインスタンシング描画（敵、プレイヤー、壁など）
+    m_RenderSystem.RenderCubeInstances(Renderer::GetDeviceContext(), m_GameObjects, RenderPass::Normal);
+    Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    // 2. 各オブジェクトの個別装飾・目・個別エフェクトの描画
     Renderer::SetupCubeDraw();
     for (GameObject* obj : m_GameObjects) {
         ObjectType type = obj->GetObjectType();
-        if (type == ObjectType::Field || type == ObjectType::Enemy || type == ObjectType::Wall) {
+        if (type == ObjectType::Field || type == ObjectType::Wall) {
             continue;
         }
         obj->Draw();
         Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
-
-    m_RenderSystem.RenderCubeInstances(Renderer::GetDeviceContext(), m_GameObjects, RenderPass::Normal);
-    Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     // === 3. アウトライン描画パス (シャドウと同様の除外判定) ===
     Renderer::BeginOutlinePass();
@@ -446,6 +448,7 @@ void Manager::DrawShadowAndOutlineObjects()
             || type == ObjectType::Player
             || type == ObjectType::Wall
             || type == ObjectType::Boss
+            || type == ObjectType::Bullet
             || type == ObjectType::Unknown;
     };
 
@@ -506,6 +509,7 @@ void Manager::TransitionToBossStage()
     LOG_INFO("[Manager] ボスエネミーの生成を開始します...\n");
     BossEnemy* boss = AddGameObject<BossEnemy>();
     boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f));
+    boss->SetRotation(XMFLOAT3(0.0f, XM_PI, 0.0f));
     LOG_INFO("[Manager] ボスエネミー生成完了\n");
 
     // ボス戦用のアイテム生成
@@ -610,6 +614,11 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     m_IsLowHPWarning = false;
     m_LowHPPulseTime = 0.0f;
     m_FlashColor = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+
+    // シーン遷移時に衝撃波・砂埃・ポップアップを完全クリア（前シーンのエフェクト残存防止）
+    ShockwaveSystem::Clear();
+    DustSystem::Clear();
+    ScorePopupSystem::Clear();
 
     // カメラはどのシーンでも必要なので、共通で生成する
     g_Camera = new Camera();

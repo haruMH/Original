@@ -439,12 +439,30 @@ void PlayerMovement::UpdateNormalMovement()
 
     if (MathHelper::LengthSq(moveDir) > 0.001f) {
         float speed = Constants::Player::MOVE_SPEED;
-        XMFLOAT3 nextPos = m_Owner->GetPosition();
-        nextPos.x += moveDir.x * speed;
-        nextPos.z += moveDir.z * speed;
+        XMFLOAT3 curPos = m_Owner->GetPosition();
 
-        if (!Collision::CheckAABBCollision(m_Owner, nextPos, Manager::GetGameObjectList())) {
-            m_Owner->SetPosition(nextPos);
+        // 1. まず進行方向そのまま（斜め含む）の移動を試みる
+        XMFLOAT3 nextPosXZ = curPos;
+        nextPosXZ.x += moveDir.x * speed;
+        nextPosXZ.z += moveDir.z * speed;
+
+        if (!Collision::CheckAABBCollision(m_Owner, nextPosXZ, Manager::GetGameObjectList())) {
+            m_Owner->SetPosition(nextPosXZ);
+        } else {
+            // 2. 衝突した場合はX軸・Z軸それぞれ単独のスライド移動を試み、引っかかり・スタックを防ぐ
+            XMFLOAT3 nextPosX = curPos;
+            nextPosX.x += moveDir.x * speed;
+            if (!Collision::CheckAABBCollision(m_Owner, nextPosX, Manager::GetGameObjectList())) {
+                curPos.x = nextPosX.x;
+            }
+
+            XMFLOAT3 nextPosZ = curPos;
+            nextPosZ.z += moveDir.z * speed;
+            if (!Collision::CheckAABBCollision(m_Owner, nextPosZ, Manager::GetGameObjectList())) {
+                curPos.z = nextPosZ.z;
+            }
+
+            m_Owner->SetPosition(curPos);
         }
 
         if (m_Owner->GetState() != PlayerState::SPINNING) {

@@ -213,6 +213,8 @@ void Enemy::Draw()
     // 電撃属性（m_IsLightning）の場合は自主的にスパークエフェクトを描画する
     if (!Renderer::IsShadowMode() && !Renderer::IsOutlineMode())
     {
+        DrawEyes();
+
         if (IsLightning())
         {
             Player* player = Manager::GetGameObject<Player>();
@@ -339,6 +341,166 @@ void Enemy::SetSandbag(bool enable, int life)
         m_Affix = std::make_shared<SandbagAffix>(life);
     } else if (IsSandbag()) {
         m_Affix = nullptr;
+    }
+}
+
+// =================================================================
+// 敵の目を描画する（ツリ目のトゥーン調ネオンアイ）
+// =================================================================
+void Enemy::DrawEyes()
+{
+    // 非表示、完全撃破消滅中、またはサンドバッグ（動かないオブジェクト・パリィ弾）は目を描画しない
+    if (!GetRenderComponent().visible || m_EnemyState == EnemyState::DEFEATED || IsSandbag()) return;
+
+    // 敵の本体姿勢マトリクス
+    XMMATRIX parentMatrix = XMMatrixScaling(m_Scale.x, m_Scale.y, m_Scale.z) *
+                            XMMatrixRotationRollPitchYaw(m_Rotation.x, m_Rotation.y, m_Rotation.z) *
+                            XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
+
+    Renderer::SetupCubeDraw();
+
+    // 1. フェイスベースプレートマテリアル (漆黒・シャドウブラック)
+    MATERIAL eyeBaseMat;
+    ZeroMemory(&eyeBaseMat, sizeof(eyeBaseMat));
+    eyeBaseMat.Diffuse       = XMFLOAT4(0.02f, 0.02f, 0.03f, 1.0f);
+    eyeBaseMat.Ambient       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    eyeBaseMat.Specular      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+    eyeBaseMat.Emission      = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    eyeBaseMat.Shininess     = 0.0f;
+    eyeBaseMat.TextureEnable = FALSE;
+    eyeBaseMat.RimPower      = 0.0f;
+
+    // 2. 怒り眉・バイザーフレームマテリアル (ダークアイアン)
+    MATERIAL browMat;
+    ZeroMemory(&browMat, sizeof(browMat));
+    browMat.Diffuse       = XMFLOAT4(0.12f, 0.12f, 0.16f, 1.0f);
+    browMat.Ambient       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    browMat.Specular      = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
+    browMat.Emission      = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    browMat.Shininess     = 10.0f;
+    browMat.TextureEnable = FALSE;
+    browMat.RimPower      = 0.0f;
+
+    // 3. 光る瞳マテリアル (Emission)
+    MATERIAL pupilMat;
+    ZeroMemory(&pupilMat, sizeof(pupilMat));
+    pupilMat.Diffuse       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    pupilMat.Ambient       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    pupilMat.Specular      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+    pupilMat.Shininess     = 0.0f;
+    pupilMat.TextureEnable = FALSE;
+    pupilMat.RimPower      = 0.0f;
+
+    if (m_HitFlashTimer > 0) {
+        // 被弾フラッシュ中: 白熱発光
+        pupilMat.Emission = XMFLOAT4(3.0f, 3.0f, 3.0f, 1.0f);
+    } else if (IsExplosive()) {
+        // 爆発属性エネミー: 燃えるオレンジ発光
+        pupilMat.Emission = XMFLOAT4(3.0f, 1.3f, 0.1f, 1.0f);
+    } else if (IsLightning()) {
+        // 電撃属性エネミー: 放電シアン発光
+        pupilMat.Emission = XMFLOAT4(0.2f, 2.4f, 3.0f, 1.0f);
+    } else if (IsAttackingEnemy()) {
+        // 遠距離攻撃エネミー: 妖しいマゼンタ・パープル発光
+        pupilMat.Emission = XMFLOAT4(2.8f, 0.3f, 2.5f, 1.0f);
+    } else {
+        // 通常エネミー: 鋭いクリムゾンレッド発光
+        pupilMat.Emission = XMFLOAT4(2.8f, 0.2f, 0.1f, 1.0f);
+    }
+
+    // 1. 斜めの目（黒枠ベース）
+    const float slantAngle = 0.22f;
+    XMMATRIX leftBaseLocal = XMMatrixScaling(0.18f, 0.24f, 0.05f) *
+                             XMMatrixRotationZ(slantAngle) *
+                             XMMatrixTranslation(-0.20f, 0.10f, 0.51f);
+    Renderer::SetWorldMatrix(leftBaseLocal * parentMatrix);
+    Renderer::SetMaterial(eyeBaseMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    XMMATRIX rightBaseLocal = XMMatrixScaling(0.18f, 0.24f, 0.05f) *
+                              XMMatrixRotationZ(-slantAngle) *
+                              XMMatrixTranslation(0.20f, 0.10f, 0.51f);
+    Renderer::SetWorldMatrix(rightBaseLocal * parentMatrix);
+    Renderer::SetMaterial(eyeBaseMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    // Glowing neon pupils
+    XMMATRIX leftPupilLocal = XMMatrixScaling(0.12f, 0.16f, 0.06f) *
+                              XMMatrixRotationZ(slantAngle) *
+                              XMMatrixTranslation(-0.20f, 0.10f, 0.52f);
+    Renderer::SetWorldMatrix(leftPupilLocal * parentMatrix);
+    Renderer::SetMaterial(pupilMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    XMMATRIX rightPupilLocal = XMMatrixScaling(0.12f, 0.16f, 0.06f) *
+                               XMMatrixRotationZ(-slantAngle) *
+                               XMMatrixTranslation(0.20f, 0.10f, 0.52f);
+    Renderer::SetWorldMatrix(rightPupilLocal * parentMatrix);
+    Renderer::SetMaterial(pupilMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    // 2. Angry mouth (inverted V mouth + cute fang)
+    const float mouthSlant = 0.28f;
+    XMMATRIX leftMouthBase = XMMatrixScaling(0.11f, 0.045f, 0.05f) *
+                             XMMatrixRotationZ(-mouthSlant) *
+                             XMMatrixTranslation(-0.05f, -0.08f, 0.51f);
+    Renderer::SetWorldMatrix(leftMouthBase * parentMatrix);
+    Renderer::SetMaterial(eyeBaseMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    XMMATRIX rightMouthBase = XMMatrixScaling(0.11f, 0.045f, 0.05f) *
+                              XMMatrixRotationZ(mouthSlant) *
+                              XMMatrixTranslation(0.05f, -0.08f, 0.51f);
+    Renderer::SetWorldMatrix(rightMouthBase * parentMatrix);
+    Renderer::SetMaterial(eyeBaseMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    XMMATRIX leftMouthPupil = XMMatrixScaling(0.08f, 0.03f, 0.06f) *
+                              XMMatrixRotationZ(-mouthSlant) *
+                              XMMatrixTranslation(-0.05f, -0.08f, 0.52f);
+    Renderer::SetWorldMatrix(leftMouthPupil * parentMatrix);
+    Renderer::SetMaterial(pupilMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    XMMATRIX rightMouthPupil = XMMatrixScaling(0.08f, 0.03f, 0.06f) *
+                               XMMatrixRotationZ(mouthSlant) *
+                               XMMatrixTranslation(0.05f, -0.08f, 0.52f);
+    Renderer::SetWorldMatrix(rightMouthPupil * parentMatrix);
+    Renderer::SetMaterial(pupilMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    MATERIAL fangMat;
+    ZeroMemory(&fangMat, sizeof(fangMat));
+    fangMat.Diffuse       = XMFLOAT4(0.9f, 0.9f, 0.95f, 1.0f);
+    fangMat.Ambient       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    fangMat.Specular      = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
+    fangMat.Emission      = XMFLOAT4(1.2f, 1.2f, 1.3f, 1.0f);
+    fangMat.Shininess     = 10.0f;
+    fangMat.TextureEnable = FALSE;
+
+    XMMATRIX fangLocal = XMMatrixScaling(0.035f, 0.045f, 0.065f) *
+                         XMMatrixTranslation(0.0f, -0.105f, 0.525f);
+    Renderer::SetWorldMatrix(fangLocal * parentMatrix);
+    Renderer::SetMaterial(fangMat);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    // 3. 頭頂部の前方ホーンインジケーター（斜め上空カメラからでも正面向きが明瞭にわかる角）
+    // ボス（BossEnemy）は巨大で向きが明瞭なため描画をスキップ
+    if (GetObjectType() != ObjectType::Boss)
+    {
+        XMMATRIX hornLeft = XMMatrixScaling(0.06f, 0.05f, 0.22f) * 
+                            XMMatrixRotationY(-XM_PIDIV4 * 0.5f) * 
+                            XMMatrixTranslation(-0.16f, 0.51f, 0.20f);
+        Renderer::SetWorldMatrix(hornLeft * parentMatrix);
+        Renderer::SetMaterial(pupilMat);
+        Renderer::GetDeviceContext()->Draw(36, 0);
+
+        XMMATRIX hornRight = XMMatrixScaling(0.06f, 0.05f, 0.22f) * 
+                             XMMatrixRotationY(XM_PIDIV4 * 0.5f) * 
+                             XMMatrixTranslation(0.16f, 0.51f, 0.20f);
+        Renderer::SetWorldMatrix(hornRight * parentMatrix);
+        Renderer::SetMaterial(pupilMat);
+        Renderer::GetDeviceContext()->Draw(36, 0);
     }
 }
 

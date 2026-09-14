@@ -33,6 +33,6 @@ public:
     void Uninit() override;
     void Update() override;
     void Draw() override;
-    static ObjectType GetStaticType() { return ObjectType::Unknown; }
+    static ObjectType GetStaticType() { return ObjectType::Skybox; }
     ObjectType GetObjectType() const override { return GetStaticType(); }
 };

@@ -7,6 +7,9 @@
 #include "player.h"
 #include "camera.h"
 #include "game_constants.h"
+#include "shockwave.h"
+#include "dust_system.h"
+#include "score_popup.h"
 #include <cmath>
 
 // =================================================================
@@ -168,8 +171,14 @@ void TitleScene::Init()
 {
     m_OrbitAngle = 0.0f;
 
+    // 前シーンのエフェクト残存を防止
+    ShockwaveSystem::Clear();
+    DustSystem::Clear();
+    ScorePopupSystem::Clear();
+
     // 1. 3D床面の生成（波打つグリッドメッシュ＆フレネル光沢）
     Manager::AddGameObject<Field>();
+    Manager::AddGameObject<Skybox>();
 
     // 2. 4属性コミック調石積みの多層複合モニュメント配置
     const float baseDist = 22.0f;

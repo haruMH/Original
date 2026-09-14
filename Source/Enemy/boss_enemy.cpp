@@ -45,14 +45,28 @@ void BossEnemy::Init() {
   m_LightningVisualTimer = 0;
 
   m_RenderComponent = RenderComponent("enemy.png", MeshType::Cube, true);
+  m_Rotation = XMFLOAT3(0.0f, DirectX::XM_PI, 0.0f); // 初期状態でプレイヤー側（南）を向く
 }
 
 // ─────────────────────────────────────────────
 // 更新処理
 // ─────────────────────────────────────────────
 void BossEnemy::Update() {
-  if (Manager::IsCutsceneActive())
+  if (Manager::IsCutsceneActive()) {
+    // カットシーン登場演出中も最初からプレイヤー方向を正面から見据える
+    Player* player = Manager::GetGameObject<Player>();
+    if (player) {
+      XMFLOAT3 pPos = player->GetPosition();
+      float dx = pPos.x - m_Position.x;
+      float dz = pPos.z - m_Position.z;
+      if (dx * dx + dz * dz > 0.001f) {
+        m_Rotation.y = atan2f(dx, dz);
+        m_Rotation.x = 0.0f;
+        m_Rotation.z = 0.0f;
+      }
+    }
     return;
+  }
 
   if (m_DamageFlashTimer > 0) {
     m_DamageFlashTimer--;

@@ -41,6 +41,7 @@ private:
 public:
     static void Init();
     static void Uninit();
+    static void Clear();
     static void Update();
     static void Draw();
 

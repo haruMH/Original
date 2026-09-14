@@ -26,11 +26,10 @@ void EnemyBullet::Init()
     m_Speed    = BULLET_SPEED;
     m_Destroy  = false;
     m_IsPlayerOwned = false;
-    m_EmissiveColor = XMFLOAT3(2.5f, 0.5f, 0.0f);
+    m_EmissiveColor = XMFLOAT3(3.0f, 0.8f, 0.1f);
 
-    // 描画には enemy.png を流用し、インスタンス描画で描画
-    // パス解決は ResourceManager::GetTexture 内部で一元処理される（2-7 対応）
-    m_RenderComponent = RenderComponent("enemy.png", MeshType::Cube, true);
+    // 弾丸は暗いテクスチャやアウトラインを避けるため、個別描画で純粋なネオン発光体として描画
+    m_RenderComponent = RenderComponent("", MeshType::Cube, false);
 }
 
 // ─────────────────────────────────────────────
@@ -193,17 +192,19 @@ void EnemyBullet::Update()
         }
     }
 
-    // �ǂƂ̏Փ˔���i�ǂɓ�����������ŁB�����e�ł���l�j
+    // ǂƂ̏Փ˔iǂɓŁBełlj
     for (GameObject* obj : Manager::GetGameObjectList())
     {
         if (!obj || obj->IsDestroy() || obj == this || obj == player) continue;
         
-        // �G�A�{�X�A�n�ʁA���̒e�ۂ͏��O�i�ǂȂǂ̏�Q���݂̂ƏՓ˂�����j
+        // 敵、ボス、地面、弾丸、スカイドーム、システムオブジェクトは除外（壁などの障害物のみと衝突消滅）
         ObjectType type = obj->GetObjectType();
         if (type == ObjectType::Enemy || 
             type == ObjectType::Boss || 
             type == ObjectType::Field || 
-            type == ObjectType::Bullet) 
+            type == ObjectType::Bullet ||
+            type == ObjectType::Skybox ||
+            type == ObjectType::Unknown) 
         {
             continue;
         }
@@ -223,13 +224,13 @@ void EnemyBullet::Update()
     }
 }
 
-// ������������������������������������������������������������������������������������������
-// �`�揈���i�V���h�E/�A�E�g���C���p�X�p�j
-// ������������������������������������������������������������������������������������������
+// 
+// `揈iVhE/AEgCpXpj
+// 
 void EnemyBullet::Draw()
 {
-    // �ʏ�`��� RenderSystem ���ňꊇ�ōs���邽�߁A�����ł͉�����Ȃ�
-    if (!Renderer::IsShadowMode() && !Renderer::IsOutlineMode()) return;
+    // シャドウマップやアウトラインでは弾を描画しない（黒潰れ防止）
+    if (Renderer::IsShadowMode() || Renderer::IsOutlineMode()) return;
 
     XMMATRIX worldMatrix =
         XMMatrixScaling(m_Scale.x, m_Scale.y, m_Scale.z) *
@@ -237,8 +238,20 @@ void EnemyBullet::Draw()
         XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
     Renderer::SetWorldMatrix(worldMatrix);
 
-    ID3D11ShaderResourceView* tex = ResourceManager::GetTexture("enemy.png");
-    Renderer::DrawCube(worldMatrix, tex);
+    // 鮮やかな自発光（エミッシブ）マテリアルを設定
+    MATERIAL bulletMat;
+    ZeroMemory(&bulletMat, sizeof(bulletMat));
+    bulletMat.Diffuse       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    bulletMat.Ambient       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    bulletMat.Specular      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+    bulletMat.Emission      = XMFLOAT4(m_EmissiveColor.x, m_EmissiveColor.y, m_EmissiveColor.z, 1.0f);
+    bulletMat.Shininess     = 0.0f;
+    bulletMat.TextureEnable = FALSE; // テクスチャなしの純粋なネオン発光体
+    bulletMat.RimPower      = 0.0f;
+    Renderer::SetMaterial(bulletMat);
+
+    Renderer::SetupCubeDraw();
+    Renderer::GetDeviceContext()->Draw(36, 0);
 }
 
 // ─────────────────────────────────────────────

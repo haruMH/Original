@@ -60,26 +60,57 @@ bool Collision::CheckAABBCollision(const GameObject* self, const DirectX::XMFLOA
         grabbedEnemy = player->GetGrabbedEnemy();
     }
 
+    DirectX::XMFLOAT3 curPos = self->GetPosition();
+
     for (GameObject* obj : objList) {
         if (obj == self) continue;
         if (ignoreObj && obj == *ignoreObj) continue;       // 既に掴んでいる敵は衝突除外
         if (grabbedEnemy && obj == grabbedEnemy) continue;  // 掴んでいる敵との衝突を自動除外
-        if (obj->GetObjectType() == ObjectType::Field) continue; // 地面は除外
+        ObjectType objType = obj->GetObjectType();
+        if (objType == ObjectType::Field || objType == ObjectType::Skybox || objType == ObjectType::Unknown) continue; // 地面・スカイドーム・システムは衝突除外
         if (obj->IsDestroy()) continue;
 
+        // 撃破演出中・吹き飛び中・飛行投擲中の敵はプレイヤーの移動を妨げない（巨大エネミーによるスタック防止）
+        if (objType == ObjectType::Enemy) {
+            const Enemy* e = static_cast<const Enemy*>(obj);
+            EnemyState eState = e->GetEnemyState();
+            if (eState == EnemyState::DEFEATED || eState == EnemyState::BLOWN_AWAY || eState == EnemyState::FLYING) {
+                continue;
+            }
+        }
+
         if (CheckAABB(self, nextPos, obj)) {
+            // 既に相手のバウンディングボックス内にめり込んでいる場合、
+            // 相手の中心から離れる方向への移動であれば脱出を許可する
+            if (CheckAABB(self, curPos, obj)) {
+                DirectX::XMFLOAT3 objPos = obj->GetPosition();
+                float curDistSq  = MathHelper::DistanceSq(curPos, objPos);
+                float nextDistSq = MathHelper::DistanceSq(nextPos, objPos);
+                if (nextDistSq > curDistSq) {
+                    continue; // 離脱移動のため衝突とみなさない
+                }
+            }
+
             // 掴み対象のセットは「まだ何も掴んでいない（*ignoreObj == nullptr）」
             // かつ「NORMAL状態の敵」のときのみ行う
-            // → GRABBED / SPINNING 中は絶対に上書きしない（持ち替わりバグ防止）
-            // → FLYING / VACUUMED などの非NORMAL敵は掴まない（連鎖衝突バグ防止）
             if (ignoreObj && !(*ignoreObj)) {
-                if (obj->GetObjectType() == ObjectType::Enemy) {
+                if (objType == ObjectType::Enemy) {
                     Enemy* e = static_cast<Enemy*>(obj);
                     if (e->GetEnemyState() == EnemyState::NORMAL) {
                         *ignoreObj = obj;
                     }
                 }
             }
+
+#ifdef _DEBUG
+            if (self->GetObjectType() == ObjectType::Player) {
+                char dbg[256];
+                sprintf_s(dbg, "[CollisionBlocked] Player blocked by ObjType=%d Pos=(%.2f, %.2f, %.2f) Scale=(%.2f, %.2f, %.2f)\n",
+                    (int)objType, obj->GetPosition().x, obj->GetPosition().y, obj->GetPosition().z,
+                    obj->GetScale().x, obj->GetScale().y, obj->GetScale().z);
+                OutputDebugStringA(dbg);
+            }
+#endif
             return true;
         }
     }
@@ -139,11 +170,13 @@ void Collision::ResolveAABBCollision(GameObject* self, const std::vector<GameObj
 
     for (GameObject* obj : objList) {
         if (!obj || obj == self || obj->IsDestroy()) continue;
-        if (obj->GetObjectType() == ObjectType::Field) continue;
+        ObjectType objType = obj->GetObjectType();
+        if (objType == ObjectType::Field || objType == ObjectType::Skybox || objType == ObjectType::Unknown) continue;
 
-        if (obj->GetObjectType() == ObjectType::Enemy) {
+        if (objType == ObjectType::Enemy) {
             Enemy* enemy = static_cast<Enemy*>(obj);
-            if (enemy->GetEnemyState() == EnemyState::GRABBED) continue;
+            EnemyState eState = enemy->GetEnemyState();
+            if (eState == EnemyState::GRABBED || eState == EnemyState::DEFEATED || eState == EnemyState::BLOWN_AWAY || eState == EnemyState::FLYING) continue;
         }
 
         if (CheckAABB(self, posA, obj)) {
