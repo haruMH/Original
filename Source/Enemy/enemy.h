@@ -55,9 +55,13 @@ public:
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }
     void       SetScoreValue(int v)          { m_ScoreValue = v; }
+    void       SetUprightTimer(int t)        { m_UprightTimer = t; }
     static ObjectType GetStaticType() { return ObjectType::Enemy; }
     ObjectType GetObjectType() const override { return GetStaticType(); }
     XMFLOAT3   GetEmissive() const override;
+
+    // 敵の目を描画する（通常パス時のみ）
+    void       DrawEyes();
 
     // 撃破処理（二重カウント防止機能付き）
     void       Defeat(float colorR = 2.5f, float colorG = 1.8f, float colorB = 0.0f);

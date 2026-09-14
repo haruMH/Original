@@ -43,9 +43,10 @@ private:
     static void ApplyShockwavePhysics(const XMFLOAT3& center, float radius, float forceVal);
 
 public:
-    // 初期化・終了処理
+    // 初期化・終了処理・全クリア
     static bool Init(ID3D11Device* device);
     static void Uninit();
+    static void Clear();
 
     // 毎フレーム更新処理
     static void Update();

@@ -152,6 +152,7 @@ void GameplayScene::Init()
 
     // 1. nʃIuWFNg̐
     Manager::AddGameObject<Field>();
+    Manager::AddGameObject<Skybox>();
 
     // 2. vC[IuWFNg̐
     Player* player = Manager::AddGameObject<Player>();
@@ -182,6 +183,7 @@ void GameplayScene::Init()
         // ボスエネミーの生成
         BossEnemy* boss = Manager::AddGameObject<BossEnemy>();
         boss->SetPosition(XMFLOAT3(0.0f, Constants::Boss::GROUND_Y, Constants::Stage::BOSS_SPAWN_OFFSET_Z));
+        boss->SetRotation(XMFLOAT3(0.0f, XM_PI, 0.0f));
 
         GameRule::SetTotalEnemies(1);
     } else {

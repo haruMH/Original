@@ -45,6 +45,40 @@ void AttackingEnemy::Update()
                 toPlayer.z /= dist;
             }
 
+            // プレイヤーの方向を向く
+            float faceAngle = atan2f(toPlayer.x, toPlayer.z);
+            m_Rotation.y = faceAngle;
+
+            // 固定砲台モード（チュートリアル等用）：移動せずその場にとどまり、距離に関係なく射撃
+            if (m_IsTurretMode)
+            {
+                float baseOffset = (m_Size.y * m_Scale.y - 1.0f) * 0.5f;
+                m_Position.y = -0.5f + baseOffset;
+                SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
+
+                if (m_ShootCooldown > 0)
+                {
+                    m_ShootCooldown--;
+                }
+                else
+                {
+                    m_ShootCooldown = BASE_COOLDOWN; // 一定周期（120フレーム/2秒）で連射
+
+                    EnemyBullet* bullet = Manager::AddGameObject<EnemyBullet>();
+                    if (bullet)
+                    {
+                        XMFLOAT3 spawnPos = m_Position;
+                        spawnPos.x += toPlayer.x * 0.8f;
+                        spawnPos.z += toPlayer.z * 0.8f;
+                        spawnPos.y += 0.2f;
+
+                        bullet->SetPosition(spawnPos);
+                        bullet->SetDirection(toPlayer);
+                    }
+                }
+                return;
+            }
+
             // ─── ① 周囲の敵を迂回するための反発ベクトル（Steering Avoidance）の計算 ───
             XMFLOAT3 steer = toPlayer; // 基本はプレイヤーへの方向
 

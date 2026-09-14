@@ -14,6 +14,7 @@ enum class ObjectType
     Field,
     Bullet,
     Boss,
+    Skybox,
     Unknown
 };
 

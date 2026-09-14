@@ -56,6 +56,7 @@ void TutorialScene::Init() {
 
   // 1. 地面フィールド生成
   Manager::AddGameObject<Field>();
+  Manager::AddGameObject<Skybox>();
 
   // 2. プレイヤー生成
   Player *player = Manager::AddGameObject<Player>();
@@ -245,9 +246,12 @@ void TutorialScene::SetupStep(TutorialStep step) {
     CreateGuideTexture(4, 5,
         L"ガード・パリィ・ジャスト回避",
         L"[右クリック長押し] でガード / 着弾直前にガードでパリィ反射！ / 弾の直前に [Shift] でジャスト回避！");
-    // 遠距離攻撃してくる敵を配置
+    // 遠距離攻撃してくる敵を配置（移動しない固定砲台）
     AttackingEnemy *attacker = Manager::AddGameObject<AttackingEnemy>();
-    attacker->SetPosition(XMFLOAT3(0.0f, -0.5f, 8.0f));
+    if (attacker) {
+      attacker->SetPosition(XMFLOAT3(0.0f, -0.5f, 8.0f));
+      attacker->SetTurretMode(true);
+    }
     break;
   }
 
@@ -271,6 +275,7 @@ void TutorialScene::SetupStep(TutorialStep step) {
       AttackingEnemy *attacker = Manager::AddGameObject<AttackingEnemy>();
       if (attacker) {
         attacker->SetPosition(XMFLOAT3(0.0f, -0.5f, 8.0f));
+        attacker->SetTurretMode(true);
       }
     }
     // ステップ開始時にプレイヤーフラグとシーン専用フラグをリセット
@@ -418,6 +423,7 @@ void TutorialScene::UpdateStepLogic() {
         AttackingEnemy *attacker = Manager::AddGameObject<AttackingEnemy>();
         if (attacker) {
           attacker->SetPosition(XMFLOAT3(0.0f, -0.5f, 8.0f));
+          attacker->SetTurretMode(true);
         }
       }
     }
@@ -459,6 +465,7 @@ void TutorialScene::UpdateStepLogic() {
         AttackingEnemy *attacker = Manager::AddGameObject<AttackingEnemy>();
         if (attacker) {
           attacker->SetPosition(XMFLOAT3(0.0f, -0.5f, 8.0f));
+          attacker->SetTurretMode(true);
         }
       }
     }

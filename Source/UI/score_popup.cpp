@@ -225,6 +225,20 @@ void ScorePopupSystem::Uninit()
 }
 
 // ─────────────────────────────────────────────────────────────────
+// ポップアップ全クリア（シーン遷移用）
+// ─────────────────────────────────────────────────────────────────
+void ScorePopupSystem::Clear()
+{
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        if (m_Popups[i].Used && m_Popups[i].Texture) {
+            m_Popups[i].Texture->Release();
+            m_Popups[i].Texture = nullptr;
+        }
+        m_Popups[i].Used = false;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
 // 毎フレーム更新処理
 // ─────────────────────────────────────────────────────────────────
 void ScorePopupSystem::Update()

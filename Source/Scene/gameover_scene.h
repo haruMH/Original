@@ -16,4 +16,9 @@ public:
     void Uninit() override;
     void Update() override;
     void Draw() override;
+
+private:
+    float m_OrbitAngle;    // カメラ水平旋回角
+    float m_CameraHeight;  // カメラ高度
+    float m_Timer;         // 演出タイマー
 };

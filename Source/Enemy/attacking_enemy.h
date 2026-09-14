@@ -16,10 +16,15 @@ private:
     static constexpr float AVOID_FORCE     = 1.8f;   // 回避行動の強さ
 
     int m_ShootCooldown = 0; // 射撃クールダウンタイマー
+    bool m_IsTurretMode = false; // 固定砲台モード（移動せず、無限射程でプレイヤーを狙い撃つ）
 
 public:
     void Init()   override;
     void Update() override;
+
+    // 固定砲台モードの設定
+    void SetTurretMode(bool enable) { m_IsTurretMode = enable; }
+    bool IsTurretMode() const       { return m_IsTurretMode; }
 
     // 自発光（Emissive）情報の取得（赤色に強く発光させる）
     XMFLOAT3 GetEmissive() const override { return XMFLOAT3(1.5f, 0.0f, 0.0f); }

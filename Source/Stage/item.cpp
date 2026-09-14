@@ -49,6 +49,9 @@ void Item::Draw()
 {
     using namespace DirectX;
 
+    // アウトライン描画パスでは描画しない（黒く塗りつぶされるのを防ぐ）
+    if (Renderer::IsOutlineMode()) return;
+
     // ワールド行列の作成
     XMMATRIX scale = XMMatrixScaling(m_Scale.x, m_Scale.y, m_Scale.z);
     XMMATRIX rotation = XMMatrixRotationRollPitchYaw(m_Rotation.x, m_Rotation.y, m_Rotation.z);
@@ -60,7 +63,7 @@ void Item::Draw()
     }
     Renderer::SetWorldMatrix(world);
 
-    if (!Renderer::IsShadowMode() && !Renderer::IsOutlineMode()) {
+    if (!Renderer::IsShadowMode()) {
         // 通常描画パスのときだけ、アイテムの種類に応じた光る色（エミッシブ）を設定
         MATERIAL material;
         ZeroMemory(&material, sizeof(material));
