@@ -1,4 +1,4 @@
-﻿#include "collision.h"
+#include "collision.h"
 #include "field.h"
 #include "enemy.h"
 #include "player.h"
@@ -32,8 +32,18 @@ bool Collision::CheckAABB(const GameObject* a, const DirectX::XMFLOAT3& nextPosA
 
     // X, Y, Z 各軸でお互いに重なっているかを判定
     bool collisionX = std::abs(nextPosA.x - posB.x) < (sizeA.x * scaleA.x + sizeB.x * scaleB.x) * 0.5f;
-    bool collisionY = std::abs(nextPosA.y - posB.y) < (sizeA.y * scaleA.y + sizeB.y * scaleB.y) * 0.5f;
     bool collisionZ = std::abs(nextPosA.z - posB.z) < (sizeA.z * scaleA.z + sizeB.z * scaleB.z) * 0.5f;
+
+    // 壁（Wall）との判定時は、プレイヤーがジャンプやノックバックで上空に浮いても
+    // 壁を飛び越えて場外へ飛び出さないよう、地面以上の高さであればY軸は常に衝突（無限高の壁）とみなす
+    bool collisionY = false;
+    if (b->GetObjectType() == ObjectType::Wall) {
+        collisionY = (nextPosA.y >= -1.5f);
+    } else if (a->GetObjectType() == ObjectType::Wall) {
+        collisionY = (posB.y >= -1.5f);
+    } else {
+        collisionY = std::abs(nextPosA.y - posB.y) < (sizeA.y * scaleA.y + sizeB.y * scaleB.y) * 0.5f;
+    }
 
     return collisionX && collisionY && collisionZ;
 }

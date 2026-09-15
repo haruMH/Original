@@ -427,6 +427,7 @@ void PlayerCombat::Throw()
 
         m_Owner->GetGrabbedEnemy()->SetVelocity(throwVelocity);
         m_Owner->GetGrabbedEnemy()->SetEnemyState(EnemyState::FLYING);
+        m_Owner->GetGrabbedEnemy()->SetThrownByPlayer(true);
 
         SoundManager::PlaySE(SoundID::SE_THROW);
 
@@ -448,6 +449,7 @@ void PlayerCombat::Throw()
 
                 enemy->SetVelocity(vacuumThrowVel);
                 enemy->SetEnemyState(EnemyState::FLYING);
+                enemy->SetThrownByPlayer(true);
                 enemy->SetExplosive(true);
             }
         }
@@ -514,6 +516,8 @@ void PlayerCombat::OnHit(const HitInfo& info)
     hitEvent.damage = info.damage;
     hitEvent.hitSourcePos = info.hitSourcePos;
     EventSystem::Publish<PlayerHitEvent>(hitEvent);
+
+    SoundManager::PlaySE(SoundID::SE_PLAYER_HIT, 1.0f);
 }
 
 // =================================================================
@@ -521,6 +525,8 @@ void PlayerCombat::OnHit(const HitInfo& info)
 // =================================================================
 void PlayerCombat::ExecuteParryCounter(DirectX::XMFLOAT3 bulletPos)
 {
+    SoundManager::PlaySE(SoundID::SE_PARRY, 1.4f);
+
     Enemy* sandbag = Manager::AddGameObject<Enemy>();
     if (sandbag) {
         XMFLOAT3 spawnPos = bulletPos;

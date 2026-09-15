@@ -185,8 +185,10 @@ namespace Constants
         const int   SLAM_RISE_FRAMES        = 18;       // 上昇フレーム数
         const int   SLAM_LOCK_TARGET_FRAMES = 38;       // 着地点確定フレーム数
 
-        // 撃破後のリザルト移行ディレイ
-        const int   CLEAR_DELAY_FRAMES      = 120;      // ボス撃破からクリア画面遷移までの待ち時間（フレーム）
+        // 撃破後のリザルト移行ディレイと演出
+        const int   CLEAR_DELAY_FRAMES          = 120;      // ボス撃破からクリア画面遷移までの待ち時間（フレーム）
+        const int   DEFEAT_SLOW_MOTION_DURATION = 120;      // ボス撃破時のスローモーション持続フレーム数
+        const float DEFEAT_FLASH_FADE_SPEED     = 0.035f;   // ボス撃破フラッシュのフェード速度
 
         // 投擲衝突ダメージ
         const int   THROW_NORMAL_DAMAGE     = 1;        // 通常敵をボスに投げつけた時のダメージ
@@ -284,6 +286,9 @@ namespace Constants
         // ボスステージ設定
         const float BOSS_ROOM_SIZE          = 28.0f;    // ボス部屋の広さ（四方の壁の距離・横幅56mに拡大）
         const float BOSS_SPAWN_OFFSET_Z     = 10.0f;    // ボスの初期出現位置のZ座標
+        const float BOSS_WALL_HEIGHT        = 8.5f;     // ボス部屋の壁の高さ（高くしてプレイヤーの飛び出しを防止）
+        const float BOSS_WALL_Y             = 3.25f;    // ボス部屋の壁のY中心座標（底面-1.0f、上面7.5f）
+        const float BOSS_WALL_THICKNESS     = 3.0f;     // ボス部屋の壁の厚み（トンネリング貫通防止）
 
         // 通常ステージ設定
         const float PLAYER_START_POS_Z      = 8.0f;     // 通常ステージでのプレイヤー開始Z座標

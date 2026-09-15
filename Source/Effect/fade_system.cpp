@@ -1,6 +1,7 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
 #include "fade_system.h"
 #include "main.h"
+#include "renderer.h"
 #include <stdio.h>
 #include <d3dcompiler.h>
 #include <string>
@@ -251,10 +252,10 @@ void FadeSystem::Draw(ID3D11DeviceContext* context)
     if (m_State == FadeState::None || m_CurrentAlpha <= 0.001f) return;
     if (!context || !m_VS || !m_PS || !m_CBuffer) return;
 
-    // ビューポートの設定 (全画面 1280x720)
+    // ビューポートの設定 (全画面)
     D3D11_VIEWPORT vp = {};
-    vp.Width = (FLOAT)SCREEN_WIDTH;
-    vp.Height = (FLOAT)SCREEN_HEIGHT;
+    vp.Width = (FLOAT)Renderer::GetScreenWidth();
+    vp.Height = (FLOAT)Renderer::GetScreenHeight();
     vp.MinDepth = 0.0f;
     vp.MaxDepth = 1.0f;
     vp.TopLeftX = 0;

@@ -1,4 +1,4 @@
-﻿#include "shockwave.h"
+#include "shockwave.h"
 #include "renderer.h"
 #include "manager.h"
 #include "enemy.h"
@@ -313,8 +313,9 @@ void ShockwaveSystem::Draw()
         ctx->Draw(4, 0);
     }
 
-    // --- 後処理 ---
+    // --- 後処理: トポロジーと深度ステートを復元する ---
     ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    ctx->OMSetDepthStencilState(Renderer::GetDepthStateEnable(), 0);
 }
 
 // =================================================================

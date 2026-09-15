@@ -1,4 +1,4 @@
-﻿#include "manager.h"
+#include "manager.h"
 #include <string>
 #include <unordered_set>
 #include "camera.h"
@@ -426,6 +426,8 @@ void Manager::Draw()
     DustSystem::Draw();
     ScoreHUD::Draw();
 
+    // シーン固有の3D描画（リザルト画面の巨石など）のため、深度ステートを確実に有効状態にセット
+    Renderer::GetDeviceContext()->OMSetDepthStencilState(Renderer::GetDepthStateEnable(), 0);
     if (m_ActiveScene) {
         m_ActiveScene->Draw();
     }
@@ -484,25 +486,30 @@ void Manager::TransitionToBossStage()
     });
     LOG_INFO("[Manager] オブジェクト破棄クリーンアップ完了\n");
 
-    // ボス部屋の壁を生成
+    // ボス部屋の壁を生成（高く・厚くしてプレイヤーの場外飛び出しを防止）
     LOG_INFO("[Manager] ボス部屋の壁を生成します...\n");
-    float roomSize = Constants::Stage::BOSS_ROOM_SIZE;
+    float roomSize   = Constants::Stage::BOSS_ROOM_SIZE;
+    float wallH      = Constants::Stage::BOSS_WALL_HEIGHT;
+    float wallY      = Constants::Stage::BOSS_WALL_Y;
+    float thick      = Constants::Stage::BOSS_WALL_THICKNESS;
+    float halfThick  = thick * 0.5f;
+
     // 北の壁
     Wall* wallN = AddGameObject<Wall>();
-    wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
-    wallN->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+    wallN->SetPosition(XMFLOAT3(0.0f, wallY, roomSize + halfThick));
+    wallN->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
     // 南の壁
     Wall* wallS = AddGameObject<Wall>();
-    wallS->SetPosition(XMFLOAT3(0.0f, 1.5f, -roomSize));
-    wallS->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+    wallS->SetPosition(XMFLOAT3(0.0f, wallY, -(roomSize + halfThick)));
+    wallS->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
     // 東の壁
     Wall* wallE = AddGameObject<Wall>();
-    wallE->SetPosition(XMFLOAT3(roomSize, 1.5f, 0.0f));
-    wallE->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+    wallE->SetPosition(XMFLOAT3(roomSize + halfThick, wallY, 0.0f));
+    wallE->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
     // 西の壁
     Wall* wallW = AddGameObject<Wall>();
-    wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
-    wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+    wallW->SetPosition(XMFLOAT3(-(roomSize + halfThick), wallY, 0.0f));
+    wallW->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
     LOG_INFO("[Manager] 壁の配置完了\n");
 
     // ボスエネミーの生成

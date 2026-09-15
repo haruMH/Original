@@ -199,6 +199,13 @@ public:
     static ID3D11DepthStencilState* GetDepthStateOutline() { return m_DepthStateOutline; }
     static ID3D11BlendState*        GetBlendState() { return m_BlendState; }
     static bool IsShadowMode() { return m_IsShadowMode; }
+
+    // 解像度管理
+    static UINT m_ScreenWidth;
+    static UINT m_ScreenHeight;
+    static UINT GetScreenWidth() { return m_ScreenWidth; }
+    static UINT GetScreenHeight() { return m_ScreenHeight; }
+    static void OnResize(UINT width, UINT height);
     static void CreateVertexShader(ID3D11VertexShader** vs, ID3D11InputLayout** il, const char* name);
     static void CreatePixelShader(ID3D11PixelShader** ps, const char* name);
     // シェーダーファイルのパスを構成に合わせて解決する（2-1 対応）

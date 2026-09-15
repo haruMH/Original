@@ -45,5 +45,9 @@ inline void LogInfoInternal(const char* fmt, ...) {
 
 HWND GetWindow();
 
+bool IsFullscreen();
+void SetFullscreen(bool fullscreen);
+void ToggleFullscreen();
+
 void Invoke(std::function<void()> Function, int Time);
 

@@ -1,4 +1,4 @@
-﻿#include "player_movement.h"
+#include "player_movement.h"
 #include "player.h"
 #include "player_controller.h"
 #include "math_helper.h"
@@ -249,6 +249,7 @@ void PlayerMovement::Update()
             p.y = exactGroundY;
             m_Owner->SetPosition(p);
         }
+        ClampToStageBounds();
         return;
     }
 
@@ -427,6 +428,9 @@ void PlayerMovement::Update()
 
     // Resolve push out of collision
     Collision::ResolveAABBCollision(m_Owner, Manager::GetGameObjectList());
+
+    // フィールド・ボス部屋の場外脱出防止セーフガード
+    ClampToStageBounds();
 }
 
 // =================================================================
@@ -518,4 +522,26 @@ void PlayerMovement::UpdateGhosts()
             it++;
         }
     }
+}
+
+// =================================================================
+// フィールド・ボス部屋の場外脱出防止セーフガード
+// =================================================================
+void PlayerMovement::ClampToStageBounds()
+{
+    if (!m_Owner) return;
+
+    XMFLOAT3 pos = m_Owner->GetPosition();
+    if (Manager::IsBossStage()) {
+        // ボス部屋の壁内（壁厚みや衝突半径を考慮し、内側境界手前で安全にクランプ）
+        float limit = Constants::Stage::BOSS_ROOM_SIZE - 0.7f;
+        pos.x = MathHelper::Clamp(pos.x, -limit, limit);
+        pos.z = MathHelper::Clamp(pos.z, -limit, limit);
+    } else {
+        // 通常ステージ（50mフィールドの端を越えないようガード）
+        float limit = 48.0f;
+        pos.x = MathHelper::Clamp(pos.x, -limit, limit);
+        pos.z = MathHelper::Clamp(pos.z, -limit, limit);
+    }
+    m_Owner->SetPosition(pos);
 }

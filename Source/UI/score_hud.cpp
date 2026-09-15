@@ -23,7 +23,7 @@ ID3D11ShaderResourceView* ScoreHUD::m_GameOverTexture = nullptr;
 ID3D11ShaderResourceView* ScoreHUD::m_BossHPTexture   = nullptr;
 ID3D11ShaderResourceView* ScoreHUD::m_PlayerHPTexture = nullptr;
 
-int   ScoreHUD::m_LastScore   = 0;
+int   ScoreHUD::m_LastTimeFrames = -1;
 int   ScoreHUD::m_LastHP      = 5;
 int   ScoreHUD::m_LastMaxHP   = 5;
 int   ScoreHUD::m_LastBossHP    = -1;
@@ -34,16 +34,12 @@ int   ScoreHUD::m_ShakeTimer = 0;
 DirectX::XMFLOAT2 ScoreHUD::m_ShakeOffset = DirectX::XMFLOAT2(0.0f, 0.0f);
 
 // ─────────────────────────────────────────────────────────────────
-// GDI を使用してトータルスコアHUD用のテクスチャを生成する
-// テキスト部分がアルファ（輝度）として抽出され、ui_ps.hlsl で発光描画される
-// ─────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────
-// GDI を使用してトータルスコアHUD用のテクスチャを生成する
+// GDI を使用してタイムHUD用のテクスチャを生成する
 // センタートップ・スラッシュプレート（逆台形ダークグラス + ゴールドネオン）
 // ─────────────────────────────────────────────────────────────────
 ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
     ID3D11Device* device,
-    int score
+    int frames
 )
 {
     const int W = 512, H = 64;
@@ -87,7 +83,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
     MoveToEx(hdc, padX + insetBot + 12, H - 9, nullptr);
     LineTo(hdc, W - padX - insetBot - 12, H - 9);
 
-    // ─── 2. "SCORE" ミニバッジ（中央上部） ───
+    // ─── 2. "TIME" ミニバッジ（中央上部） ───
     POINT badgePts[4] = {
         { W / 2 - 42, 4 },
         { W / 2 + 42, 4 },
@@ -109,9 +105,9 @@ ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
     SetBkMode(hdc, TRANSPARENT);
     SetTextColor(hdc, RGB(20, 15, 5)); // 濃黒文字
     RECT rcBadge = { W / 2 - 40, 5, W / 2 + 40, 18 };
-    DrawTextW(hdc, L"SCORE", -1, &rcBadge, DT_CENTER | DT_SINGLELINE);
+    DrawTextW(hdc, L"TIME", -1, &rcBadge, DT_CENTER | DT_SINGLELINE);
 
-    // ─── 3. スコア数値の描画（大きく洗練されたイタリック体） ───
+    // ─── 3. タイム数値の描画（大きく洗練されたイタリック体） ───
     HFONT hFontScore = CreateFontW(
         34, 0, 0, 0, FW_BLACK,
         TRUE, FALSE, FALSE, // 斜体
@@ -120,15 +116,16 @@ ID3D11ShaderResourceView* ScoreHUD::CreateHUDTexture(
     );
     SelectObject(hdc, hFontScore);
 
+    std::string timeStr = GameRule::FormatTime(frames);
     wchar_t buf[32];
-    swprintf_s(buf, L"%06d", score);
+    swprintf_s(buf, L"%hs", timeStr.c_str());
 
     // ドロップシャドウ
     SetTextColor(hdc, RGB(60, 45, 10));
     RECT rcShadow = { 0, 21, W + 2, H - 3 };
     DrawTextW(hdc, buf, -1, &rcShadow, DT_CENTER | DT_SINGLELINE);
 
-    // メインスコア数値（ゴールドホワイト）
+    // メイン数値（ゴールドホワイト）
     SetTextColor(hdc, RGB(255, 245, 210));
     RECT rcScore = { 0, 19, W, H - 5 };
     DrawTextW(hdc, buf, -1, &rcScore, DT_CENTER | DT_SINGLELINE);
@@ -813,7 +810,7 @@ ID3D11ShaderResourceView* ScoreHUD::CreateTitleTexture(ID3D11Device* device)
 // ─────────────────────────────────────────────────────────────────
 // GDI を使用してリザルト画面用のテクスチャを生成する
 // ─────────────────────────────────────────────────────────────────
-ID3D11ShaderResourceView* ScoreHUD::CreateResultTexture(ID3D11Device* device, bool isClear, int score)
+ID3D11ShaderResourceView* ScoreHUD::CreateResultTexture(ID3D11Device* device, bool isClear, int frames)
 {
     const int W = 512, H = 256;
 
@@ -866,33 +863,66 @@ ID3D11ShaderResourceView* ScoreHUD::CreateResultTexture(ID3D11Device* device, bo
     RECT rcTitle = { 0, 24, W, 84 };
     DrawTextW(hdc, isClear ? L"MISSION CLEAR" : L"GAME OVER", -1, &rcTitle, DT_CENTER | DT_SINGLELINE);
 
-    // ─── 3. スコア表示 ───
+    // ─── 3. タイムアタック結果表示 ───
+    HFONT hFontLabel = CreateFontW(
+        16, 0, 0, 0, FW_BLACK,
+        FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
+    );
+    SelectObject(hdc, hFontLabel);
+
     if (isClear) {
-        HFONT hFontScoreLabel = CreateFontW(
-            15, 0, 0, 0, FW_BLACK,
+        if (GameRule::IsNewRecord()) {
+            SetTextColor(hdc, RGB(255, 210, 30));
+            RECT rcLabel = { 0, 96, W, 118 };
+            DrawTextW(hdc, L"★ NEW RECORD! ★", -1, &rcLabel, DT_CENTER | DT_SINGLELINE);
+        } else {
+            SetTextColor(hdc, RGB(0, 220, 255));
+            RECT rcLabel = { 0, 96, W, 118 };
+            DrawTextW(hdc, L"★ CLEAR TIME ★", -1, &rcLabel, DT_CENTER | DT_SINGLELINE);
+        }
+    } else {
+        SetTextColor(hdc, RGB(255, 120, 140));
+        RECT rcLabel = { 0, 96, W, 118 };
+        DrawTextW(hdc, L"- SURVIVAL TIME -", -1, &rcLabel, DT_CENTER | DT_SINGLELINE);
+    }
+    DeleteObject(hFontLabel);
+
+    // タイム数値（大きく洗練されたイタリック体）
+    HFONT hFontTimeNum = CreateFontW(
+        42, 0, 0, 0, FW_BLACK,
+        TRUE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
+    );
+    SelectObject(hdc, hFontTimeNum);
+
+    std::string timeStr = GameRule::FormatTime(frames);
+    wchar_t timeBuf[32];
+    swprintf_s(timeBuf, L"%hs", timeStr.c_str());
+
+    SetTextColor(hdc, isClear ? RGB(255, 245, 210) : RGB(230, 200, 210));
+    RECT rcTimeNum = { 0, 116, W, 168 };
+    DrawTextW(hdc, timeBuf, -1, &rcTimeNum, DT_CENTER | DT_SINGLELINE);
+    DeleteObject(hFontTimeNum);
+
+    // ベストタイムサブ表示（クリア時のみ）
+    if (isClear) {
+        HFONT hFontBest = CreateFontW(
+            13, 0, 0, 0, FW_BOLD,
             FALSE, FALSE, FALSE,
             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
+            ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI"
         );
-        SelectObject(hdc, hFontScoreLabel);
-        SetTextColor(hdc, RGB(0, 220, 255));
-        RECT rcScLabel = { 0, 100, W, 120 };
-        DrawTextW(hdc, L"★ FINAL SCORE ★", -1, &rcScLabel, DT_CENTER | DT_SINGLELINE);
-        DeleteObject(hFontScoreLabel);
-
-        HFONT hFontScoreNum = CreateFontW(
-            38, 0, 0, 0, FW_BLACK,
-            TRUE, FALSE, FALSE,
-            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Black"
-        );
-        SelectObject(hdc, hFontScoreNum);
-        SetTextColor(hdc, RGB(255, 245, 210));
-        wchar_t scoreBuf[32];
-        swprintf_s(scoreBuf, L"%06d", score);
-        RECT rcScNum = { 0, 122, W, 172 };
-        DrawTextW(hdc, scoreBuf, -1, &rcScNum, DT_CENTER | DT_SINGLELINE);
-        DeleteObject(hFontScoreNum);
+        SelectObject(hdc, hFontBest);
+        SetTextColor(hdc, RGB(160, 190, 210));
+        std::string bestStr = "BEST: " + GameRule::GetBestFormattedTime();
+        wchar_t bestBuf[32];
+        swprintf_s(bestBuf, L"%hs", bestStr.c_str());
+        RECT rcBest = { 0, 166, W, 186 };
+        DrawTextW(hdc, bestBuf, -1, &rcBest, DT_CENTER | DT_SINGLELINE);
+        DeleteObject(hFontBest);
     }
 
     // ─── 4. 操作案内 ───
@@ -1034,8 +1064,8 @@ bool ScoreHUD::Init(ID3D11Device* device)
     dsd.DepthFunc      = D3D11_COMPARISON_ALWAYS;
     if (FAILED(device->CreateDepthStencilState(&dsd, &m_DepthState))) return false;
 
-    // ─── 初期テクスチャ（スコア0、HP5）の生成 ───
-    m_LastScore = GameRule::GetScore();
+    // ─── 初期テクスチャ（タイム0、HP5）の生成 ───
+    m_LastTimeFrames = GameRule::GetElapsedFrames();
     m_LastHP = 5;
     m_LastMaxHP = 5;
     Player* player = Manager::GetGameObject<Player>();
@@ -1043,7 +1073,7 @@ bool ScoreHUD::Init(ID3D11Device* device)
         m_LastHP    = player->GetHP();
         m_LastMaxHP = player->GetMaxHP();
     }
-    m_Texture         = CreateHUDTexture(device, m_LastScore);
+    m_Texture         = CreateHUDTexture(device, m_LastTimeFrames);
     m_PlayerHPTexture = CreatePlayerHPTexture(device, m_LastHP, m_LastMaxHP);
     m_ScaleEffect = 1.0f;
 
@@ -1118,18 +1148,21 @@ void ScoreHUD::Update()
             m_LastMaxHP = curPlayerMaxHP;
         }
 
-        // スコア変化の監視
-        int currentScore = GameRule::GetScore();
-        if (currentScore != m_LastScore || !m_Texture) {
+        // タイムアタック時間の監視（約2フレーム = 0.033秒ごと、またはタイム短縮ボーナス時にテクスチャ更新）
+        int currentFrames = GameRule::GetElapsedFrames();
+        bool timeJumped = (m_LastTimeFrames >= 0 && currentFrames < m_LastTimeFrames); // タイム短縮ボーナス発生
+        if (!m_Texture || timeJumped || std::abs(currentFrames - m_LastTimeFrames) >= 2) {
             if (m_Texture) {
                 m_Texture->Release();
                 m_Texture = nullptr;
             }
-            m_Texture = CreateHUDTexture(Renderer::GetDevice(), currentScore);
-            m_LastScore = currentScore;
+            m_Texture = CreateHUDTexture(Renderer::GetDevice(), currentFrames);
+            m_LastTimeFrames = currentFrames;
 
-            // スケールポップ効果を発動
-            m_ScaleEffect = 1.25f;
+            if (timeJumped) {
+                // タイム短縮時はポップ演出を発動！
+                m_ScaleEffect = 1.35f;
+            }
         }
 
         // スケールを徐々に 1.0 に戻す（イージング）
@@ -1161,11 +1194,11 @@ void ScoreHUD::Update()
         }
     } else if (currentScene == Scene::CLEAR) {
         if (!m_ClearTexture) {
-            m_ClearTexture = CreateResultTexture(Renderer::GetDevice(), true, GameRule::GetScore());
+            m_ClearTexture = CreateResultTexture(Renderer::GetDevice(), true, GameRule::GetClearTimeFrames());
         }
     } else if (currentScene == Scene::GAMEOVER) {
         if (!m_GameOverTexture) {
-            m_GameOverTexture = CreateResultTexture(Renderer::GetDevice(), false, GameRule::GetScore());
+            m_GameOverTexture = CreateResultTexture(Renderer::GetDevice(), false, GameRule::GetElapsedFrames());
         }
     }
 
@@ -1202,10 +1235,13 @@ void ScoreHUD::Draw()
     ID3D11ShaderResourceView* texToDraw = nullptr;
     Scene currentScene = Manager::GetCurrentScene();
 
+    const float screenW = (float)Renderer::GetScreenWidth();
+    const float screenH = (float)Renderer::GetScreenHeight();
+
     float w = 512.0f;
     float h = 64.0f;
-    float posX = (float)SCREEN_WIDTH * 0.5f; // 画面中央
-    float posY = 45.0f;                      // 画面上部から少し下げた位置
+    float posX = screenW * 0.5f; // 画面中央
+    float posY = 45.0f;          // 画面上部から少し下げた位置
     XMFLOAT4 emissionColor = XMFLOAT4(1.5f, 1.2f, 0.0f, 0.0f); // スコアHUDは黄金色の発光
 
     switch (currentScene) {
@@ -1216,7 +1252,7 @@ void ScoreHUD::Draw()
         {
             static float titleFloatTime = 0.0f;
             titleFloatTime += 0.035f;
-            posY = (float)SCREEN_HEIGHT * 0.5f + sinf(titleFloatTime) * 7.0f; // 上下にフワフワ浮遊
+            posY = screenH * 0.5f + sinf(titleFloatTime) * 7.0f; // 上下にフワフワ浮遊
         }
         emissionColor = XMFLOAT4(0.0f, 1.2f, 1.8f, 0.0f); // タイトルは青白発光
         break;
@@ -1230,14 +1266,14 @@ void ScoreHUD::Draw()
         texToDraw = m_ClearTexture;
         w = 512.0f;
         h = 256.0f;
-        posY = (float)SCREEN_HEIGHT * 0.5f;
+        posY = screenH * 0.5f;
         emissionColor = XMFLOAT4(1.5f, 1.2f, 0.0f, 0.0f); // クリアは黄金発光
         break;
     case Scene::GAMEOVER:
         texToDraw = m_GameOverTexture;
         w = 512.0f;
         h = 256.0f;
-        posY = (float)SCREEN_HEIGHT * 0.5f;
+        posY = screenH * 0.5f;
         emissionColor = XMFLOAT4(1.8f, 0.0f, 0.0f, 0.0f); // ゲームオーバーは赤発光
         break;
     }
@@ -1251,7 +1287,7 @@ void ScoreHUD::Draw()
     XMMATRIX oldProj = Renderer::GetProjectionMatrix();
 
     XMMATRIX view2D = XMMatrixIdentity();
-    XMMATRIX proj2D = XMMatrixOrthographicOffCenterLH(0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 0.0f, 0.0f, 1.0f);
+    XMMATRIX proj2D = XMMatrixOrthographicOffCenterLH(0.0f, screenW, screenH, 0.0f, 0.0f, 1.0f);
 
     // 1. スコア/タイトル/リザルトHUDの描画
     if (texToDraw) {
@@ -1324,8 +1360,8 @@ void ScoreHUD::Draw()
     if (currentScene == Scene::GAMEPLAY && m_BossHPTexture) {
         const float bossBarW = Constants::UI::BossHP::BAR_WIDTH;
         const float bossBarH = Constants::UI::BossHP::BAR_HEIGHT;
-        const float bossBarX = (float)SCREEN_WIDTH * 0.5f;
-        const float bossBarY = (float)SCREEN_HEIGHT - bossBarH * 0.5f - Constants::UI::BossHP::SCREEN_MARGIN_Y;
+        const float bossBarX = screenW * 0.5f;
+        const float bossBarY = screenH - bossBarH * 0.5f - Constants::UI::BossHP::SCREEN_MARGIN_Y;
 
         ctx->OMSetDepthStencilState(m_DepthState, 0);
         ctx->VSSetShader(m_VS, nullptr, 0);
@@ -1354,4 +1390,7 @@ void ScoreHUD::Draw()
         Renderer::SetProjectionMatrix(oldProj);
         ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
+
+    // 後続の3D描画（シーンやオブジェクト）への影響を防ぐため、深度ステートを有効状態に復元する
+    ctx->OMSetDepthStencilState(Renderer::GetDepthStateEnable(), 0);
 }

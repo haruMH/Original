@@ -4,6 +4,7 @@
 #include "sound_manager.h"
 #include "camera.h"
 #include "main.h"
+#include "renderer.h"
 
 bool OptionUI::m_IsOpen = false;
 
@@ -40,11 +41,18 @@ void OptionUI::Draw()
 {
     if (!m_IsOpen) return;
 
-    // 画面中央にウィンドウを配置
+    // 画面中央にウィンドウを配置（フルスクリーン切替時は自動で追従再センタリング）
+    static bool s_PrevFs = false;
+    bool isFs = IsFullscreen();
     ImGuiIO& io = ImGui::GetIO();
     ImVec2 center(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
-    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(480.0f, 380.0f), ImGuiCond_Appearing);
+    if (s_PrevFs != isFs) {
+        ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        s_PrevFs = isFs;
+    } else {
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    }
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 390.0f), ImGuiCond_Appearing);
 
     // ウィンドウの装飾スタイル設定
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
@@ -135,6 +143,36 @@ void OptionUI::Draw()
                 ImGui::BulletText("Grab / Throw: Left Click or J Key");
                 ImGui::BulletText("Spin / Sweep: Right Click or K Key");
                 ImGui::BulletText("Toggle Option: Tab Key");
+
+                ImGui::EndTabItem();
+            }
+
+            // ─────────────────────────────────────────────
+            // 3. 画面・ディスプレイ設定タブ
+            // ─────────────────────────────────────────────
+            if (ImGui::BeginTabItem("Display"))
+            {
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ Screen & Display Settings ]");
+                ImGui::Separator();
+                ImGui::Spacing();
+
+                bool currentFs = IsFullscreen();
+                if (ImGui::Checkbox("Fullscreen Mode (Hotkey: F11 / Alt+Enter)", &currentFs)) {
+                    SetFullscreen(currentFs);
+                }
+
+                ImGui::Spacing();
+                if (ImGui::Button(currentFs ? "Switch to Windowed (1280x720) [F11]" : "Switch to Fullscreen (Native Resolution) [F11]", ImVec2(360, 34))) {
+                    ToggleFullscreen();
+                }
+
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Current Resolution: %u x %u (%s)", 
+                    Renderer::GetScreenWidth(), Renderer::GetScreenHeight(),
+                    currentFs ? "Native Fullscreen" : "Windowed");
+                ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "* Press F11 or Alt+Enter at any time to toggle Fullscreen");
+                ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "* Direct3D 11 Native Resolution (Crisp & High Quality)");
 
                 ImGui::EndTabItem();
             }

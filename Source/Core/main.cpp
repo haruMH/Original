@@ -2,6 +2,7 @@
 
 #include "main.h"
 #include "manager.h"
+#include "renderer.h"
 #include <thread>
 #include <imm.h>
 
@@ -136,6 +137,16 @@ extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT uMsg, WPARAM wPara
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    // F11 または Alt+Enter は、ImGui のフォーカス状態に関わらず最優先で処理
+    if (uMsg == WM_KEYDOWN || uMsg == WM_SYSKEYDOWN)
+    {
+        if (wParam == VK_F11 || (wParam == VK_RETURN && (GetKeyState(VK_MENU) & 0x8000)))
+        {
+            ToggleFullscreen();
+            return 0;
+        }
+    }
+
     // ImGuiがメッセージを処理した場合は早期リターン
     if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam))
         return true;
@@ -145,6 +156,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		break;
+
+    case WM_SIZE:
+        if (Renderer::GetDeviceContext() && wParam != SIZE_MINIMIZED) {
+            UINT width = LOWORD(lParam);
+            UINT height = HIWORD(lParam);
+            Renderer::OnResize(width, height);
+        }
+        break;
 
 	case WM_KEYDOWN:
 		switch(wParam)
@@ -162,3 +181,73 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
 
+// =================================================================
+// ボーダレスフルスクリーンの切り替え処理（ネイティブ解像度対応）
+// =================================================================
+static bool  s_IsFullscreen = false;
+static RECT  s_SavedWindowRect = { 0, 0, 0, 0 };
+static DWORD s_SavedWindowStyle = 0;
+
+bool IsFullscreen()
+{
+    return s_IsFullscreen;
+}
+
+void SetFullscreen(bool fullscreen)
+{
+    if (s_IsFullscreen == fullscreen) return;
+
+    HWND hWnd = g_Window;
+    if (!hWnd) return;
+
+    if (fullscreen) {
+        // 現在のウィンドウ位置とスタイルを退避
+        GetWindowRect(hWnd, &s_SavedWindowRect);
+        s_SavedWindowStyle = GetWindowLong(hWnd, GWL_STYLE);
+
+        // 現在のウィンドウが所属するモニターの解像度を取得
+        HMONITOR hMon = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO mi = { sizeof(mi) };
+        GetMonitorInfo(hMon, &mi);
+
+        int width = mi.rcMonitor.right - mi.rcMonitor.left;
+        int height = mi.rcMonitor.bottom - mi.rcMonitor.top;
+
+        // スタイルを枠なしポップアップに変更して画面全体に配置
+        SetWindowLong(hWnd, GWL_STYLE, (s_SavedWindowStyle & ~WS_OVERLAPPEDWINDOW) | WS_POPUP);
+        SetWindowPos(hWnd, HWND_TOP,
+            mi.rcMonitor.left, mi.rcMonitor.top,
+            width, height,
+            SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+
+        s_IsFullscreen = true;
+        Renderer::OnResize((UINT)width, (UINT)height);
+    } else {
+        // 元のスタイルとウィンドウ位置に戻す
+        SetWindowLong(hWnd, GWL_STYLE, s_SavedWindowStyle);
+
+        int winW = s_SavedWindowRect.right - s_SavedWindowRect.left;
+        int winH = s_SavedWindowRect.bottom - s_SavedWindowRect.top;
+        if (winW <= 0 || winH <= 0) {
+            RECT rc = { 0, 0, (LONG)SCREEN_WIDTH, (LONG)SCREEN_HEIGHT };
+            AdjustWindowRect(&rc, s_SavedWindowStyle, FALSE);
+            winW = rc.right - rc.left;
+            winH = rc.bottom - rc.top;
+            s_SavedWindowRect.left = (GetSystemMetrics(SM_CXSCREEN) - winW) / 2;
+            s_SavedWindowRect.top = (GetSystemMetrics(SM_CYSCREEN) - winH) / 2;
+        }
+
+        SetWindowPos(hWnd, nullptr,
+            s_SavedWindowRect.left, s_SavedWindowRect.top,
+            winW, winH,
+            SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+
+        s_IsFullscreen = false;
+        Renderer::OnResize((UINT)SCREEN_WIDTH, (UINT)SCREEN_HEIGHT);
+    }
+}
+
+void ToggleFullscreen()
+{
+    SetFullscreen(!s_IsFullscreen);
+}

@@ -1,9 +1,10 @@
-﻿#include "field.h"
+#include "field.h"
 #include "renderer.h"
 #include "resource_manager.h"
 #include "wall.h"
 #include "manager.h"
 #include "camera.h"
+#include "input.h"
 #include <vector>
 
 
@@ -123,19 +124,120 @@ void Field::Draw()
 
 
 // =================================================================
-// Skybox クラスの実装
 // =================================================================
+// Skybox / Skydome クラスの実装
+// =================================================================
+void Skybox::CreateDomeMesh(int slices, int stacks, float radius)
+{
+    std::vector<VERTEX_3D> vertices;
+    std::vector<UINT> indices;
+
+    // 緯度: -PI/2 (最下部) から +PI/2 (天頂)
+    for (int i = 0; i <= stacks; ++i)
+    {
+        float lat = -XM_PIDIV2 + XM_PI * ((float)i / stacks);
+        float sinLat = sinf(lat);
+        float cosLat = cosf(lat);
+
+        // テクスチャ V: 天頂 (lat = +PI/2) -> 0.0, 水平 (lat = 0) -> 0.82, 最下部 (lat = -PI/2) -> 1.0
+        float v = (lat >= 0.0f)
+            ? 0.82f * (1.0f - sinLat)
+            : 0.82f + 0.18f * (-sinLat);
+
+        for (int j = 0; j <= slices; ++j)
+        {
+            // 経度: 0 ～ 2*PI
+            float lon = XM_2PI * ((float)j / slices);
+            float sinLon = sinf(lon);
+            float cosLon = cosf(lon);
+
+            VERTEX_3D vt{};
+            vt.Position = XMFLOAT3(
+                radius * cosLat * sinLon,
+                radius * sinLat,
+                radius * cosLat * cosLon
+            );
+
+            // 法線
+            vt.Normal   = XMFLOAT3(0.0f, -1.0f, 0.0f);
+            vt.Diffuse  = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+            vt.TexCoord = XMFLOAT2((float)j / slices, v);
+            vt.Tangent  = XMFLOAT3(1.0f, 0.0f, 0.0f);
+
+            vertices.push_back(vt);
+        }
+    }
+
+    // 外向き面のインデックス構成（Renderer::SetCullMode(false) の表面カリングにより内側が描画される）
+    for (int i = 0; i < stacks; ++i)
+    {
+        for (int j = 0; j < slices; ++j)
+        {
+            int row1 = i * (slices + 1);
+            int row2 = (i + 1) * (slices + 1);
+
+            indices.push_back(row1 + j);
+            indices.push_back(row1 + j + 1);
+            indices.push_back(row2 + j);
+
+            indices.push_back(row1 + j + 1);
+            indices.push_back(row2 + j + 1);
+            indices.push_back(row2 + j);
+        }
+    }
+
+    m_IndexCount = (int)indices.size();
+
+    // 頂点バッファ作成
+    D3D11_BUFFER_DESC vbd{};
+    vbd.Usage     = D3D11_USAGE_DEFAULT;
+    vbd.ByteWidth = sizeof(VERTEX_3D) * (UINT)vertices.size();
+    vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    D3D11_SUBRESOURCE_DATA vsd{};
+    vsd.pSysMem = vertices.data();
+    Renderer::GetDevice()->CreateBuffer(&vbd, &vsd, &m_VertexBuffer);
+
+    // インデックスバッファ作成
+    D3D11_BUFFER_DESC ibd{};
+    ibd.Usage     = D3D11_USAGE_DEFAULT;
+    ibd.ByteWidth = sizeof(UINT) * (UINT)indices.size();
+    ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    D3D11_SUBRESOURCE_DATA isd{};
+    isd.pSysMem = indices.data();
+    Renderer::GetDevice()->CreateBuffer(&ibd, &isd, &m_IndexBuffer);
+}
+
 void Skybox::Init()
 {
     m_Position = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_Rotation = XMFLOAT3(0.0f, 0.0f, 0.0f);
-    m_Scale    = XMFLOAT3(200.0f, 200.0f, 200.0f);
+    m_Scale    = XMFLOAT3(450.0f, 450.0f, 450.0f); // 巨大なスカイドーム
 
-    m_Texture = ResourceManager::GetTexture("sky.png");
+    m_RotationAngle = 0.0f;
+    m_RotationSpeed = 0.006f; // ゆっくり自転 (約100秒で1周)
+
+    // 3種類のテクスチャをロード
+    m_Textures[(int)SkyType::Day]    = ResourceManager::GetTexture("skydome_day.jpg");
+    m_Textures[(int)SkyType::Sunset] = ResourceManager::GetTexture("skydome_sunset.jpg");
+    m_Textures[(int)SkyType::Night]  = ResourceManager::GetTexture("skydome_night.png");
+
+    m_CurrentType = SkyType::Day;
+
+    // ドームメッシュ生成 (slices=48, stacks=24, radius=1.0f)
+    CreateDomeMesh(48, 24, 1.0f);
+
+    // シェーダーの読み込み
+    Renderer::CreateVertexShader(&m_VertexShader, &m_VertexLayout, Renderer::ResolveShaderPath("vertexShader.cso").c_str());
+    Renderer::CreatePixelShader(&m_PixelShader, Renderer::ResolveShaderPath("pixelShader.cso").c_str());
 }
 
 void Skybox::Uninit()
 {
+    if (m_VertexLayout) { m_VertexLayout->Release(); m_VertexLayout = nullptr; }
+    if (m_PixelShader)  { m_PixelShader->Release();  m_PixelShader = nullptr; }
+    if (m_VertexShader) { m_VertexShader->Release(); m_VertexShader = nullptr; }
+    if (m_IndexBuffer)  { m_IndexBuffer->Release();  m_IndexBuffer = nullptr; }
+    if (m_VertexBuffer) { m_VertexBuffer->Release(); m_VertexBuffer = nullptr; }
 }
 
 void Skybox::Update()
@@ -143,17 +245,36 @@ void Skybox::Update()
     if (g_Camera) {
         m_Position = g_Camera->GetPosition();
     }
+
+    // ゆっくりと自転（空・雲の流れるアニメーション演出）
+    m_RotationAngle += m_RotationSpeed * (1.0f / 60.0f);
+    if (m_RotationAngle >= XM_2PI) {
+        m_RotationAngle -= XM_2PI;
+    }
+    m_Rotation.y = m_RotationAngle;
+
+    // キー入力による空の切り替え ([7]:青空, [8]:夕暮れ, [9]:夜空)
+    if (Input::GetKeyTrigger('7') || Input::GetKeyTrigger(VK_NUMPAD7)) {
+        m_CurrentType = SkyType::Day;
+    }
+    else if (Input::GetKeyTrigger('8') || Input::GetKeyTrigger(VK_NUMPAD8)) {
+        m_CurrentType = SkyType::Sunset;
+    }
+    else if (Input::GetKeyTrigger('9') || Input::GetKeyTrigger(VK_NUMPAD9)) {
+        m_CurrentType = SkyType::Night;
+    }
 }
 
 void Skybox::Draw()
 {
-    if (!g_Camera) return;
+    if (!g_Camera || !m_VertexBuffer || !m_IndexBuffer) return;
 
     XMMATRIX worldMatrix = XMMatrixScaling(m_Scale.x, m_Scale.y, m_Scale.z) *
+                           XMMatrixRotationRollPitchYaw(m_Rotation.x, m_Rotation.y, m_Rotation.z) *
                            XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
     Renderer::SetWorldMatrix(worldMatrix);
 
-    Renderer::SetCullMode(false);
+    Renderer::SetCullMode(false); // CullFront -> ドームの内側が見える
 
     // 一時的にライトを無効化してフォグによる白飛びを回避する
     LIGHT originalLight = Renderer::GetLight();
@@ -162,20 +283,29 @@ void Skybox::Draw()
     Renderer::SetLight(skyLight);
 
     // Emission を 0 にしてテクスチャ色の白飛びを防ぐ
-    // ライトは無効化済みなので Diffuse/Ambient は無視されるが
-    // pixelShader の Emission 加算が白飛びを引き起こすため明示的に 0 に設定する
     MATERIAL material;
     ZeroMemory(&material, sizeof(material));
-    material.Diffuse  = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    material.Ambient  = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    material.Specular = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
-    material.Emission = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f); // 加算ゼロで白飛びを解消
+    material.Diffuse       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.Ambient       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    material.Specular      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+    material.Emission      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
     material.TextureEnable = TRUE;
     Renderer::SetMaterial(material);
 
-    Renderer::SetupCubeDraw();
-    Renderer::SetTexture(m_Texture);
-    Renderer::GetDeviceContext()->Draw(36, 0);
+    ID3D11DeviceContext* dc = Renderer::GetDeviceContext();
+    UINT stride = sizeof(VERTEX_3D);
+    UINT offset = 0;
+    dc->IASetVertexBuffers(0, 1, &m_VertexBuffer, &stride, &offset);
+    dc->IASetIndexBuffer(m_IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+    dc->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    dc->IASetInputLayout(m_VertexLayout);
+    dc->VSSetShader(m_VertexShader, NULL, 0);
+    dc->PSSetShader(m_PixelShader, NULL, 0);
+
+    ID3D11ShaderResourceView* tex = m_Textures[(int)m_CurrentType];
+    Renderer::SetTexture(tex);
+
+    dc->DrawIndexed(m_IndexCount, 0, 0);
 
     Renderer::SetCullMode(true);
 

@@ -457,6 +457,7 @@ void CollisionSystem::Update()
     for (Enemy* flying : flyingEnemies) {
         if (flying->IsDestroy()) continue; // 既に撃破済みならスキップ
         if (flying->GetEnemyState() != EnemyState::FLYING) continue;
+        if (!flying->IsThrownByPlayer()) continue; // プレイヤーが投げていない（転がり中）なら攻撃衝突判定はスキップ
         XMFLOAT3 fPos = flying->GetPosition();
 
         // ─── 着地 + 速度がほぼ0になったら爆発トリガー ───

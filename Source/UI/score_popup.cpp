@@ -12,6 +12,9 @@ ScorePopupEntry
 std::unordered_map<int, ID3D11ShaderResourceView*>
     ScorePopupSystem::m_TextureCache;
 
+std::unordered_map<std::wstring, ID3D11ShaderResourceView*>
+    ScorePopupSystem::m_StringTextureCache;
+
 ID3D11Buffer*            ScorePopupSystem::m_QuadVB     = nullptr;
 ID3D11VertexShader*      ScorePopupSystem::m_VS         = nullptr;
 ID3D11PixelShader*       ScorePopupSystem::m_PS         = nullptr;
@@ -216,6 +219,11 @@ void ScorePopupSystem::Uninit()
     }
     m_TextureCache.clear();
 
+    for (auto& pair : m_StringTextureCache) {
+        if (pair.second) pair.second->Release();
+    }
+    m_StringTextureCache.clear();
+
     // GPU リソースを解放する
     if (m_DepthState) { m_DepthState->Release(); m_DepthState = nullptr; }
     if (m_IL)         { m_IL->Release();         m_IL         = nullptr; }
@@ -376,8 +384,9 @@ void ScorePopupSystem::Draw()
         ctx->Draw(4, 0);
     }
 
-    // ─── 後処理: トポロジーをリストに戻す（後続のレンダリングへの影響を防ぐ）───
+    // ─── 後処理: トポロジーと深度ステートを復元する ───
     ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    ctx->OMSetDepthStencilState(Renderer::GetDepthStateEnable(), 0);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -453,3 +462,64 @@ void ScorePopupSystem::AddPopup(float x, float y, float z, int score,
     m_Popups[targetIndex].Texture  = tex;
     m_Popups[targetIndex].Used     = true;
 }
+
+// ─────────────────────────────────────────────────────────────────
+// 任意テキスト（"-1.0s" 等）のポップアップをカラー指定で発生させる
+// ─────────────────────────────────────────────────────────────────
+void ScorePopupSystem::AddTextPopup(float x, float y, float z, const wchar_t* text,
+                                    float emitR, float emitG, float emitB)
+{
+    ID3D11Device* device = Renderer::GetDevice();
+    if (!device || !text) return;
+
+    std::wstring strKey(text);
+    auto cacheIt = m_StringTextureCache.find(strKey);
+    ID3D11ShaderResourceView* tex = nullptr;
+    if (cacheIt != m_StringTextureCache.end()) {
+        tex = cacheIt->second;
+    } else {
+        tex = CreateScoreTexture(device, text);
+        if (tex) m_StringTextureCache[strKey] = tex;
+    }
+
+    if (!tex) return;
+
+    int targetIndex = -1;
+    for (size_t i = 0; i < POOL_SIZE; ++i) {
+        if (!m_Popups[i].Used) {
+            targetIndex = static_cast<int>(i);
+            break;
+        }
+    }
+
+    if (targetIndex == -1) {
+        int minTimer = 999;
+        for (size_t i = 0; i < POOL_SIZE; ++i) {
+            if (m_Popups[i].Timer < minTimer) {
+                minTimer = m_Popups[i].Timer;
+                targetIndex = static_cast<int>(i);
+            }
+        }
+        if (targetIndex != -1 && m_Popups[targetIndex].Texture) {
+            m_Popups[targetIndex].Texture->Release();
+            m_Popups[targetIndex].Texture = nullptr;
+        }
+    }
+
+    if (targetIndex == -1) return;
+
+    tex->AddRef();
+
+    m_Popups[targetIndex].WorldX   = x;
+    m_Popups[targetIndex].WorldY   = y;
+    m_Popups[targetIndex].WorldZ   = z;
+    m_Popups[targetIndex].Timer    = 90;   // 1.5秒間
+    m_Popups[targetIndex].MaxTimer = 90;
+    m_Popups[targetIndex].OffsetY  = 0.0f;
+    m_Popups[targetIndex].EmitR    = emitR;
+    m_Popups[targetIndex].EmitG    = emitG;
+    m_Popups[targetIndex].EmitB    = emitB;
+    m_Popups[targetIndex].Texture  = tex;
+    m_Popups[targetIndex].Used     = true;
+}
+

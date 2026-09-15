@@ -371,23 +371,34 @@ void BossEnemy::UpdateChargeRush() {
 
   // プレイヤー衝突判定
   Player *player = Manager::GetGameObject<Player>();
-  if (player && !m_HasDamagedPlayerInCharge) {
+  if (player) {
+    if (!m_HasDamagedPlayerInCharge) {
+      XMFLOAT3 pPos = player->GetPosition();
+      float dx = pPos.x - m_Position.x;
+      float dz = pPos.z - m_Position.z;
+      float dist = sqrtf(dx * dx + dz * dz);
+
+      if (dist <= Constants::Boss::CHARGE_HIT_RADIUS && !player->IsInvincible()) {
+        HitInfo hitInfo;
+        hitInfo.damage = Constants::Boss::CHARGE_DAMAGE;
+        hitInfo.hitSourcePos = m_Position;
+        hitInfo.knockbackVel = XMFLOAT3(m_ChargeDir.x * 0.45f, 0.0f, m_ChargeDir.z * 0.45f);
+        player->OnHit(hitInfo);
+
+        SoundManager::PlaySE(SoundID::SE_PLAYER_HIT);
+        if (g_Camera) g_Camera->Shake(0.45f, 12);
+
+        m_HasDamagedPlayerInCharge = true;
+      }
+    }
+
+    // 突進中、プレイヤーが壁の外へ押し出されないよう安全にクランプ
+    float safeLimit = Constants::Stage::BOSS_ROOM_SIZE - 0.8f;
     XMFLOAT3 pPos = player->GetPosition();
-    float dx = pPos.x - m_Position.x;
-    float dz = pPos.z - m_Position.z;
-    float dist = sqrtf(dx * dx + dz * dz);
-
-    if (dist <= Constants::Boss::CHARGE_HIT_RADIUS && !player->IsInvincible()) {
-      HitInfo hitInfo;
-      hitInfo.damage = Constants::Boss::CHARGE_DAMAGE;
-      hitInfo.hitSourcePos = m_Position;
-      hitInfo.knockbackVel = XMFLOAT3(m_ChargeDir.x * 0.45f, 0.0f, m_ChargeDir.z * 0.45f);
-      player->OnHit(hitInfo);
-
-      SoundManager::PlaySE(SoundID::SE_PLAYER_HIT);
-      if (g_Camera) g_Camera->Shake(0.45f, 12);
-
-      m_HasDamagedPlayerInCharge = true;
+    if (fabsf(pPos.x) > safeLimit || fabsf(pPos.z) > safeLimit) {
+      pPos.x = MathHelper::Clamp(pPos.x, -safeLimit, safeLimit);
+      pPos.z = MathHelper::Clamp(pPos.z, -safeLimit, safeLimit);
+      player->SetPosition(pPos);
     }
   }
 
@@ -412,6 +423,19 @@ void BossEnemy::UpdateChargeRush() {
     // 壁から少し跳ね返る
     m_Position.x -= m_ChargeDir.x * 1.5f;
     m_Position.z -= m_ChargeDir.z * 1.5f;
+
+    // 壁激突スタン時：ぶつかった壁と反対側（アリーナ手前側）へ投げられるオブジェクトを3個ドロップ
+    XMFLOAT3 awayFromWall = XMFLOAT3(-m_ChargeDir.x, 0.0f, -m_ChargeDir.z);
+    SpawnDroppingObjects(3, awayFromWall, XM_PI * 0.5f);
+
+    // 壁とボスの間にプレイヤーが挟まれていた場合、ボスの手前へ安全に救出
+    if (player) {
+      XMFLOAT3 pPos = player->GetPosition();
+      float safeLimit = Constants::Stage::BOSS_ROOM_SIZE - 1.2f;
+      pPos.x = MathHelper::Clamp(pPos.x, -safeLimit, safeLimit);
+      pPos.z = MathHelper::Clamp(pPos.z, -safeLimit, safeLimit);
+      player->SetPosition(pPos);
+    }
 
     // スタン状態へ移行（攻撃チャンス！）
     m_BossState = BossState::CHARGE_STUN;
@@ -617,6 +641,16 @@ void BossEnemy::UpdateSlamAir() {
     m_Scale.y = 2.6f;
     m_Scale.x = m_Scale.z = 6.6f;
 
+    // スタンプ着地時：周囲（壁から離れる方向基準）へ投げられるオブジェクトを3個ドロップ
+    XMFLOAT3 centerDir;
+    float distFromCenter = sqrtf(m_Position.x * m_Position.x + m_Position.z * m_Position.z);
+    if (distFromCenter > 3.0f) {
+      centerDir = XMFLOAT3(-m_Position.x / distFromCenter, 0.0f, -m_Position.z / distFromCenter);
+    } else {
+      centerDir = XMFLOAT3(0.0f, 0.0f, -1.0f);
+    }
+    SpawnDroppingObjects(3, centerDir, XM_PI * 0.8f);
+
     // 5. スラム後硬直（リカバリー）へ移行
     m_BossState = BossState::SLAM_RECOVERY;
     m_SlamTimer = 0;
@@ -807,6 +841,12 @@ void BossEnemy::ApplyBossDamage(int damage,
 
     if (g_Camera)
       g_Camera->Shake(0.85f, 30);
+
+    // ボス撃破演出：スローモーション発動＆強烈なホワイトインパクトフラッシュ
+    Manager::StartSlowMotion(Constants::Boss::DEFEAT_SLOW_MOTION_DURATION);
+    Manager::TriggerFlash(XMFLOAT4(1.0f, 1.0f, 1.0f, 0.95f), Constants::Boss::DEFEAT_FLASH_FADE_SPEED);
+    Manager::TriggerRadialBlur(0.85f);
+    Manager::TriggerChromaticAberration(0.7f);
 
     // ボス撃破処理（赤色ポップアップ）
     Defeat(2.5f, 0.0f, 0.0f);
@@ -1472,4 +1512,59 @@ DirectX::XMFLOAT3 BossEnemy::GetEmissive() const {
   }
 
   return XMFLOAT3(2.5f, 0.0f, 1.5f); // 通常時は赤紫色発光
+}
+
+// ─────────────────────────────────────────────
+// 投げられるオブジェクト（サンドバッグブロック）の転がりドロップ処理
+// ─────────────────────────────────────────────
+void BossEnemy::SpawnDroppingObjects(int count, const DirectX::XMFLOAT3& baseDir, float spreadAngle)
+{
+  float len = sqrtf(baseDir.x * baseDir.x + baseDir.z * baseDir.z);
+  XMFLOAT3 dir = (len > 0.001f) ? XMFLOAT3(baseDir.x / len, 0.0f, baseDir.z / len) : XMFLOAT3(0.0f, 0.0f, -1.0f);
+  float baseAngle = atan2f(dir.x, dir.z);
+
+  for (int i = 0; i < count; ++i) {
+    float angleOffset = 0.0f;
+    if (count > 1) {
+      float t = (float)i / (float)(count - 1); // 0.0f 〜 1.0f
+      angleOffset = (t - 0.5f) * spreadAngle;  // -spreadAngle/2 〜 +spreadAngle/2
+    }
+    float currentAngle = baseAngle + angleOffset;
+    XMFLOAT3 shootDir = XMFLOAT3(sinf(currentAngle), 0.0f, cosf(currentAngle));
+
+    Enemy* obj = Manager::AddGameObject<Enemy>();
+    if (obj) {
+      // ボス本体の体表より少し外側・上空から放り出される
+      float spawnDist = 2.8f;
+      XMFLOAT3 spawnPos;
+      spawnPos.x = m_Position.x + shootDir.x * spawnDist;
+      spawnPos.y = m_Position.y + 1.2f;
+      spawnPos.z = m_Position.z + shootDir.z * spawnDist;
+
+      // アリーナ外へ飛び出さないよう安全クランプ
+      float arenaLimit = Constants::Stage::BOSS_ROOM_SIZE - 2.0f;
+      spawnPos.x = MathHelper::Clamp(spawnPos.x, -arenaLimit, arenaLimit);
+      spawnPos.z = MathHelper::Clamp(spawnPos.z, -arenaLimit, arenaLimit);
+
+      obj->SetPosition(spawnPos);
+      obj->SetScale(XMFLOAT3(1.1f, 1.1f, 1.1f));
+      obj->SetEnemyState(EnemyState::FLYING);
+      obj->SetThrownByPlayer(false); // 転がり中（攻撃衝突判定OFF）
+
+      // 寿命3秒（180フレーム）のサンドバッグ（非生物ブロック）
+      obj->SetSandbag(true, 180);
+
+      // 水平初速と上向き初速（放物線を描いてポーンと転がる）
+      float speedH = 0.15f + (float)(i % 2) * 0.03f;
+      float speedY = 0.22f + (float)(i % 2) * 0.04f;
+      obj->SetVelocity(XMFLOAT3(shootDir.x * speedH, speedY, shootDir.z * speedH));
+
+      // ランダムな初期回転
+      obj->SetRotation(XMFLOAT3(
+          (float)(rand() % 100) / 20.0f,
+          (float)(rand() % 100) / 20.0f,
+          (float)(rand() % 100) / 20.0f
+      ));
+    }
+  }
 }

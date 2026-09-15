@@ -98,6 +98,7 @@ private:
     void UpdateSlamRecovery();
     void Fire3WaySpread();
     void FireRapidShot();
+    void SpawnDroppingObjects(int count, const DirectX::XMFLOAT3& baseDir, float spreadAngle);
 
     // 特別攻撃パターン
     BossPhase1ChargeInfo GetPhase1ChargeInfo() const;

@@ -111,6 +111,13 @@ void MagneticBullet::Update()
         {
             if (Collision::CheckSphere(this, player))
             {
+                if (player->IsParryActive())
+                {
+                    player->ExecuteParryCounter(m_Position);
+                    SetDestroy();
+                    return;
+                }
+
                 // ノックバック方向は弾の進行方向
                 HitInfo hit;
                 hit.damage        = Constants::MagneticBullet::DAMAGE;

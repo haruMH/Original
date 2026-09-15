@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <vector>
 #include <directxmath.h>
 
@@ -94,4 +94,7 @@ private:
 
     // ダッシュ残像の寿命管理
     void UpdateGhosts();
+
+    // フィールド・ボス部屋の場外脱出防止セーフガード
+    void ClampToStageBounds();
 };

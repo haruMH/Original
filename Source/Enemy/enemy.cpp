@@ -25,6 +25,7 @@ void Enemy::Init()
     m_UprightTimer = 0;
     m_Affix        = nullptr;
     m_IsDefeatedCounted = false;
+    m_IsThrownByPlayer  = false;
     m_ScoreValue   = Constants::Enemy::DEFAULT_SCORE;
 
     m_Texture = ResourceManager::GetTexture("enemy.png");

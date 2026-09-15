@@ -32,6 +32,8 @@ protected:
     int        m_HitSquashTimer = 0; // モデル潰れ演出タイマー
     XMFLOAT3   m_OriginalScale = XMFLOAT3(1.0f, 1.0f, 1.0f); // 基準スケール
 
+    bool       m_IsThrownByPlayer = false; // プレイヤーによって投げられた弾かどうかの判定フラグ
+
 public:
     void Init()   override;
     void Uninit() override;
@@ -51,6 +53,9 @@ public:
 
     bool       IsSandbag() const;
     void       SetSandbag(bool enable, int life = 300); // life: チュートリアル用は INT_MAX を渡す
+
+    bool       IsThrownByPlayer() const      { return m_IsThrownByPlayer; }
+    void       SetThrownByPlayer(bool v)     { m_IsThrownByPlayer = v; }
 
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }

@@ -38,6 +38,9 @@ GameplayScene::~GameplayScene()
 // =================================================================
 void GameplayScene::Init()
 {
+    // タイムアタック計測の開始
+    GameRule::Init();
+
     // イベント購読の登録
     EventSystem::Subscribe<PlayerHitEvent>([](const PlayerHitEvent& ev) {
         if (g_Camera) g_Camera->Shake(0.35f, 12);
@@ -57,12 +60,14 @@ void GameplayScene::Init()
             finalScore = static_cast<int>(ev.scoreValue * multiplier);
         }
 
+        // タイムアタック：雑魚敵撃破で -1.0秒短縮！
+        GameRule::ReduceTime(1.0f);
         GameRule::OnEnemyDefeated(finalScore);
-        ScorePopupSystem::AddPopup(ev.position.x, ev.position.y, ev.position.z, finalScore, ev.popupColor.x, ev.popupColor.y, ev.popupColor.z);
+        ScorePopupSystem::AddTextPopup(ev.position.x, ev.position.y + 0.5f, ev.position.z, L"-1.0s", 0.3f, 2.2f, 0.8f);
 
         if (m_ComboCount >= 3) {
             // コンボ数を金色ポップアップで通知
-            ScorePopupSystem::AddPopup(ev.position.x, ev.position.y + 0.8f, ev.position.z, m_ComboCount, 2.5f, 1.8f, 0.0f);
+            ScorePopupSystem::AddPopup(ev.position.x, ev.position.y + 1.2f, ev.position.z, m_ComboCount, 2.5f, 1.8f, 0.0f);
             Manager::AddHitStop(3); // コンボ時の手応えヒットストップ
             if (g_Camera) g_Camera->Shake(0.15f, 6);
             Manager::TriggerRadialBlur(0.20f);
@@ -78,6 +83,10 @@ void GameplayScene::Init()
     });
 
     EventSystem::Subscribe<PlayerParriedEvent>([](const PlayerParriedEvent& ev) {
+        // タイムアタック：パリィ成功で -2.0秒短縮！
+        GameRule::ReduceTime(2.0f);
+        ScorePopupSystem::AddTextPopup(ev.position.x, ev.position.y + 1.2f, ev.position.z, L"-2.0s", 0.0f, 2.5f, 2.5f);
+
         Manager::TriggerFlash(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.02f); // パリィ成功時に真っ白閃光
         Manager::StartSlowMotion(90); // 1.5秒のスローモーション (彩度補正ON)
         Manager::AddHitStop(15);      // 手応えヒットストップ
@@ -162,23 +171,28 @@ void GameplayScene::Init()
     if (Constants::Debug::START_FROM_BOSS) {
         Manager::SetIsBossStage(true);
         
-        // {X̕ǂ𐶐
-        float roomSize = Constants::Stage::BOSS_ROOM_SIZE;
+        // ボス部屋の壁を生成（高く・厚くしてプレイヤーの場外飛び出しを防止）
+        float roomSize   = Constants::Stage::BOSS_ROOM_SIZE;
+        float wallH      = Constants::Stage::BOSS_WALL_HEIGHT;
+        float wallY      = Constants::Stage::BOSS_WALL_Y;
+        float thick      = Constants::Stage::BOSS_WALL_THICKNESS;
+        float halfThick  = thick * 0.5f;
+
         Wall* wallN = Manager::AddGameObject<Wall>();
-        wallN->SetPosition(XMFLOAT3(0.0f, 1.5f, roomSize));
-        wallN->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+        wallN->SetPosition(XMFLOAT3(0.0f, wallY, roomSize + halfThick));
+        wallN->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
         
         Wall* wallS = Manager::AddGameObject<Wall>();
-        wallS->SetPosition(XMFLOAT3(0.0f, 1.5f, -roomSize));
-        wallS->SetScale(XMFLOAT3(roomSize * 2.0f, 5.0f, 1.0f));
+        wallS->SetPosition(XMFLOAT3(0.0f, wallY, -(roomSize + halfThick)));
+        wallS->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
         
         Wall* wallE = Manager::AddGameObject<Wall>();
-        wallE->SetPosition(XMFLOAT3(roomSize, 1.5f, 0.0f));
-        wallE->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+        wallE->SetPosition(XMFLOAT3(roomSize + halfThick, wallY, 0.0f));
+        wallE->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
         
         Wall* wallW = Manager::AddGameObject<Wall>();
-        wallW->SetPosition(XMFLOAT3(-roomSize, 1.5f, 0.0f));
-        wallW->SetScale(XMFLOAT3(1.0f, 5.0f, roomSize * 2.0f));
+        wallW->SetPosition(XMFLOAT3(-(roomSize + halfThick), wallY, 0.0f));
+        wallW->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
 
         // ボスエネミーの生成
         BossEnemy* boss = Manager::AddGameObject<BossEnemy>();
@@ -278,6 +292,7 @@ void GameplayScene::Update()
     Player* player = Manager::GetGameObject<Player>();
     if (player) {
         if (player->GetHP() <= 0) {
+            GameRule::StopTimer();
             Manager::SetLowHPWarning(false);
             Manager::ChangeScene(Scene::GAMEOVER);
             return;
@@ -290,7 +305,12 @@ void GameplayScene::Update()
         Manager::SetLowHPWarning(false);
     }
 
-    // Q[vC{҂̕EXVWbNs
+    // 3. タイムアタックタイマーのフレーム更新（クリア中は停止）
+    if (!GameRule::IsGameClear() && m_ClearDelayTimer == 0) {
+        GameRule::UpdateTimer();
+    }
+
+    // ゲームプレイ本体の更新ロジック実行
     UpdateGameplay();
 }
 
@@ -403,12 +423,28 @@ void GameplayScene::UpdateGameplay()
             }
 
             if (!bossExists) {
-                // ボス撃破直後に低HP警告赤パルスを即座に解除
+                // ボス撃破直後にタイマーを確定停止＆低HP警告解除
                 if (m_ClearDelayTimer == 0) {
+                    GameRule::StopTimer();
                     Manager::SetLowHPWarning(false);
+                    // スローモーション発動（同期保証）
+                    if (!Manager::IsSlowMotionActive()) {
+                        Manager::StartSlowMotion(Constants::Boss::DEFEAT_SLOW_MOTION_DURATION);
+                    }
                 }
                 // ボス撃破後、ディレイ時間を経てリザルト画面に遷移する
                 m_ClearDelayTimer++;
+
+                // 撃破後の画面点滅演出（ディレイ期間中、勝利の余韻パルス点滅）
+                if (m_ClearDelayTimer >= 20 && m_ClearDelayTimer < Constants::Boss::CLEAR_DELAY_FRAMES - 15) {
+                    // サイン波によるリズミカルな金〜白の明滅
+                    float pulse = 0.5f + 0.5f * sinf((float)m_ClearDelayTimer * 0.22f);
+                    float pulseAlpha = 0.08f + 0.22f * pulse;
+                    // 白〜黄金色の勝利フラッシュパルス
+                    XMFLOAT4 pulseColor(1.0f, 0.95f, 0.7f, pulseAlpha);
+                    Manager::TriggerFlash(pulseColor, 0.06f);
+                }
+
                 if (m_ClearDelayTimer >= Constants::Boss::CLEAR_DELAY_FRAMES) {
                     GameRule::SetGameClear(true);
                     Manager::ChangeScene(Scene::CLEAR);

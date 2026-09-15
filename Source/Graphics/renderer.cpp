@@ -4,6 +4,7 @@
 #include "wall.h"
 #include "fade_system.h"
 #include "render_constants.h"
+#include "game_constants.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx11.h"
@@ -43,6 +44,8 @@ ID3D11Texture2D*          Renderer::m_ShadowMapTexture = NULL;
 ID3D11DepthStencilView*   Renderer::m_ShadowMapDSV     = NULL;
 ID3D11ShaderResourceView* Renderer::m_ShadowMapSRV     = NULL;
 ID3D11SamplerState*       Renderer::m_ShadowSampler    = NULL;
+UINT                      Renderer::m_ScreenWidth      = SCREEN_WIDTH;
+UINT                      Renderer::m_ScreenHeight     = SCREEN_HEIGHT;
 D3D11_VIEWPORT            Renderer::m_ShadowViewport   = {};
 
 ID3D11RenderTargetView*   Renderer::m_SceneRTV = NULL;
@@ -471,6 +474,133 @@ void Renderer::Uninit() {
     if(m_BackgroundCopySRV) m_BackgroundCopySRV->Release();
 }
 
+void Renderer::OnResize(UINT width, UINT height) {
+    if (width == 0 || height == 0) return;
+    if (!m_Device || !m_DeviceContext || !m_SwapChain) return;
+    if (m_ScreenWidth == width && m_ScreenHeight == height) return;
+
+    // 1. パイプラインのレンダーターゲットとSRVのバインドを解除
+    ID3D11RenderTargetView* nullRTV = nullptr;
+    m_DeviceContext->OMSetRenderTargets(1, &nullRTV, nullptr);
+    ID3D11ShaderResourceView* nullSRVs[4] = { nullptr, nullptr, nullptr, nullptr };
+    m_DeviceContext->PSSetShaderResources(0, 4, nullSRVs);
+    m_DeviceContext->Flush();
+
+    // 2. 解像度依存の全リソースを安全に解放
+    if (m_RenderTargetView)      { m_RenderTargetView->Release();      m_RenderTargetView = nullptr; }
+    if (m_DepthStencilView)      { m_DepthStencilView->Release();      m_DepthStencilView = nullptr; }
+    if (m_SceneRTV)              { m_SceneRTV->Release();              m_SceneRTV = nullptr; }
+    if (m_SceneSRV)              { m_SceneSRV->Release();              m_SceneSRV = nullptr; }
+    if (m_LumRTV)                { m_LumRTV->Release();                m_LumRTV = nullptr; }
+    if (m_LumSRV)                { m_LumSRV->Release();                m_LumSRV = nullptr; }
+    if (m_BlurRTV)               { m_BlurRTV->Release();               m_BlurRTV = nullptr; }
+    if (m_BlurSRV)               { m_BlurSRV->Release();               m_BlurSRV = nullptr; }
+    if (m_BackgroundCopyTexture) { m_BackgroundCopyTexture->Release(); m_BackgroundCopyTexture = nullptr; }
+    if (m_BackgroundCopySRV)     { m_BackgroundCopySRV->Release();     m_BackgroundCopySRV = nullptr; }
+
+    // 3. スワップチェーンのバッファをリサイズ
+    HRESULT hr = m_SwapChain->ResizeBuffers(1, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+    if (FAILED(hr)) return;
+
+    m_ScreenWidth = width;
+    m_ScreenHeight = height;
+
+    // 4. バックバッファからRTVを再作成
+    ID3D11Texture2D* pb = nullptr;
+    m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pb);
+    if (pb) {
+        m_Device->CreateRenderTargetView(pb, NULL, &m_RenderTargetView);
+        pb->Release();
+    }
+
+    // 5. 新解像度でDSVを再作成
+    D3D11_TEXTURE2D_DESC td = {};
+    td.Width = m_ScreenWidth;
+    td.Height = m_ScreenHeight;
+    td.MipLevels = 1;
+    td.ArraySize = 1;
+    td.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    td.SampleDesc.Count = 1;
+    td.Usage = D3D11_USAGE_DEFAULT;
+    td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+    ID3D11Texture2D* pd = nullptr;
+    m_Device->CreateTexture2D(&td, NULL, &pd);
+    if (pd) {
+        m_Device->CreateDepthStencilView(pd, NULL, &m_DepthStencilView);
+        pd->Release();
+    }
+
+    // 6. ブルーム用レンダーターゲットを新解像度で再作成
+    ID3D11Texture2D* tempTex = nullptr;
+    D3D11_TEXTURE2D_DESC rtDesc = {};
+    rtDesc.Width = m_ScreenWidth;
+    rtDesc.Height = m_ScreenHeight;
+    rtDesc.MipLevels = 1;
+    rtDesc.ArraySize = 1;
+    rtDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    rtDesc.SampleDesc.Count = 1;
+    rtDesc.Usage = D3D11_USAGE_DEFAULT;
+    rtDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+    // メインシーン等倍バッファ
+    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
+    if (tempTex) {
+        m_Device->CreateRenderTargetView(tempTex, NULL, &m_SceneRTV);
+        m_Device->CreateShaderResourceView(tempTex, NULL, &m_SceneSRV);
+        tempTex->Release();
+    }
+
+    // 縮小バッファ (1/4)
+    rtDesc.Width = m_ScreenWidth / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
+    rtDesc.Height = m_ScreenHeight / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
+    m_PostViewport.Width = (float)rtDesc.Width;
+    m_PostViewport.Height = (float)rtDesc.Height;
+    m_PostViewport.MinDepth = 0.0f;
+    m_PostViewport.MaxDepth = 1.0f;
+    m_PostViewport.TopLeftX = 0.0f;
+    m_PostViewport.TopLeftY = 0.0f;
+
+    // 高輝度抽出用
+    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
+    if (tempTex) {
+        m_Device->CreateRenderTargetView(tempTex, NULL, &m_LumRTV);
+        m_Device->CreateShaderResourceView(tempTex, NULL, &m_LumSRV);
+        tempTex->Release();
+    }
+
+    // ガウシアンぼかし用
+    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
+    if (tempTex) {
+        m_Device->CreateRenderTargetView(tempTex, NULL, &m_BlurRTV);
+        m_Device->CreateShaderResourceView(tempTex, NULL, &m_BlurSRV);
+        tempTex->Release();
+    }
+
+    // 7. 屈折背景コピーテクスチャ
+    D3D11_TEXTURE2D_DESC bgDesc = {};
+    bgDesc.Width = m_ScreenWidth;
+    bgDesc.Height = m_ScreenHeight;
+    bgDesc.MipLevels = 1;
+    bgDesc.ArraySize = 1;
+    bgDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    bgDesc.SampleDesc.Count = 1;
+    bgDesc.Usage = D3D11_USAGE_DEFAULT;
+    bgDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    m_Device->CreateTexture2D(&bgDesc, nullptr, &m_BackgroundCopyTexture);
+    if (m_BackgroundCopyTexture) {
+        m_Device->CreateShaderResourceView(m_BackgroundCopyTexture, nullptr, &m_BackgroundCopySRV);
+    }
+
+    // 8. カメラのプロジェクション行列（アスペクト比）を更新
+    XMMATRIX proj = XMMatrixPerspectiveFovLH(
+        Constants::Camera::FOV,
+        (float)m_ScreenWidth / (float)m_ScreenHeight,
+        Constants::Camera::NEAR_CLIP,
+        Constants::Camera::FAR_CLIP);
+    SetProjectionMatrix(proj);
+}
+
 void Renderer::BeginShadowPass() {
     ID3D11ShaderResourceView* nullSRV = NULL; m_DeviceContext->PSSetShaderResources(2, 1, &nullSRV);
     m_DeviceContext->OMSetRenderTargets(0, NULL, m_ShadowMapDSV);
@@ -482,7 +612,7 @@ void Renderer::EndShadowPass() {
     // シャドウマップの書き込み（DSV）を解除する
     m_DeviceContext->OMSetRenderTargets(0, NULL, NULL);
 
-    D3D11_VIEWPORT vp; vp.Width = (FLOAT)SCREEN_WIDTH; vp.Height = (FLOAT)SCREEN_HEIGHT; vp.MinDepth = 0; vp.MaxDepth = 1; vp.TopLeftX = 0; vp.TopLeftY = 0;
+    D3D11_VIEWPORT vp; vp.Width = (FLOAT)m_ScreenWidth; vp.Height = (FLOAT)m_ScreenHeight; vp.MinDepth = 0; vp.MaxDepth = 1; vp.TopLeftX = 0; vp.TopLeftY = 0;
     m_DeviceContext->RSSetViewports(1, &vp);
 
     // DSVが解除されたので、安全にテクスチャ（SRV）として読み込めるようにバインド
@@ -504,6 +634,10 @@ void Renderer::EndOutlinePass() {
 }
 
 void Renderer::Begin() {
+    // 中間バッファ（SceneRTV）に描画し、ビューポートを現在の解像度に設定
+    D3D11_VIEWPORT vp; vp.Width = (FLOAT)m_ScreenWidth; vp.Height = (FLOAT)m_ScreenHeight; vp.MinDepth = 0; vp.MaxDepth = 1; vp.TopLeftX = 0; vp.TopLeftY = 0;
+    m_DeviceContext->RSSetViewports(1, &vp);
+
     // バックバッファではなく、SceneRTV（中間バッファ）に描画する
     float c[4] = {0.1f, 0.1f, 0.2f, 1.0f};
     m_DeviceContext->OMSetRenderTargets(1, &m_SceneRTV, m_DepthStencilView);
@@ -565,7 +699,7 @@ void Renderer::End() {
 
     // 4. 合成 (SceneRTV + LumRTV → バックバッファ)
     D3D11_VIEWPORT vp;
-    vp.Width = (FLOAT)SCREEN_WIDTH; vp.Height = (FLOAT)SCREEN_HEIGHT;
+    vp.Width = (FLOAT)m_ScreenWidth; vp.Height = (FLOAT)m_ScreenHeight;
     vp.MinDepth = 0; vp.MaxDepth = 1; vp.TopLeftX = 0; vp.TopLeftY = 0;
     m_DeviceContext->RSSetViewports(1, &vp);
     m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
@@ -956,7 +1090,7 @@ void Renderer::DrawCubeWithRefractShader(const XMMATRIX& worldMatrix, ID3D11Shad
     GlassCB cb;
     cb.RefractionIndex = refractionIndex;
     cb.FresnelPower = fresnelPower;
-    cb.ScreenSize = XMFLOAT2((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
+    cb.ScreenSize = XMFLOAT2((float)m_ScreenWidth, (float)m_ScreenHeight);
     cb.HighlightColor = highlightColor;
     m_DeviceContext->UpdateSubresource(m_GlassBuffer, 0, nullptr, &cb, 0, 0);
 

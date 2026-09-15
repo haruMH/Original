@@ -1,4 +1,4 @@
-﻿#include "gameover_scene.h"
+#include "gameover_scene.h"
 #include "input.h"
 #include "manager.h"
 #include "sound_manager.h"
@@ -185,6 +185,7 @@ void GameOverScene::Update()
 
 void GameOverScene::Draw()
 {
+    Renderer::GetDeviceContext()->OMSetDepthStencilState(Renderer::GetDepthStateEnable(), 0);
     Renderer::SetupCubeDraw();
 
     // プレイヤーの位置 (0.0f, 0.35f, 0.0f)

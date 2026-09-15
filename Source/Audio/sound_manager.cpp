@@ -56,8 +56,21 @@ bool SoundManager::Init()
     // ─────────────────────────────────────────────
     // デフォルトサウンドの事前登録
     // ─────────────────────────────────────────────
-    RegisterSound(SoundID::BGM_TITLE, "Blackout_Divinity.mp3");
-    RegisterSound(SoundID::SE_DECIDE, "決定ボタンを押す44.wav");
+    RegisterSound(SoundID::BGM_TITLE,        "Blackout_Divinity.mp3");
+    RegisterSound(SoundID::BGM_NORMAL_STAGE, "Blackout_Divinity.mp3");
+    RegisterSound(SoundID::BGM_BOSS_STAGE,   "Blackout_Divinity.mp3");
+    RegisterSound(SoundID::SE_DECIDE,        "決定ボタンを押す44.wav");
+
+    // 新規追加されたSE（戦闘アクション）
+    RegisterSound(SoundID::SE_HIT_ENEMY,     "SE_HIT_ENEMY.wav");
+    RegisterSound(SoundID::SE_PARRY,         "SE_PARRY.wav");
+    RegisterSound(SoundID::SE_THROW,         "SE_THROW.wav");
+
+    // 関連アクションへのフォールバック登録（打撃・風切り音）
+    RegisterSound(SoundID::SE_HIT_WALL,      "SE_HIT_ENEMY.wav");
+    RegisterSound(SoundID::SE_PLAYER_HIT,    "SE_HIT_ENEMY.wav");
+    RegisterSound(SoundID::SE_DODGE,         "SE_THROW.wav");
+    RegisterSound(SoundID::SE_GRAB,          "SE_THROW.wav");
 
     return true;
 }
@@ -381,16 +394,6 @@ void SoundManager::SetSEVolume(float volume)
 // ─────────────────────────────────────────────
 void SoundManager::BindEvents()
 {
-    // プレイヤー被弾
-    EventSystem::Subscribe<PlayerHitEvent>([](const PlayerHitEvent&) {
-        PlaySE(SoundID::SE_PLAYER_HIT);
-    });
-
-    // パリィ成功
-    EventSystem::Subscribe<PlayerParriedEvent>([](const PlayerParriedEvent&) {
-        PlaySE(SoundID::SE_PARRY, 1.2f);
-    });
-
     // ボス登場咆哮
     EventSystem::Subscribe<BossSpawnEvent>([](const BossSpawnEvent&) {
         PlaySE(SoundID::SE_BOSS_ROAR, 1.5f);

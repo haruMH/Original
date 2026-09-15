@@ -585,9 +585,12 @@ void TutorialScene::Update() {
 // 描画処理
 // =================================================================
 void TutorialScene::Draw() {
+  const float screenW = (float)Renderer::GetScreenWidth();
+  const float screenH = (float)Renderer::GetScreenHeight();
+
   // 1. 画面上部中央にチュートリアル案内ボードを描画
   if (m_GuideTexture) {
-    float posX = (float)SCREEN_WIDTH * 0.5f;
+    float posX = screenW * 0.5f;
     float posY = 88.0f;
     float w = 780.0f;
     float h = 135.0f;
@@ -601,8 +604,8 @@ void TutorialScene::Draw() {
 
   // 2. 画面右下にスキップ案内を描画
   if (m_SkipTexture) {
-    float posX = (float)SCREEN_WIDTH - 160.0f;
-    float posY = (float)SCREEN_HEIGHT - 38.0f;
+    float posX = screenW - 160.0f;
+    float posY = screenH - 38.0f;
     float w = 280.0f;
     float h = 44.0f;
     float pulse = 0.5f + 0.5f * sinf(m_PulseTimer * 0.8f);
@@ -627,7 +630,7 @@ void TutorialScene::DrawUIQuad(ID3D11ShaderResourceView *srv, float posX,
 
   XMMATRIX view2D = XMMatrixIdentity();
   XMMATRIX proj2D = XMMatrixOrthographicOffCenterLH(
-      0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 0.0f, 0.0f, 1.0f);
+      0.0f, (float)Renderer::GetScreenWidth(), (float)Renderer::GetScreenHeight(), 0.0f, 0.0f, 1.0f);
 
   ctx->OMSetDepthStencilState(m_DepthState, 0);
   ctx->VSSetShader(m_VS, nullptr, 0);

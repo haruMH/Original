@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "main.h"
 #include <list>
+#include <string>
 #include <unordered_map>
 
 // =================================================================
@@ -31,8 +32,9 @@ private:
     static ID3D11InputLayout*       m_IL;          // VERTEX_3D 入力レイアウト
     static ID3D11DepthStencilState* m_DepthState;  // 深度テストON / 書き込みOFF
 
-    // テクスチャキャッシュ（スコア値 → SRV、複数ポップアップで共有する）
+    // テクスチャキャッシュ（スコア値 / 文字列 → SRV、複数ポップアップで共有する）
     static std::unordered_map<int, ID3D11ShaderResourceView*> m_TextureCache;
+    static std::unordered_map<std::wstring, ID3D11ShaderResourceView*> m_StringTextureCache;
 
     // GDI でスコアテキストのアルファマスクテクスチャを生成する
     static ID3D11ShaderResourceView* CreateScoreTexture(
@@ -58,4 +60,8 @@ public:
     // スコアポップアップをカラー指定で発生させる
     static void AddPopup(float x, float y, float z, int score,
                          float emitR, float emitG, float emitB);
+
+    // 任意テキスト（"-1.0s" など）のポップアップを発生させる
+    static void AddTextPopup(float x, float y, float z, const wchar_t* text,
+                             float emitR, float emitG, float emitB);
 };

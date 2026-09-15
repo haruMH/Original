@@ -1,4 +1,4 @@
-﻿// math_helper.h
+// math_helper.h
 // XMFLOAT3の演算子オーバーロードと数学ユーティリティ関数。
 // 注意: 演算子は、"using namespace DirectX" が有効な場合に XMVECTOR の演算子との
 //       曖昧さを避けるために、DirectX 名前空間内に定義されています。
@@ -37,6 +37,12 @@ namespace DirectX {
 }
 
 namespace MathHelper {
+
+    // 値を指定の範囲 [low, high] にクランプする
+    template <typename T>
+    inline T Clamp(T val, T low, T high) {
+        return (val < low) ? low : (val > high ? high : val);
+    }
 
     // 閾値（epsilon）を下回る場合は値をゼロにクランプする
     inline void ClearIfNearZero(float& value, float epsilon = 0.001f) {
