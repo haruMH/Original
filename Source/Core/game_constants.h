@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // =================================================================
 // ゲーム定数定義ヘッダー (game_constants.h)
@@ -290,19 +290,26 @@ namespace Constants
         const float BOSS_WALL_Y             = 3.25f;    // ボス部屋の壁のY中心座標（底面-1.0f、上面7.5f）
         const float BOSS_WALL_THICKNESS     = 3.0f;     // ボス部屋の壁の厚み（トンネリング貫通防止）
 
-        // 通常ステージ設定
-        const float PLAYER_START_POS_Z      = 8.0f;     // 通常ステージでのプレイヤー開始Z座標
-        const int   ENEMY_GRID_COLS         = 4;        // モブ敵グリッド配置の列数
-        const int   ENEMY_GRID_ROWS         = 4;        // モブ敵グリッド配置の行数
-        const float ENEMY_SPAWN_INTERVAL    = 6.0f;     // 敵同士の配置間隔
-        const float WALL_DEFAULT_POS_X      = -8.0f;
-        const float WALL_DEFAULT_POS_Y      = 1.5f;
-        const float WALL_DEFAULT_POS_Z      = -7.0f;
-        const float WALL_DEFAULT_SCALE      = 5.0f;
+        // 通常ステージ設定（60m×60m バトルアリーナ）
+        const float NORMAL_ROOM_SIZE        = 30.0f;    // 通常アリーナの広さ（四方の壁の距離・横幅60m）
+        const float NORMAL_WALL_HEIGHT      = 8.5f;     // 外周壁の高さ
+        const float NORMAL_WALL_Y           = 3.25f;    // 外周壁の中心Y座標
+        const float NORMAL_WALL_THICKNESS   = 3.0f;     // 外周壁の厚み
+        const float PLAYER_START_POS_Z      = -20.0f;   // 通常ステージでのプレイヤー開始Z座標（南側から北向きに戦闘開始）
 
-        const float ENEMY_GRID_SPAWN_OFFSET_X = 1.0f;
-        const float ENEMY_GRID_SPAWN_OFFSET_Z = -7.0f;
-        const float ENEMY_GRID_SPAWN_INTERVAL_XZ = 3.2f;
+        // 通常ステージの障害物（柱・バリケード）設定
+        const float PILLAR_POS_X            = 10.0f;    // 左右ピラーのXオフセット
+        const float PILLAR_POS_Y            = 2.0f;     // ピラーの中心Y座標
+        const float PILLAR_POS_Z            = 6.0f;     // ピラーのZ座標
+        const float PILLAR_SCALE_XZ         = 3.0f;     // ピラーの太さ
+        const float PILLAR_SCALE_Y          = 6.0f;     // ピラーの高さ
+
+        const float BARRICADE_POS_X         = 12.0f;    // 左右バリケードのXオフセット
+        const float BARRICADE_POS_Y         = 0.4f;     // バリケードの中心Y座標（飛び越え可能）
+        const float BARRICADE_POS_Z         = -6.0f;    // バリケードのZ座標
+        const float BARRICADE_WIDTH         = 7.0f;     // バリケードの横幅
+        const float BARRICADE_HEIGHT        = 2.8f;     // バリケードの高さ
+        const float BARRICADE_THICKNESS     = 2.0f;     // バリケードの厚み
 
         // アイテム配置
         const float ITEM_SPAWN_Y            = 0.5f;
@@ -312,11 +319,11 @@ namespace Constants
         const float ITEM_BOSS_LIGHTNING_X   = 4.0f;
         const float ITEM_BOSS_LIGHTNING_Z   = -15.0f;
 
-        const float ITEM_NORMAL_VACUUM_Z    = 4.0f;
-        const float ITEM_NORMAL_GIGANT_X    = -4.0f;
-        const float ITEM_NORMAL_GIGANT_Z    = 4.0f;
-        const float ITEM_NORMAL_LIGHTNING_X = 2.0f;
-        const float ITEM_NORMAL_LIGHTNING_Z = 6.0f;
+        const float ITEM_NORMAL_VACUUM_Z    = 24.0f;    // 最奥（敵陣奥のリワード）
+        const float ITEM_NORMAL_GIGANT_X    = -18.0f;   // 左翼
+        const float ITEM_NORMAL_GIGANT_Z    = 0.0f;
+        const float ITEM_NORMAL_LIGHTNING_X = 18.0f;    // 右翼
+        const float ITEM_NORMAL_LIGHTNING_Z = 0.0f;
 
         // タイトル画面の背景壁設定（浮きの解消や高さ調整用）
         const float TITLE_WALL_DIST         = 20.0f;    // 中央からの距離
@@ -333,7 +340,7 @@ namespace Constants
         const bool  START_FROM_BOSS         = false;    // リリース時は強制的に通常ステージから開始
         const bool  INVINCIBLE_PLAYER       = false;    // リリース時は無敵化を強制無効
 #else
-        const bool  START_FROM_BOSS         = true;    // trueにするとゲーム開始時にいきなりボス戦からスタートします
+        const bool  START_FROM_BOSS         = false;   // 通常ステージからスタート（ボス戦直行テスト時はtrue）
         const bool  INVINCIBLE_PLAYER       = false;    // trueにするとプレイヤーが無敵になります（テスト用）
 #endif
     }

@@ -291,12 +291,41 @@ static void HandleSpinSweep(Player* player, SpatialGrid& grid)
                         enemy->OnHit(hitInfo);
                     }
 
-                    // ヒットインパクト演出（ヒットストップとカメラ揺れ）
+                    // ヒットインパクト演出（効果音・ヒットストップとカメラ揺れ）
+                    SoundManager::PlaySE(SoundID::SE_HIT_ENEMY);
                     Manager::AddHitStop(6);
                     if (g_Camera) g_Camera->Shake(0.18f + spinSpeed * 0.4f, 8);
                     ScoreHUD::Shake(6.0f + spinSpeed * 8.0f, 6);
                 }
             }
+        }
+    }
+
+    // ボスとのスピン衝突判定
+    BossEnemy* boss = Manager::GetGameObject<BossEnemy>();
+    if (boss && !boss->IsDestroy() && boss->GetEnemyState() != EnemyState::DEFEATED) {
+        XMFLOAT3 bPos = boss->GetPosition();
+        float dx = bPos.x - gPos.x;
+        float dy = bPos.y - gPos.y;
+        float dz = bPos.z - gPos.z;
+        float distSq = dx * dx + dy * dy + dz * dz;
+        float minDist = gRadius + boss->GetRadius();
+        if (distSq < minDist * minDist) {
+            float dist = sqrtf(distSq);
+            if (dist < 0.01f) dist = 0.01f;
+            XMFLOAT3 dir = XMFLOAT3(dx / dist, 0.0f, dz / dist);
+
+            float spinSpeed = abs(player->GetAngularVelocity());
+            HitInfo hitInfo;
+            hitInfo.hitSourcePos = grabbed->GetPosition();
+            hitInfo.knockbackVel = XMFLOAT3(dir.x * 0.3f, 0.0f, dir.z * 0.3f);
+            hitInfo.damage = Constants::Player::SPIN_SWEEP_DAMAGE;
+            boss->OnHit(hitInfo);
+
+            SoundManager::PlaySE(SoundID::SE_HIT_ENEMY);
+            Manager::AddHitStop(6);
+            if (g_Camera) g_Camera->Shake(0.20f + spinSpeed * 0.4f, 10);
+            ScoreHUD::Shake(8.0f + spinSpeed * 8.0f, 8);
         }
     }
 }

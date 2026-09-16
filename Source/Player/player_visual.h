@@ -2,6 +2,7 @@
 #include <directxmath.h>
 
 class Player;
+class Enemy;
 
 // =================================================================
 // プレイヤー描画・エフェクト演出管理クラス (PlayerVisual)
@@ -28,6 +29,9 @@ public:
 private:
     // 正面方向を明示するフェイス（両目）パーツの描画
     void DrawEyes();
+
+    // ロックオン対象の敵に専用ターゲットサイト（枠・ポインター・エイムライン）を描画
+    void DrawLockOnReticle(Enemy* target);
 
 public:
 

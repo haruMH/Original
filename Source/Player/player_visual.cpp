@@ -6,6 +6,7 @@
 #include "manager.h"
 #include "camera.h"
 #include "enemy.h"
+#include "boss_enemy.h"
 #include "game_constants.h"
 
 using namespace DirectX;
@@ -220,6 +221,15 @@ void PlayerVisual::Draw()
         }
     }
 
+    // カットシーン中でなく、かつジャスト回避（Warp Slash突撃可能）中、またはタックル有効時のみロックオンサイトを描画
+    if (!Manager::IsCutsceneActive()) {
+        bool canWarpSlash = Manager::IsSlowMotionActive() && m_Owner->CanWarpSlash() && m_Owner->GetWarpSlashCount() < 3;
+        bool canTackle    = m_Owner->GetTackleTimer() > 0;
+        if ((canWarpSlash || canTackle) && m_Owner->GetLockOnTarget()) {
+            DrawLockOnReticle(m_Owner->GetLockOnTarget());
+        }
+    }
+
     // 正面方向を明示するフェイスパーツ（両目）を描画
     DrawEyes();
 }
@@ -412,4 +422,111 @@ void PlayerVisual::DrawLightningBoltInternal(const DirectX::XMFLOAT3& start, con
             Renderer::GetDeviceContext()->Draw(36, 0);
         }
     }
+}
+
+// =================================================================
+// ロックオン対象専用のターゲットサイト（枠・ポインター・エイムライン）描画
+// =================================================================
+void PlayerVisual::DrawLockOnReticle(Enemy* target)
+{
+    if (Manager::IsCutsceneActive() || !target || target->IsDestroy() || target->GetEnemyState() == EnemyState::DEFEATED) {
+        m_Owner->SetLockOnTarget(nullptr);
+        return;
+    }
+
+    bool isBoss = (dynamic_cast<BossEnemy*>(target) != nullptr);
+    XMFLOAT3 tPos = target->GetPosition();
+    float radius = target->GetRadius();
+
+    // ターゲットの中心高さ
+    float tCenterY = tPos.y + (isBoss ? radius * 0.8f : radius * 0.5f);
+    XMFLOAT3 tCenter = XMFLOAT3(tPos.x, tCenterY, tPos.z);
+
+    // 発光カラー（通常敵: 高輝度シアン、ボス: 黄金アンバー）
+    XMFLOAT4 reticleColor = isBoss ? XMFLOAT4(3.8f, 2.6f, 0.3f, 1.0f) : XMFLOAT4(0.0f, 3.4f, 3.8f, 1.0f);
+
+    // マテリアル設定（高輝度エミッション）
+    MATERIAL mat;
+    ZeroMemory(&mat, sizeof(mat));
+    mat.Diffuse       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    mat.Ambient       = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    mat.Specular      = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+    mat.Emission      = reticleColor;
+    mat.Shininess     = 0.0f;
+    mat.TextureEnable = FALSE;
+    mat.RimPower      = 0.0f;
+    Renderer::SetMaterial(mat);
+    Renderer::SetupCubeDraw();
+
+    // カメラの姿勢に合わせてビルボード化
+    float camPitch = g_Camera ? g_Camera->GetAngleX() : 0.0f;
+    float camYaw   = g_Camera ? g_Camera->GetAngleY() : 0.0f;
+    XMMATRIX billboardRot = XMMatrixRotationRollPitchYaw(camPitch, camYaw, 0.0f);
+    XMMATRIX targetTrans  = XMMatrixTranslation(tCenter.x, tCenter.y, tCenter.z);
+
+    // パルスによる枠サイズの拡縮
+    int timer = m_Owner->GetMarkerTimer();
+    float pulse = sinf((float)timer * 0.2f) * 0.04f;
+    float boxHalf = radius * (1.30f + pulse);
+    float thickness = 0.065f; // 見失わないように太さを大幅アップ
+
+    // ヘルパー: ビルボード基準で四角形パーツを描画
+    auto DrawPart = [&](float localX, float localY, float scaleX, float scaleY) {
+        XMMATRIX partWorld = XMMatrixScaling(scaleX, scaleY, thickness) *
+                             XMMatrixTranslation(localX, localY, 0.0f) *
+                             billboardRot *
+                             targetTrans;
+        Renderer::SetWorldMatrix(partWorld);
+        Renderer::GetDeviceContext()->Draw(36, 0);
+    };
+
+    // --- 1. 完全な外枠メインフレーム（4辺全体を結ぶ太い四角形） ---
+    // 上辺
+    DrawPart(0.0f, boxHalf, boxHalf * 2.0f + thickness, thickness);
+    // 下辺
+    DrawPart(0.0f, -boxHalf, boxHalf * 2.0f + thickness, thickness);
+    // 左辺
+    DrawPart(-boxHalf, 0.0f, thickness, boxHalf * 2.0f);
+    // 右辺
+    DrawPart(boxHalf, 0.0f, thickness, boxHalf * 2.0f);
+
+    // --- 2. 4隅の強化HUDブラケット（立体アクセント） ---
+    float bracketThick = thickness * 1.5f;
+    float armLen = boxHalf * 0.38f;
+
+    // 右上
+    DrawPart(boxHalf - armLen * 0.5f, boxHalf, armLen, bracketThick);
+    DrawPart(boxHalf, boxHalf - armLen * 0.5f, bracketThick, armLen);
+    // 左上
+    DrawPart(-boxHalf + armLen * 0.5f, boxHalf, armLen, bracketThick);
+    DrawPart(-boxHalf, boxHalf - armLen * 0.5f, bracketThick, armLen);
+    // 右下
+    DrawPart(boxHalf - armLen * 0.5f, -boxHalf, armLen, bracketThick);
+    DrawPart(boxHalf, -boxHalf + armLen * 0.5f, bracketThick, armLen);
+    // 左下
+    DrawPart(-boxHalf + armLen * 0.5f, -boxHalf, armLen, bracketThick);
+    DrawPart(-boxHalf, -boxHalf + armLen * 0.5f, bracketThick, armLen);
+
+    // --- 3. 中央の回転クロスヘア（エイム十字） ---
+    float crossAngle = (float)timer * 0.06f;
+    float crossArm = boxHalf * 0.26f;
+    XMMATRIX crossRot = XMMatrixRotationZ(crossAngle);
+
+    XMMATRIX crossHWorld = XMMatrixScaling(crossArm * 2.0f, thickness * 0.85f, thickness * 0.85f) *
+                           crossRot * billboardRot * targetTrans;
+    Renderer::SetWorldMatrix(crossHWorld);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    XMMATRIX crossVWorld = XMMatrixScaling(thickness * 0.85f, crossArm * 2.0f, thickness * 0.85f) *
+                           crossRot * billboardRot * targetTrans;
+    Renderer::SetWorldMatrix(crossVWorld);
+    Renderer::GetDeviceContext()->Draw(36, 0);
+
+    // --- 4. 頭上の▼ターゲットポインター ---
+    float headHoverY = tPos.y + radius * 2.0f + 0.40f + sinf((float)timer * 0.15f) * 0.08f;
+    XMMATRIX pointerWorld = XMMatrixScaling(0.18f, 0.26f, 0.18f) *
+                           XMMatrixRotationRollPitchYaw(XM_PI, (float)timer * 0.08f, 0.0f) *
+                           XMMatrixTranslation(tPos.x, headHoverY, tPos.z);
+    Renderer::SetWorldMatrix(pointerWorld);
+    Renderer::GetDeviceContext()->Draw(36, 0);
 }

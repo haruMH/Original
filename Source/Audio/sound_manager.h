@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -19,6 +19,7 @@ enum class SoundID
     BGM_BOSS_STAGE,   // ボス戦BGM
     BGM_TITLE,        // タイトルBGM
     BGM_CLEAR,        // クリアBGM
+    BGM_LOSE,         // 敗北/ゲームオーバーBGM
 
     // SE (戦闘・アクション)
     SE_GRAB,          // 敵を掴む
@@ -27,6 +28,7 @@ enum class SoundID
     SE_HIT_WALL,      // 壁への激突破砕音
     SE_PARRY,         // パリィ成功音
     SE_DODGE,         // ジャスト回避音
+    SE_SLASH,         // ジャスト回避後の突進攻撃音
     SE_ITEM_PICKUP,   // アイテム取得音
     SE_LIGHTNING,     // 連鎖雷電音
     SE_EXPLOSION,     // 爆発音
@@ -62,6 +64,7 @@ private:
     static IXAudio2SourceVoice* m_BgmVoice;
     static SoundID              m_CurrentBgmId;
     static float                m_BgmVolume;
+    static float                m_CurrentBgmMultiplier;
     static float                m_SeVolume;
 
     // SE 多重再生用のボイスプール
@@ -83,8 +86,8 @@ public:
     // オーディオファイルの事前登録
     static bool RegisterSound(SoundID id, const std::string& relativePath);
 
-    // BGM 制御（volume < 0 の場合は現在の m_BgmVolume を維持）
-    static void  PlayBGM(SoundID id, bool loop = true, float volume = -1.0f);
+    // BGM 制御（volumeMultiplier でトラックごとの音量倍率を指定可能）
+    static void  PlayBGM(SoundID id, bool loop = true, float volumeMultiplier = 1.0f);
     static void  StopBGM();
     static void  SetBGMVolume(float volume);
     static float GetBGMVolume() { return m_BgmVolume; }

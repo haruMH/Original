@@ -68,6 +68,7 @@ private:
     static float             m_FlashFadeSpeed;
     static bool              m_IsLowHPWarning;
     static float             m_LowHPPulseTime;
+    static float             m_LowHPAlpha;
 
     // ラジアルブラー/色収差制御用
     static float             m_RadialBlurIntensity;
@@ -216,12 +217,22 @@ public:
         m_IsLowHPWarning = active;
         if (!active) {
             m_LowHPPulseTime = 0.0f;
-            if (m_FlashColor.x >= 0.99f && m_FlashColor.y <= 0.01f && m_FlashColor.z <= 0.01f) {
-                m_FlashColor = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
-            }
+            m_LowHPAlpha = 0.0f;
         }
     }
-    static DirectX::XMFLOAT4 GetFlashColor() { return m_FlashColor; }
+    static DirectX::XMFLOAT4 GetFlashColor() {
+        if (m_LowHPAlpha <= 0.001f) {
+            return m_FlashColor;
+        }
+        if (m_FlashColor.w <= 0.001f) {
+            return DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, m_LowHPAlpha);
+        }
+        float totalAlpha = (std::min)(1.0f, m_FlashColor.w + m_LowHPAlpha);
+        float r = (m_FlashColor.x * m_FlashColor.w + 1.0f * m_LowHPAlpha) / totalAlpha;
+        float g = (m_FlashColor.y * m_FlashColor.w) / totalAlpha;
+        float b = (m_FlashColor.z * m_FlashColor.w) / totalAlpha;
+        return DirectX::XMFLOAT4(r, g, b, totalAlpha);
+    }
 
     // ラジアルブラー / 色収差演出制御
     static void TriggerRadialBlur(float intensity, DirectX::XMFLOAT2 center = DirectX::XMFLOAT2(0.5f, 0.5f)) {

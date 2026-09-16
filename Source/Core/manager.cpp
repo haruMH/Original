@@ -1,4 +1,4 @@
-#include "manager.h"
+﻿#include "manager.h"
 #include <string>
 #include <unordered_set>
 #include "camera.h"
@@ -67,6 +67,7 @@ XMFLOAT4               Manager::m_FlashColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
 float                  Manager::m_FlashFadeSpeed = 0.05f;
 bool                   Manager::m_IsLowHPWarning = false;
 float                  Manager::m_LowHPPulseTime = 0.0f;
+float                  Manager::m_LowHPAlpha = 0.0f;
 
 bool                   Manager::m_IsCutsceneActive = false;
 int                    Manager::m_CutsceneTimer = 0;
@@ -98,6 +99,7 @@ void Manager::Init()
     m_FlashFadeSpeed = 0.05f;
     m_IsLowHPWarning = false;
     m_LowHPPulseTime = 0.0f;
+    m_LowHPAlpha = 0.0f;
     m_CachedPlayer = nullptr;
     m_CachedBoss = nullptr;
     m_ActiveScene = nullptr;
@@ -246,10 +248,12 @@ void Manager::Update()
 
     if (g_Camera) g_Camera->Update();
 
-    // 画面フラッシュと低HP警告赤パルスの更新
+    // 画面フラッシュの減衰（フェードアウト完了時は色も完全リセット）
     if (m_FlashColor.w > 0.0f) {
         m_FlashColor.w -= m_FlashFadeSpeed;
-        if (m_FlashColor.w < 0.0f) m_FlashColor.w = 0.0f;
+        if (m_FlashColor.w <= 0.0f) {
+            m_FlashColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+        }
     }
 
     // ラジアルブラーと色収差の自然減衰
@@ -302,6 +306,12 @@ void Manager::Update()
             m_IsLowHPWarning = false;
             m_SlowMotionTimer = 0; // スローモーション解除
             
+            Player* player = GetGameObject<Player>();
+            if (player) {
+                player->SetLockOnTarget(nullptr);
+                player->SetLockOnFrame(0);
+            }
+
             // 戦闘開始イベントを発行
             BossBattleStartEvent startEvent;
             EventSystem::Publish<BossBattleStartEvent>(startEvent);
@@ -312,18 +322,10 @@ void Manager::Update()
         // 低HP時は、画面を赤くパルス（明滅）させる（カットシーン時はゆっくり、通常プレイのHP1時は高速）
         m_LowHPPulseTime += m_IsCutsceneActive ? 0.06f : 0.15f; 
         // サイン波を用いてアルファ値を 0.04 ~ 0.28 の間で脈動させる
-        float pulseAlpha = 0.16f + 0.12f * sinf(m_LowHPPulseTime);
-        
-        // 通常のフラッシュが走っていない場合は警告赤をセット
-        if (m_FlashColor.w <= 0.0f) {
-            m_FlashColor = XMFLOAT4(1.0f, 0.0f, 0.0f, pulseAlpha);
-        } else {
-            // 通常フラッシュが優先され、警告赤をブレンドしてマージ
-            m_FlashColor.x = m_FlashColor.x + (1.0f - m_FlashColor.x) * pulseAlpha;
-            m_FlashColor.w = (std::max)(m_FlashColor.w, pulseAlpha);
-        }
+        m_LowHPAlpha = 0.16f + 0.12f * sinf(m_LowHPPulseTime);
     } else {
         m_LowHPPulseTime = 0.0f;
+        m_LowHPAlpha = 0.0f;
     }
 
     // 遅延シーン遷移のリクエストがあり、かつ暗転（FadeHold）が完了した場合に切り替える
@@ -470,11 +472,30 @@ void Manager::TransitionToBossStage()
     LOG_INFO("[Manager] TransitionToBossStage - 開始\n");
     m_IsBossStage = true;
 
-    // プレイヤーの位置を中央にリセット
+    // スローモーション・ヒットストップ・エフェクトの完全リセット
+    m_HitStopFrames = 0;
+    m_SlowMotionTimer = 0;
+    m_SlowMotionDuration = 0;
+    ShockwaveSystem::Clear();
+    DustSystem::Clear();
+    ScorePopupSystem::Clear();
+
+    // ボス戦専用BGMの再生開始
+    SoundManager::PlayBGM(SoundID::BGM_BOSS_STAGE, true);
+
+    // プレイヤーの位置とエフェクトをリセット
     Player* player = GetGameObject<Player>();
     if (player) {
         LOG_INFO("[Manager] プレイヤー位置をリセット\n");
         player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
+        player->GetLightningEffects().clear();
+        player->SetLockOnTarget(nullptr);
+        player->SetLockOnFrame(0);
+        player->SetTackleTimer(0);
+        player->SetDamageTimer(0);
+        player->SetGuardTimer(0);
+        player->SetWarpSlashCount(0);
+        player->SetCanWarpSlash(true);
     }
 
     // プレイヤーとフィールド以外のオブジェクトをすべて破棄（破棄処理の一元化）
@@ -620,7 +641,13 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     // シーン遷移時に低HP警告パルスや画面フラッシュ演出を完全リセット
     m_IsLowHPWarning = false;
     m_LowHPPulseTime = 0.0f;
+    m_LowHPAlpha = 0.0f;
     m_FlashColor = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+
+    // スローモーション・ヒットストップを完全リセット（前シーンの演出残存を防止）
+    m_HitStopFrames = 0;
+    m_SlowMotionTimer = 0;
+    m_SlowMotionDuration = 0;
 
     // シーン遷移時に衝撃波・砂埃・ポップアップを完全クリア（前シーンのエフェクト残存防止）
     ShockwaveSystem::Clear();
@@ -656,7 +683,7 @@ void Manager::ExecuteChangeScene(Scene nextScene)
         break;
     case Scene::GAMEOVER:
         m_ActiveScene = new GameOverScene();
-        SoundManager::StopBGM();
+        SoundManager::PlayBGM(SoundID::BGM_LOSE);
         break;
     }
 

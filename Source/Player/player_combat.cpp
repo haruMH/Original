@@ -1,4 +1,4 @@
-﻿#include "player_combat.h"
+#include "player_combat.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "player.h"
@@ -53,8 +53,18 @@ void PlayerCombat::Update()
         m_Owner->SetGuardTimer(0);
     }
 
-    // Update Lockon
-    if (Manager::IsSlowMotionActive()) {
+    // カットシーン中はロックオンおよび戦闘ロジックの実行を抑止
+    if (Manager::IsCutsceneActive()) {
+        m_Owner->SetLockOnTarget(nullptr);
+        m_Owner->SetLockOnFrame(0);
+        return;
+    }
+
+    // Update Lockon: ジャスト回避（Warp Slash突撃可能）またはタックル突撃有効時のみロックオンを探索・維持
+    bool canWarpSlash = Manager::IsSlowMotionActive() && m_Owner->CanWarpSlash() && m_Owner->GetWarpSlashCount() < 3;
+    bool canTackle    = m_Owner->GetTackleTimer() > 0;
+
+    if (canWarpSlash || canTackle) {
         FindLockOnTarget();
     } else {
         if (m_Owner->GetWarpSlashCount() > 0) {
@@ -62,8 +72,10 @@ void PlayerCombat::Update()
         }
         m_Owner->SetLockOnTarget(nullptr);
         m_Owner->SetLockOnFrame(0);
-        m_Owner->SetWarpSlashCount(0);
-        m_Owner->SetCanWarpSlash(true);
+        if (!Manager::IsSlowMotionActive()) {
+            m_Owner->SetWarpSlashCount(0);
+            m_Owner->SetCanWarpSlash(true);
+        }
     }
 
     m_Owner->IncrementMarkerTimer();
@@ -160,6 +172,9 @@ void PlayerCombat::UpdateIdle()
                 
                 ShockwaveSystem::AddShockwave(warpPos, 4.0f, 0.0f, 2.5f, 4.0f, 20, 1.5f, 0);
                 
+                // ジャスト回避後の突進スラッシュ攻撃音を再生
+                SoundManager::PlaySE(SoundID::SE_SLASH, 1.5f);
+                
                 if (target->GetObjectType() == ObjectType::Boss) {
                     BossEnemy* boss = static_cast<BossEnemy*>(target);
                     HitInfo hitInfo;
@@ -253,6 +268,9 @@ void PlayerCombat::UpdateIdle()
             }
             
             ShockwaveSystem::AddShockwave(warpPos, 5.0f, 0.0f, 2.5f, 4.0f, 20, 1.5f, 0);
+            
+            // ジャスト回避後の突進タックル攻撃音を再生
+            SoundManager::PlaySE(SoundID::SE_SLASH, 1.5f);
             
             if (target->GetObjectType() == ObjectType::Boss) {
                 BossEnemy* boss = static_cast<BossEnemy*>(target);
@@ -599,6 +617,27 @@ void PlayerCombat::FindLockOnTarget()
         if (cosAngle >= minCos) {
             if (cosAngle > maxCos) {
                 maxCos = cosAngle;
+                bestTarget = enemy;
+            }
+        }
+    }
+
+    // カメラ正面視野内に敵がいない場合は、プレイヤーから最も近い敵（20m以内）を自動選択
+    if (!bestTarget) {
+        float nearestDist = 20.0f;
+        for (GameObject* obj : Manager::GetGameObjectList()) {
+            if (!obj || obj == m_Owner || obj->IsDestroy()) continue;
+            ObjectType type = obj->GetObjectType();
+            if (type != ObjectType::Enemy && type != ObjectType::Boss) continue;
+
+            Enemy* enemy = static_cast<Enemy*>(obj);
+            EnemyState state = enemy->GetEnemyState();
+            if (state == EnemyState::DEFEATED || state == EnemyState::GRABBED || state == EnemyState::VACUUMED) continue;
+            if (enemy == m_Owner->GetGrabbedEnemy()) continue;
+
+            float dist = MathHelper::Length(enemy->GetPosition() - m_Owner->GetPosition());
+            if (dist < nearestDist) {
+                nearestDist = dist;
                 bestTarget = enemy;
             }
         }

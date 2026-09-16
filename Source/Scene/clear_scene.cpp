@@ -116,7 +116,9 @@ void ClearScene::Init()
     if (player) {
         player->SetPosition(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
         player->SetRotation(DirectX::XMFLOAT3(0.0f, DirectX::XM_PI, 0.0f)); // カメラ側（手前）を向く
-        player->SetDamageTimer(99999); // 勝手な移動入力を抑止
+        player->SetDamageTimer(0);
+        player->GetLightningEffects().clear();
+        player->SetLockOnTarget(nullptr);
     }
 
     // 4. カメラの初期化（プレイヤーの足元付近から見上げるシネマティック構図）

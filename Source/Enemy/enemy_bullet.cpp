@@ -1,4 +1,4 @@
-﻿#include "enemy_bullet.h"
+#include "enemy_bullet.h"
 #include "renderer.h"
 #include "resource_manager.h"
 #include "player.h"
@@ -12,6 +12,7 @@
 #include "boss_enemy.h"
 #include "score_popup.h"
 #include "game_rule.h"
+#include "sound_manager.h"
 
 // ������������������������������������������������������������������������������������������
 // ������
@@ -77,6 +78,9 @@ void EnemyBullet::Update()
                     m_EmissiveColor = XMFLOAT3(0.0f, 1.8f, 2.5f);
                     m_Direction = player->GetForwardVector();
                     m_Life = BULLET_LIFE;
+
+                    // ジャスト回避成功音（SE_PerfectDodge）を再生
+                    SoundManager::PlaySE(SoundID::SE_DODGE, 1.4f);
 
                     Manager::StartSlowMotion(180);
 

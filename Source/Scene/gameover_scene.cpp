@@ -1,4 +1,4 @@
-#include "gameover_scene.h"
+﻿#include "gameover_scene.h"
 #include "input.h"
 #include "manager.h"
 #include "sound_manager.h"
@@ -144,7 +144,9 @@ void GameOverScene::Init()
         player->SetPosition(DirectX::XMFLOAT3(0.0f, 0.35f, 0.0f));
         // 横倒し（Z軸回転90度）で地面に倒れ込んでいる姿
         player->SetRotation(DirectX::XMFLOAT3(0.0f, 0.6f, DirectX::XM_PIDIV2));
-        player->SetDamageTimer(99999); // 勝手な移動入力を抑止
+        player->SetDamageTimer(0);
+        player->GetLightningEffects().clear();
+        player->SetLockOnTarget(nullptr);
     }
 
     // 4. カメラの初期化（倒れたプレイヤーとそれを見つめる4つの巨石ブロックを収めるシネマティック構図）

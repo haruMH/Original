@@ -1,4 +1,4 @@
-﻿#include "gameplay_scene.h"
+#include "gameplay_scene.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "score_popup.h"
@@ -203,41 +203,135 @@ void GameplayScene::Init()
     } else {
         Manager::SetIsBossStage(false);
         
-        // ʏXe[WFǂGGÅOɔzu
-        Wall* wall = Manager::AddGameObject<Wall>();
-        wall->SetPosition(XMFLOAT3(Constants::Stage::WALL_DEFAULT_POS_X, Constants::Stage::WALL_DEFAULT_POS_Y, Constants::Stage::WALL_DEFAULT_POS_Z));
-        wall->SetScale(XMFLOAT3(Constants::Stage::WALL_DEFAULT_SCALE, Constants::Stage::WALL_DEFAULT_SCALE, Constants::Stage::WALL_DEFAULT_SCALE));
+        // 通常ステージ外周壁の生成（60m×60m バトルアリーナ）
+        float roomSize   = Constants::Stage::NORMAL_ROOM_SIZE;
+        float wallH      = Constants::Stage::NORMAL_WALL_HEIGHT;
+        float wallY      = Constants::Stage::NORMAL_WALL_Y;
+        float thick      = Constants::Stage::NORMAL_WALL_THICKNESS;
+        float halfThick  = thick * 0.5f;
 
-        // プレイヤー初期位置と向き（敵集団が存在する -Z 方向に向ける）
+        Wall* wallN = Manager::AddGameObject<Wall>();
+        wallN->SetPosition(XMFLOAT3(0.0f, wallY, roomSize + halfThick));
+        wallN->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
+
+        Wall* wallS = Manager::AddGameObject<Wall>();
+        wallS->SetPosition(XMFLOAT3(0.0f, wallY, -(roomSize + halfThick)));
+        wallS->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
+
+        Wall* wallE = Manager::AddGameObject<Wall>();
+        wallE->SetPosition(XMFLOAT3(roomSize + halfThick, wallY, 0.0f));
+        wallE->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
+
+        Wall* wallW = Manager::AddGameObject<Wall>();
+        wallW->SetPosition(XMFLOAT3(-(roomSize + halfThick), wallY, 0.0f));
+        wallW->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
+
+        // 通常ステージ障害物：左右のピラー（柱）
+        Wall* pillarL = Manager::AddGameObject<Wall>();
+        pillarL->SetPosition(XMFLOAT3(-Constants::Stage::PILLAR_POS_X, Constants::Stage::PILLAR_POS_Y, Constants::Stage::PILLAR_POS_Z));
+        pillarL->SetScale(XMFLOAT3(Constants::Stage::PILLAR_SCALE_XZ, Constants::Stage::PILLAR_SCALE_Y, Constants::Stage::PILLAR_SCALE_XZ));
+
+        Wall* pillarR = Manager::AddGameObject<Wall>();
+        pillarR->SetPosition(XMFLOAT3(Constants::Stage::PILLAR_POS_X, Constants::Stage::PILLAR_POS_Y, Constants::Stage::PILLAR_POS_Z));
+        pillarR->SetScale(XMFLOAT3(Constants::Stage::PILLAR_SCALE_XZ, Constants::Stage::PILLAR_SCALE_Y, Constants::Stage::PILLAR_SCALE_XZ));
+
+        // 通常ステージ障害物：左右のバリケード（低壁・飛び越え可能）
+        Wall* barricadeL = Manager::AddGameObject<Wall>();
+        barricadeL->SetPosition(XMFLOAT3(-Constants::Stage::BARRICADE_POS_X, Constants::Stage::BARRICADE_POS_Y, Constants::Stage::BARRICADE_POS_Z));
+        barricadeL->SetScale(XMFLOAT3(Constants::Stage::BARRICADE_WIDTH, Constants::Stage::BARRICADE_HEIGHT, Constants::Stage::BARRICADE_THICKNESS));
+
+        Wall* barricadeR = Manager::AddGameObject<Wall>();
+        barricadeR->SetPosition(XMFLOAT3(Constants::Stage::BARRICADE_POS_X, Constants::Stage::BARRICADE_POS_Y, Constants::Stage::BARRICADE_POS_Z));
+        barricadeR->SetScale(XMFLOAT3(Constants::Stage::BARRICADE_WIDTH, Constants::Stage::BARRICADE_HEIGHT, Constants::Stage::BARRICADE_THICKNESS));
+
+        // プレイヤー初期位置と向き（南から北向き +Z 方向を見据える）
         player->SetPosition(XMFLOAT3(0.0f, -0.5f, Constants::Stage::PLAYER_START_POS_Z));
-        player->SetRotation(XMFLOAT3(0.0f, XM_PI, 0.0f));
+        player->SetRotation(XMFLOAT3(0.0f, 0.0f, 0.0f));
 
-        // カメラもプレイヤーの背後から敵集団を見据える初期アングルに設定
+        // カメラもプレイヤーの背後から敵陣を見据える初期アングル（北向き）に設定
         if (g_Camera) {
-            g_Camera->SetAngles(0.2f, XM_PI);
+            g_Camera->SetAngles(0.2f, 0.0f);
         }
 
-        // uGObhzu
+        // タクティカル敵陣形のスポーン
         int totalEnemies = 0;
-        int minX = -Constants::Stage::ENEMY_GRID_COLS / 2;
-        int maxX = minX + Constants::Stage::ENEMY_GRID_COLS - 1;
-        int minZ = -Constants::Stage::ENEMY_GRID_ROWS / 2;
-        int maxZ = minZ + Constants::Stage::ENEMY_GRID_ROWS - 1;
 
-        for (int x = minX; x <= maxX; x++) {
-            for (int z = minZ; z <= maxZ; z++) {
-                Enemy* enemy = nullptr;
-                if ((x + z) % 2 == 0) {
-                    enemy = Manager::AddGameObject<AttackingEnemy>();
-                } else {
-                    enemy = Manager::AddGameObject<Enemy>();
-                }
-                float posX = (float)x * Constants::Stage::ENEMY_GRID_SPAWN_INTERVAL_XZ + Constants::Stage::ENEMY_GRID_SPAWN_OFFSET_X;
-                float posZ = (float)z * Constants::Stage::ENEMY_GRID_SPAWN_INTERVAL_XZ + Constants::Stage::ENEMY_GRID_SPAWN_OFFSET_Z;
-                enemy->SetPosition(XMFLOAT3(posX, -0.5f, posZ));
-                totalEnemies++;
-            }
-        }
+        // 【前衛】プレイヤー正面・掴みやすいモブ & サンドバッグ
+        // 1. サンドバッグ（中央手前：開幕で掴んで振り回す用）
+        Enemy* sandbag = Manager::AddGameObject<Enemy>();
+        sandbag->SetPosition(XMFLOAT3(0.0f, -0.5f, -8.0f));
+        sandbag->SetSandbag(true, 300);
+        totalEnemies++;
+
+        // 2. 前衛通常モブ（左右）
+        Enemy* frontL = Manager::AddGameObject<Enemy>();
+        frontL->SetPosition(XMFLOAT3(-5.0f, -0.5f, -7.0f));
+        totalEnemies++;
+
+        Enemy* frontR = Manager::AddGameObject<Enemy>();
+        frontR->SetPosition(XMFLOAT3(5.0f, -0.5f, -7.0f));
+        totalEnemies++;
+
+        // 【中衛】属性部隊（爆発敵 ＆ 電撃敵 ＆ 護衛）
+        // 3. 爆発Affix（赤く点滅：投げると12m大爆発）
+        Enemy* exp1 = Manager::AddGameObject<Enemy>();
+        exp1->SetPosition(XMFLOAT3(-4.0f, -0.5f, 2.0f));
+        exp1->SetExplosive(true);
+        totalEnemies++;
+
+        Enemy* exp2 = Manager::AddGameObject<Enemy>();
+        exp2->SetPosition(XMFLOAT3(4.0f, -0.5f, 2.0f));
+        exp2->SetExplosive(true);
+        totalEnemies++;
+
+        // 4. 電撃Affix（水色グロー：投げると最大5体連鎖電撃）
+        Enemy* lig1 = Manager::AddGameObject<Enemy>();
+        lig1->SetPosition(XMFLOAT3(-9.0f, -0.5f, 4.0f));
+        lig1->SetLightning(true);
+        totalEnemies++;
+
+        Enemy* lig2 = Manager::AddGameObject<Enemy>();
+        lig2->SetPosition(XMFLOAT3(9.0f, -0.5f, 4.0f));
+        lig2->SetLightning(true);
+        totalEnemies++;
+
+        // 5. 中衛護衛モブ
+        Enemy* midGuard1 = Manager::AddGameObject<Enemy>();
+        midGuard1->SetPosition(XMFLOAT3(-2.0f, -0.5f, 0.0f));
+        totalEnemies++;
+
+        Enemy* midGuard2 = Manager::AddGameObject<Enemy>();
+        midGuard2->SetPosition(XMFLOAT3(2.0f, -0.5f, 0.0f));
+        totalEnemies++;
+
+        // 【後衛】遠距離シューター部隊（AttackingEnemy 4体 ＆ 奥護衛モブ）
+        // 6. 柱奥のシューター
+        AttackingEnemy* shooterL = Manager::AddGameObject<AttackingEnemy>();
+        shooterL->SetPosition(XMFLOAT3(-12.0f, -0.5f, 15.0f));
+        totalEnemies++;
+
+        AttackingEnemy* shooterR = Manager::AddGameObject<AttackingEnemy>();
+        shooterR->SetPosition(XMFLOAT3(12.0f, -0.5f, 15.0f));
+        totalEnemies++;
+
+        // 7. 中央奥のシューター
+        AttackingEnemy* shooterC1 = Manager::AddGameObject<AttackingEnemy>();
+        shooterC1->SetPosition(XMFLOAT3(-5.0f, -0.5f, 18.0f));
+        totalEnemies++;
+
+        AttackingEnemy* shooterC2 = Manager::AddGameObject<AttackingEnemy>();
+        shooterC2->SetPosition(XMFLOAT3(5.0f, -0.5f, 18.0f));
+        totalEnemies++;
+
+        // 8. 最奥の護衛モブ
+        Enemy* backGuard1 = Manager::AddGameObject<Enemy>();
+        backGuard1->SetPosition(XMFLOAT3(0.0f, -0.5f, 14.0f));
+        totalEnemies++;
+
+        Enemy* backGuard2 = Manager::AddGameObject<Enemy>();
+        backGuard2->SetPosition(XMFLOAT3(0.0f, -0.5f, 22.0f));
+        totalEnemies++;
+
         GameRule::SetTotalEnemies(totalEnemies);
     }
 
@@ -393,19 +487,19 @@ void GameplayScene::UpdateGameplay()
 
     // Stage clear checks
     if (!Manager::IsBossStage()) {
-        // Normal stage: monitor all attacking enemies
-        bool attackingEnemyExists = false; 
+        // Normal stage: monitor all enemies
+        bool enemyExists = false; 
         for (GameObject* obj : Manager::GetGameObjectList()) {
             if (obj && obj->GetObjectType() == ObjectType::Enemy) {
                 Enemy* enemy = static_cast<Enemy*>(obj);
-                if (enemy->IsAttackingEnemy() && enemy->GetEnemyState() != EnemyState::DEFEATED) {
-                    attackingEnemyExists = true;
+                if (enemy->GetEnemyState() != EnemyState::DEFEATED) {
+                    enemyExists = true;
                     break;
                 }
             }
         }
 
-        if (!attackingEnemyExists) {
+        if (!enemyExists) {
             Manager::TransitionToBossStage();
         }
     } else {

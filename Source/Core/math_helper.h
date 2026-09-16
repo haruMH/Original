@@ -1,4 +1,4 @@
-// math_helper.h
+﻿// math_helper.h
 // XMFLOAT3の演算子オーバーロードと数学ユーティリティ関数。
 // 注意: 演算子は、"using namespace DirectX" が有効な場合に XMVECTOR の演算子との
 //       曖昧さを避けるために、DirectX 名前空間内に定義されています。
