@@ -1,4 +1,4 @@
-﻿#include "collision_system.h"
+#include "collision_system.h"
 #include <list>
 #include <algorithm> // std::find を使うため
 #include "manager.h"
@@ -129,23 +129,45 @@ static bool ResolveFlyingEnemyImpact(
 
     // ─── 3. 通常衝突 ───
     if (target->GetObjectType() == ObjectType::Boss) {
-        int dmg = Constants::Boss::THROW_NORMAL_DAMAGE;
+        float spinRatio = flying->GetThrowSpinRatio(); // 0.0f〜1.0f
+        int baseDmg = Constants::Boss::THROW_NORMAL_DAMAGE;
+        int finalDmg = baseDmg;
+
         if (flying->IsSandbag()) {
-            dmg = Constants::Boss::THROW_SANDBAG_DAMAGE;
+            baseDmg = Constants::Boss::THROW_SANDBAG_DAMAGE;
+            // サンドバッグ: 最大 1.6倍 (6 -> 最大 10)
+            finalDmg = static_cast<int>(roundf(baseDmg * (1.0f + spinRatio * (Constants::Player::THROW_SPIN_SPECIAL_MULT - 1.0f))));
         } else if (flying->GetScale().x > 2.0f) {
-            dmg = Constants::Boss::THROW_GIGANT_DAMAGE;
+            baseDmg = Constants::Boss::THROW_GIGANT_DAMAGE;
+            // 巨大化: 最大 1.6倍 (3 -> 最大 5)
+            finalDmg = static_cast<int>(roundf(baseDmg * (1.0f + spinRatio * (Constants::Player::THROW_SPIN_SPECIAL_MULT - 1.0f))));
+        } else {
+            // 通常エネミー: 基本 1 + 最大ボーナス 2 (スピン速度に応じて 1〜3)
+            int bonus = static_cast<int>(roundf(spinRatio * Constants::Player::THROW_SPIN_MAX_BONUS));
+            finalDmg = baseDmg + bonus;
         }
         
         HitInfo hitInfo;
-        hitInfo.damage = dmg;
+        hitInfo.damage = finalDmg;
         hitInfo.hitSourcePos = flying->GetPosition();
+
+        // 高速回転投げでの直撃時はクリティカル演出（オレンジ発光、重厚なヒットストップ・シェイク）
+        if (spinRatio >= 0.7f) {
+            hitInfo.popupColor = { 2.5f, 1.2f, 0.0f }; // クリティカルオレンジ
+            Manager::AddHitStop(14);
+            if (g_Camera) g_Camera->Shake(0.5f, 18);
+            ScoreHUD::Shake(16.0f, 14);
+            SoundManager::PlaySE(SoundID::SE_PARRY);
+        } else {
+            Manager::AddHitStop(10);
+            if (g_Camera) g_Camera->Shake(0.4f, 15);
+            ScoreHUD::Shake(12.0f, 10);
+        }
+
         target->OnHit(hitInfo);
 
         flying->SetEnemyState(EnemyState::DEFEATED);
         flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
-        Manager::AddHitStop(10);
-        if (g_Camera) g_Camera->Shake(0.4f, 15);
-        ScoreHUD::Shake(12.0f, 10);
         return true;
     }
 
@@ -303,7 +325,7 @@ static void HandleSpinSweep(Player* player, SpatialGrid& grid)
 
     // ボスとのスピン衝突判定
     BossEnemy* boss = Manager::GetGameObject<BossEnemy>();
-    if (boss && !boss->IsDestroy() && boss->GetEnemyState() != EnemyState::DEFEATED) {
+    if (boss && !boss->IsDestroy() && boss->GetEnemyState() != EnemyState::DEFEATED && boss->CanReceiveSpinHit()) {
         XMFLOAT3 bPos = boss->GetPosition();
         float dx = bPos.x - gPos.x;
         float dy = bPos.y - gPos.y;
@@ -322,10 +344,25 @@ static void HandleSpinSweep(Player* player, SpatialGrid& grid)
             hitInfo.damage = Constants::Player::SPIN_SWEEP_DAMAGE;
             boss->OnHit(hitInfo);
 
+            // スピン被弾クールダウンを設定（約0.4秒間隔）
+            boss->TriggerSpinHitCooldown(Constants::Player::SPIN_BOSS_HIT_INTERVAL);
+
+            // プレイヤーを外側に少し押し戻す（ボスの懐にめり込み続けるのを防止）
+            XMFLOAT3 pPos = player->GetPosition();
+            float pDx = pPos.x - bPos.x;
+            float pDz = pPos.z - bPos.z;
+            float pDist = sqrtf(pDx * pDx + pDz * pDz);
+            if (pDist > 0.01f) {
+                pPos.x += (pDx / pDist) * 0.25f;
+                pPos.z += (pDz / pDist) * 0.25f;
+                player->SetPosition(pPos);
+            }
+
             SoundManager::PlaySE(SoundID::SE_HIT_ENEMY);
-            Manager::AddHitStop(6);
-            if (g_Camera) g_Camera->Shake(0.20f + spinSpeed * 0.4f, 10);
-            ScoreHUD::Shake(8.0f + spinSpeed * 8.0f, 8);
+            Manager::AddHitStop(5);
+            // 連続接触に適したマイルドなカメラ＆UI揺れに抑制
+            if (g_Camera) g_Camera->Shake(0.08f + spinSpeed * 0.12f, 6);
+            ScoreHUD::Shake(3.0f + spinSpeed * 4.0f, 6);
         }
     }
 }

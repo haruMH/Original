@@ -1,4 +1,4 @@
-﻿#include "boss_enemy.h"
+#include "boss_enemy.h"
 #include "camera.h"
 #include "enemy_bullet.h"
 #include "event_system.h"
@@ -31,6 +31,7 @@ void BossEnemy::Init() {
   m_MaxHP = Constants::Boss::HP;
   SetScoreValue(Constants::Boss::SCORE); // 巨大ボスは15倍スコア
   m_DamageFlashTimer = 0;
+  m_SpinHitCooldownTimer = 0;
   m_AttackTimer = 0;
   m_AttackPattern = 0;
 
@@ -70,6 +71,9 @@ void BossEnemy::Update() {
 
   if (m_DamageFlashTimer > 0) {
     m_DamageFlashTimer--;
+  }
+  if (m_SpinHitCooldownTimer > 0) {
+    m_SpinHitCooldownTimer--;
   }
 
   if (m_EnemyState == EnemyState::DEFEATED ||

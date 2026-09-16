@@ -437,6 +437,17 @@ void PlayerCombat::Throw()
         float speedBoost = abs(m_Owner->GetAngularVelocity()) * 6.0f; 
         float totalSpeed = baseThrowSpeed + speedBoost;
 
+        // スピン回転速度比率（0.0f〜1.0f）を算出
+        float currentSpin = m_Owner->GetCurrentSpinSpeed();
+        float angVel = abs(m_Owner->GetAngularVelocity());
+        float spinSpeed = (currentSpin > angVel) ? currentSpin : angVel;
+        float spinRatio = 0.0f;
+        if (Constants::Player::MAX_SPIN_SPEED > 0.0f) {
+            spinRatio = spinSpeed / Constants::Player::MAX_SPIN_SPEED;
+            if (spinRatio < 0.0f) spinRatio = 0.0f;
+            if (spinRatio > 1.0f) spinRatio = 1.0f;
+        }
+
         XMFLOAT3 throwVelocity = fwdF * totalSpeed;
 
         if (m_Owner->HasGigantItem()) {
@@ -446,6 +457,7 @@ void PlayerCombat::Throw()
         m_Owner->GetGrabbedEnemy()->SetVelocity(throwVelocity);
         m_Owner->GetGrabbedEnemy()->SetEnemyState(EnemyState::FLYING);
         m_Owner->GetGrabbedEnemy()->SetThrownByPlayer(true);
+        m_Owner->GetGrabbedEnemy()->SetThrowSpinRatio(spinRatio);
 
         SoundManager::PlaySE(SoundID::SE_THROW);
 
@@ -468,6 +480,7 @@ void PlayerCombat::Throw()
                 enemy->SetVelocity(vacuumThrowVel);
                 enemy->SetEnemyState(EnemyState::FLYING);
                 enemy->SetThrownByPlayer(true);
+                enemy->SetThrowSpinRatio(spinRatio * 0.9f);
                 enemy->SetExplosive(true);
             }
         }

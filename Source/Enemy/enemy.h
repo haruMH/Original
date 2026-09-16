@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "gameobject.h"
 #include <memory>
 
@@ -33,6 +33,7 @@ protected:
     XMFLOAT3   m_OriginalScale = XMFLOAT3(1.0f, 1.0f, 1.0f); // 基準スケール
 
     bool       m_IsThrownByPlayer = false; // プレイヤーによって投げられた弾かどうかの判定フラグ
+    float      m_ThrowSpinRatio   = 0.0f;  // 投擲時のスピン速度比率 (0.0f〜1.0f)
 
 public:
     void Init()   override;
@@ -56,6 +57,8 @@ public:
 
     bool       IsThrownByPlayer() const      { return m_IsThrownByPlayer; }
     void       SetThrownByPlayer(bool v)     { m_IsThrownByPlayer = v; }
+    float      GetThrowSpinRatio() const     { return m_ThrowSpinRatio; }
+    void       SetThrowSpinRatio(float r)    { m_ThrowSpinRatio = r; }
 
     // スコア値の取得・設定
     int        GetScoreValue() const         { return m_ScoreValue; }

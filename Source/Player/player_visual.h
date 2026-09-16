@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <directxmath.h>
 
 class Player;
@@ -17,6 +17,7 @@ private:
 public:
     PlayerVisual(Player* owner);
     ~PlayerVisual();
+
 
     void Init();
     

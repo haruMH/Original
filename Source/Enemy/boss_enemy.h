@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <directxmath.h>
 #include <d3d11.h>
 #include "enemy.h"
@@ -43,6 +43,7 @@ private:
     int   m_HP = 60;
     int   m_MaxHP = 60;
     int   m_DamageFlashTimer = 0; // 被弾被弾フラッシュタイマー
+    int   m_SpinHitCooldownTimer = 0; // スピンなぎ払い被弾クールダウンタイマー
     int   m_AttackTimer = 0;      // 攻撃クールダウンタイマー
     int   m_AttackPattern = 0;    // 攻撃パターンインデックス
 
@@ -116,6 +117,8 @@ public:
     void Draw() override;
 
     void OnHit(const HitInfo& info) override;
+    bool CanReceiveSpinHit() const { return m_SpinHitCooldownTimer <= 0; }
+    void TriggerSpinHitCooldown(int frames = Constants::Player::SPIN_BOSS_HIT_INTERVAL) { m_SpinHitCooldownTimer = frames; }
     int  GetHP() const { return m_HP; }
     int  GetMaxHP() const { return m_MaxHP; }
     bool IsInvincible() const { return m_IsInvincible; }

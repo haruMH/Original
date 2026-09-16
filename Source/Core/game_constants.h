@@ -103,6 +103,9 @@ namespace Constants
         const int   TACKLE_DAMAGE           = 3;        // タックル攻撃がボスに与えるダメージ
         const int   WARP_SLASH_DAMAGE       = 4;        // 雷電テレポートスラッシュがボスに与えるダメージ
         const int   SPIN_SWEEP_DAMAGE       = 1;        // 回転なぎ払いがボスに与えるダメージ
+        const int   SPIN_BOSS_HIT_INTERVAL  = 24;       // スピンなぎ払いがボスに連続ヒットする最小間隔フレーム（約0.4秒）
+        const int   THROW_SPIN_MAX_BONUS    = 2;        // 最高速回転投げ時の通常敵追加ボーナスダメージ
+        const float THROW_SPIN_SPECIAL_MULT = 1.6f;     // 最高速回転投げ時の特殊エネミー（サンドバッグ/属性）ダメージ倍率
 
         // 雷電エフェクト関連
         const int   LIGHTNING_TIMER         = 8;        // 放電エフェクトの表示フレーム数
@@ -337,10 +340,10 @@ namespace Constants
     namespace Debug
     {
 #ifdef NDEBUG
-        const bool  START_FROM_BOSS         = false;    // リリース時は強制的に通常ステージから開始
+        const bool  START_FROM_BOSS         = true;    // リリース時は強制的に通常ステージから開始
         const bool  INVINCIBLE_PLAYER       = false;    // リリース時は無敵化を強制無効
 #else
-        const bool  START_FROM_BOSS         = false;   // 通常ステージからスタート（ボス戦直行テスト時はtrue）
+        const bool  START_FROM_BOSS         = true;   // 通常ステージからスタート（ボス戦直行テスト時はtrue）
         const bool  INVINCIBLE_PLAYER       = false;    // trueにするとプレイヤーが無敵になります（テスト用）
 #endif
     }

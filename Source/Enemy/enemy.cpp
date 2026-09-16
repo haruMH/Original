@@ -1,4 +1,4 @@
-﻿#include "enemy.h"
+#include "enemy.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "enemy_affix.h"
@@ -26,6 +26,7 @@ void Enemy::Init()
     m_Affix        = nullptr;
     m_IsDefeatedCounted = false;
     m_IsThrownByPlayer  = false;
+    m_ThrowSpinRatio    = 0.0f;
     m_ScoreValue   = Constants::Enemy::DEFAULT_SCORE;
 
     m_Texture = ResourceManager::GetTexture("enemy.png");

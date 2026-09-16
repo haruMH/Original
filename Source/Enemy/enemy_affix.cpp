@@ -1,4 +1,4 @@
-﻿// enemy_affix.cpp
+// enemy_affix.cpp
 // Enemy Affix の実装（2-3 対応）
 // SandbagAffix::Update() および各Affixの非インラインメソッドをここに集約する。
 
@@ -54,7 +54,9 @@ bool LightningAffix::OnImpact(Enemy* flying, GameObject* target, Player* player,
     hitInfo.popupColor = {0.0f, 1.5f, 2.5f};
 
     if (target->GetObjectType() == ObjectType::Boss) {
-        hitInfo.damage = Constants::Lightning::CHAIN_DAMAGE;
+        float spinRatio = flying->GetThrowSpinRatio();
+        int baseDmg = Constants::Lightning::CHAIN_DAMAGE;
+        hitInfo.damage = static_cast<int>(roundf(baseDmg * (1.0f + spinRatio * (Constants::Player::THROW_SPIN_SPECIAL_MULT - 1.0f))));
     } else {
         hitInfo.damage = 1;
         hitInfo.knockbackVel = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
