@@ -151,6 +151,12 @@ void ShadowSystem::Draw(const std::vector<GameObject*>& objects)
             baseAlpha   = Constants::Shadow::ITEM_ALPHA;
             groundBaseY = -0.5f;
         }
+        else if (type == ObjectType::MaterialDrop)
+        {
+            baseRadius  = 0.35f;
+            baseAlpha   = 0.45f;
+            groundBaseY = -0.5f;
+        }
         else
         {
             continue; // Wall / Field -> no blob shadow

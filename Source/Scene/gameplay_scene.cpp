@@ -1,4 +1,4 @@
-#include "gameplay_scene.h"
+﻿#include "gameplay_scene.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "score_popup.h"
@@ -19,6 +19,7 @@
 #include "math_helper.h"
 #include "attacking_enemy.h"
 #include "magnetic_bullet.h"
+#include "progression_manager.h"
 
 using namespace DirectX;
 
@@ -40,6 +41,7 @@ void GameplayScene::Init()
 {
     // タイムアタック計測の開始
     GameRule::Init();
+    ProgressionManager::StartSession(); // クエスト素材セッション開始
 
     // イベント購読の登録
     EventSystem::Subscribe<PlayerHitEvent>([](const PlayerHitEvent& ev) {
@@ -88,10 +90,38 @@ void GameplayScene::Init()
         ScorePopupSystem::AddTextPopup(ev.position.x, ev.position.y + 1.2f, ev.position.z, L"-2.0s", 0.0f, 2.5f, 2.5f);
 
         Manager::TriggerFlash(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.02f); // パリィ成功時に真っ白閃光
-        Manager::StartSlowMotion(90); // 1.5秒のスローモーション (彩度補正ON)
+
+        // パリィタイム延長強化
+        int slowDuration = ProgressionManager::HasParryExtension() ? 135 : 90;
+        Manager::StartSlowMotion(slowDuration);
         Manager::AddHitStop(15);      // 手応えヒットストップ
         Manager::TriggerRadialBlur(0.75f);
         Manager::TriggerChromaticAberration(0.60f);
+
+        // カウンターショック強化：周囲の敵を吹き飛ばす衝撃波
+        if (ProgressionManager::HasCounterShock()) {
+            XMFLOAT3 shockPos = ev.position;
+            shockPos.y = -0.95f;
+            ShockwaveSystem::AddShockwave(shockPos, 8.0f, 1.5f, 0.0f, 0.0f, 24, 1.2f, 0);
+
+            for (GameObject* obj : Manager::GetGameObjectList()) {
+                if (!obj || obj->IsDestroy() || obj->GetObjectType() != ObjectType::Enemy) continue;
+                Enemy* enemy = static_cast<Enemy*>(obj);
+                if (enemy->GetEnemyState() == EnemyState::DEFEATED || enemy->IsSandbag()) continue;
+
+                XMFLOAT3 diff = enemy->GetPosition() - ev.position;
+                diff.y = 0.0f;
+                float d = MathHelper::Length(diff);
+                if (d < 6.5f && d > 0.01f) {
+                    diff.x /= d;
+                    diff.z /= d;
+                    HitInfo hInfo;
+                    hInfo.damage = 1;
+                    hInfo.knockbackVel = XMFLOAT3(diff.x * 0.25f, 0.18f, diff.z * 0.25f);
+                    enemy->OnHit(hInfo);
+                }
+            }
+        }
     });
 
     EventSystem::Subscribe<BossSpawnEvent>([](const BossSpawnEvent& ev) {
@@ -167,8 +197,9 @@ void GameplayScene::Init()
     Player* player = Manager::AddGameObject<Player>();
     player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
 
-    // {XJnʏ킩Jn̕
-    if (Constants::Debug::START_FROM_BOSS) {
+    // ボス開始か通常開始かの分岐 (クエスト選択による動的制御)
+    bool startBoss = Manager::GetStartFromBoss();
+    if (startBoss) {
         Manager::SetIsBossStage(true);
         
         // ボス部屋の壁を生成（高く・厚くしてプレイヤーの場外飛び出しを防止）
@@ -355,7 +386,7 @@ void GameplayScene::Init()
         itemLightning->SetPosition(XMFLOAT3(Constants::Stage::ITEM_NORMAL_LIGHTNING_X, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_NORMAL_LIGHTNING_Z));
     }
 
-    if (Constants::Debug::START_FROM_BOSS) {
+    if (startBoss) {
         Manager::TriggerBossSpawnCutscene();
     }
 }
@@ -387,6 +418,7 @@ void GameplayScene::Update()
     if (player) {
         if (player->GetHP() <= 0) {
             GameRule::StopTimer();
+            ProgressionManager::CommitSession(false); // 獲得素材を保存
             Manager::SetLowHPWarning(false);
             Manager::ChangeScene(Scene::GAMEOVER);
             return;
@@ -541,6 +573,7 @@ void GameplayScene::UpdateGameplay()
 
                 if (m_ClearDelayTimer >= Constants::Boss::CLEAR_DELAY_FRAMES) {
                     GameRule::SetGameClear(true);
+                    ProgressionManager::CommitSession(true); // クリア確定＆素材・討伐数セーブ
                     Manager::ChangeScene(Scene::CLEAR);
                     OutputDebugStringA("[GameRule] *** ボス撃破！ゲームクリア！ ***\n");
                 }

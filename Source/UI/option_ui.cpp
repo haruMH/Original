@@ -5,12 +5,17 @@
 #include "camera.h"
 #include "main.h"
 #include "renderer.h"
+#include "manager.h"
+#include "save_system.h"
+#include "progression_manager.h"
 
-bool OptionUI::m_IsOpen = false;
+bool  OptionUI::m_IsOpen = false;
+float OptionUI::m_SaveFeedbackTimer = 0.0f;
 
 void OptionUI::Init()
 {
     m_IsOpen = false;
+    m_SaveFeedbackTimer = 0.0f;
 }
 
 void OptionUI::SetOpen(bool open)
@@ -27,6 +32,10 @@ void OptionUI::SetOpen(bool open)
 
 void OptionUI::Update()
 {
+    if (m_SaveFeedbackTimer > 0.0f) {
+        m_SaveFeedbackTimer -= 0.016f;
+    }
+
     // Tab キーで開閉をトグル
     if (Input::GetKeyTrigger(VK_TAB)) {
         SetOpen(!m_IsOpen);
@@ -52,7 +61,7 @@ void OptionUI::Draw()
     } else {
         ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     }
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 390.0f), ImGuiCond_Appearing);
+    ImGui::SetNextWindowSize(ImVec2(540.0f, 480.0f), ImGuiCond_Appearing);
 
     // ウィンドウの装飾スタイル設定
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
@@ -184,10 +193,64 @@ void OptionUI::Draw()
         ImGui::Separator();
         ImGui::Spacing();
 
-        // 閉じるボタン
-        if (ImGui::Button("Close [Tab]", ImVec2(120, 30))) {
+        // ─── 4. セーブ＆システム操作 ───
+        // 手動セーブボタン
+        if (ImGui::Button("Save Game", ImVec2(140, 28))) {
+            SaveSystem::Save();
+            SoundManager::PlaySE(SoundID::SE_DECIDE);
+            m_SaveFeedbackTimer = 2.5f;
+        }
+        ImGui::SameLine();
+        if (m_SaveFeedbackTimer > 0.0f) {
+            ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "  [ Save Completed! ]");
+        } else {
+            ImGui::TextDisabled("  Auto-save is active");
+        }
+
+        ImGui::Spacing();
+
+        // シーンに応じた帰還ボタン
+        Scene curScene = Manager::GetCurrentScene();
+        if (curScene == Scene::GAMEPLAY) {
+            if (ImGui::Button("Abandon Quest & Return to Camp", ImVec2(280, 28))) {
+                ProgressionManager::CommitSession(false); // 獲得素材を保存
+                SoundManager::PlaySE(SoundID::SE_DECIDE);
+                Manager::ChangeScene(Scene::HUB);
+                SetOpen(false);
+            }
+        } else if (curScene == Scene::HUB) {
+            if (ImGui::Button("Return to Title", ImVec2(160, 28))) {
+                SaveSystem::Save();
+                SoundManager::PlaySE(SoundID::SE_DECIDE);
+                Manager::ChangeScene(Scene::TITLE);
+                SetOpen(false);
+            }
+        } else if (curScene == Scene::TUTORIAL) {
+            if (ImGui::Button("Finish Tutorial & Go to Camp", ImVec2(240, 28))) {
+                SoundManager::PlaySE(SoundID::SE_DECIDE);
+                Manager::ChangeScene(Scene::HUB);
+                SetOpen(false);
+            }
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // 閉じるボタンとゲーム終了ボタン
+        if (ImGui::Button("Close [Tab]", ImVec2(120, 32))) {
             SetOpen(false);
         }
+
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 160.0f);
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.65f, 0.15f, 0.15f, 0.85f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.85f, 0.25f, 0.25f, 1.0f));
+        if (ImGui::Button("Quit Game", ImVec2(140, 32))) {
+            SaveSystem::Save(); // 終了前に確実にセーブ
+            PostQuitMessage(0);
+        }
+        ImGui::PopStyleColor(2);
     }
     ImGui::End();
 

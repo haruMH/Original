@@ -1,4 +1,4 @@
-#include "player_movement.h"
+﻿#include "player_movement.h"
 #include "player.h"
 #include "player_controller.h"
 #include "math_helper.h"
@@ -11,6 +11,7 @@
 #include "boss_enemy.h"
 #include "sound_manager.h"
 #include "dust_system.h"
+#include "progression_manager.h"
 #include <algorithm>
 
 using namespace DirectX;
@@ -107,8 +108,21 @@ void PlayerMovement::Update()
     UpdateGhosts();
 
     // Trigger dash check
-    if (m_Owner->GetDamageTimer() <= 0 && m_DashTimer <= 0 && m_DashCooldown <= 0) {
+    bool canDash = (m_Owner->GetDamageTimer() <= 0 && m_DashTimer <= 0 && m_DashCooldown <= 0);
+    if (ProgressionManager::HasDashCancel() && m_Owner->GetDamageTimer() <= 0 && m_DashTimer <= 0) {
+        // ダッシュキャンセル：スピン中やクールダウン中（残5F以下）でもキャンセル発動可能
+        if (m_Owner->GetState() == PlayerState::SPINNING || m_DashCooldown <= 6) {
+            canDash = true;
+        }
+    }
+
+    if (canDash) {
         if (PlayerController::IsDashAction()) {
+            // スピン中のダッシュキャンセル時はスピンを安全に解除
+            if (m_Owner->GetState() == PlayerState::SPINNING) {
+                m_Owner->SetState(PlayerState::GRABBED);
+            }
+
             float camYaw = g_Camera ? g_Camera->GetAngleY() : 0.0f;
             XMFLOAT3 moveDir = PlayerController::GetMoveDirection(camYaw);
             
@@ -125,7 +139,7 @@ void PlayerMovement::Update()
 
             m_DashDirection = moveDir;
             m_DashTimer = Constants::Player::DASH_DURATION;
-            m_DashCooldown = Constants::Player::DASH_COOLDOWN;
+            m_DashCooldown = ProgressionManager::HasDashCancel() ? (Constants::Player::DASH_COOLDOWN * 2 / 3) : Constants::Player::DASH_COOLDOWN;
             m_IsDashing = true;
 
             SoundManager::PlaySE(SoundID::SE_THROW);
@@ -472,7 +486,8 @@ void PlayerMovement::UpdateNormalMovement()
         if (m_Owner->GetState() != PlayerState::SPINNING) {
             float targetYaw = atan2f(moveDir.x, moveDir.z);
             XMFLOAT3 rot = m_Owner->GetRotation();
-            rot.y = MathHelper::LerpAngle(rot.y, targetYaw, 0.15f);
+            float turnSpeed = ProgressionManager::HasQuickReverse() ? 0.35f : 0.15f;
+            rot.y = MathHelper::LerpAngle(rot.y, targetYaw, turnSpeed);
             m_Owner->SetRotation(rot);
         }
     }

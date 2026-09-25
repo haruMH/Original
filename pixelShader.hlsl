@@ -52,13 +52,13 @@ static const float2 kPoissonDisk[16] = {
 
 float4 main(PS_INPUT input) : SV_TARGET
 {
-    float4 color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    float4 color = input.Diffuse;
 
     if (Material.TextureEnable)
     {
         float4 tex = g_Texture.Sample(g_Sampler, input.TexCoord);
         if (tex.r + tex.g + tex.b > 0.01f)
-            color = tex;
+            color = tex * input.Diffuse;
     }
 
     bool LightEnable = (LightEnablePacked.x != 0);

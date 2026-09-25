@@ -10,6 +10,8 @@
 #include "shockwave.h"
 #include "dust_system.h"
 #include "score_popup.h"
+#include "imgui.h"
+#include "progression_manager.h"
 #include <cmath>
 
 namespace {
@@ -127,6 +129,8 @@ void ClearScene::Init()
         DirectX::XMFLOAT3 target(0.0f, 1.8f, 0.0f);
         g_Camera->SetCutsceneMode(true, eye, target);
     }
+
+    Input::SetMouseLocked(false);
 }
 
 void ClearScene::Uninit()
@@ -150,13 +154,85 @@ void ClearScene::Update()
         g_Camera->SetCutsceneMode(true, eye, target);
     }
 
-    // エンターキー、スペースキー、マウスクリックでタイトル画面に戻る
-    if (Input::GetKeyTrigger(VK_RETURN) || Input::GetKeyTrigger(VK_SPACE) || Input::GetKeyTrigger(VK_LBUTTON)) {
+    // UI操作中でなければ、Enter/Space/クリックで拠点ハブに戻る
+    ImGuiIO& io = ImGui::GetIO();
+    bool canClick = !io.WantCaptureMouse && Input::GetKeyTrigger(VK_LBUTTON);
+    if (Input::GetKeyTrigger(VK_RETURN) || Input::GetKeyTrigger(VK_SPACE) || canClick) {
         SoundManager::PlaySE(SoundID::SE_DECIDE);
-        Manager::ChangeScene(Scene::TITLE);
+        Manager::ChangeScene(Scene::HUB);
     }
 }
 
 void ClearScene::Draw()
 {
+    DrawRewardUI();
+}
+
+void ClearScene::DrawRewardUI()
+{
+    ImGuiIO& io = ImGui::GetIO();
+
+    // 画面右側に半透明のリザルト・報酬ウィンドウを配置
+    float panelWidth = 360.0f;
+    float panelHeight = 440.0f;
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - panelWidth - 30.0f, (io.DisplaySize.y - panelHeight) * 0.5f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(panelWidth, panelHeight), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.85f);
+
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
+    if (ImGui::Begin("QUEST REWARDS##ClearResult", nullptr, flags)) {
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.88f, 0.2f, 1.0f), "  === MISSION COMPLETE ===");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // 戦闘スタッツ
+        ImGui::Text("Defeated Enemies: %d", ProgressionManager::GetSessionKills());
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::TextColored(ImVec4(0.4f, 0.9f, 1.0f, 1.0f), "ACQUIRED MATERIALS:");
+        ImGui::Spacing();
+
+        const char* matNames[] = {
+            "Scrap Metal",
+            "Energy Cell",
+            "Gunpowder",
+            "Charged Plug",
+            "Titan Plating",
+            "Kinetic Core"
+        };
+
+        bool anyAcquired = false;
+        for (int i = 0; i < static_cast<int>(MaterialType::COUNT); ++i) {
+            MaterialType mType = static_cast<MaterialType>(i);
+            int sessionCount = ProgressionManager::GetSessionMaterial(mType);
+            int totalCount = SaveSystem::GetMaterialCount(mType);
+            DirectX::XMFLOAT3 col = ProgressionData::GetMaterialColor(mType);
+
+            if (sessionCount > 0) {
+                anyAcquired = true;
+                ImGui::TextColored(ImVec4(col.x, col.y, col.z, 1.0f), " * %-14s : +%d  (Total: %d)", matNames[i], sessionCount, totalCount);
+            } else {
+                ImGui::TextDisabled("   %-14s :  0  (Total: %d)", matNames[i], totalCount);
+            }
+        }
+
+        if (!anyAcquired) {
+            ImGui::TextDisabled("   (No materials recovered)");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // 帰還ボタン
+        if (ImGui::Button("Return to Base Camp [SPACE / ENTER]", ImVec2(-1.0f, 40.0f))) {
+            SoundManager::PlaySE(SoundID::SE_DECIDE);
+            Manager::ChangeScene(Scene::HUB);
+        }
+
+        ImGui::End();
+    }
 }

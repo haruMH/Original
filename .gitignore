@@ -378,4 +378,6 @@ temp_*.h
 *_backup.h
 
 # スクラッチ領域・一時ファイル
-scratch/
+scratch/
+save_data.dat
+imgui.ini

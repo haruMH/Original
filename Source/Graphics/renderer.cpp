@@ -10,6 +10,7 @@
 #include "imgui/imgui_impl_dx11.h"
 #include <stdio.h>
 #include <wincodec.h>
+#include <filesystem>
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "windowscodecs.lib")
@@ -431,6 +432,16 @@ void Renderer::Init() {
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui::StyleColorsDark();
+
+    // 日本語フォント（Windows標準 Meiryo / MS Gothic）の読み込み
+    if (std::filesystem::exists("C:\\Windows\\Fonts\\meiryo.ttc")) {
+        io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\meiryo.ttc", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
+    } else if (std::filesystem::exists("C:\\Windows\\Fonts\\msgothic.ttc")) {
+        io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\msgothic.ttc", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
+    } else {
+        io.Fonts->AddFontDefault();
+    }
+
     ImGui_ImplWin32_Init(GetWindow());
     ImGui_ImplDX11_Init(m_Device, m_DeviceContext);
 

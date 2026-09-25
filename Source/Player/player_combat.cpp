@@ -1,4 +1,4 @@
-#include "player_combat.h"
+﻿#include "player_combat.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "player.h"
@@ -14,6 +14,7 @@
 #include "enemy_bullet.h"
 #include "shockwave.h"
 #include "sound_manager.h"
+#include "progression_manager.h"
 #include "main.h"
 
 using namespace DirectX;
@@ -113,6 +114,7 @@ void PlayerCombat::UpdateIdle()
 
             bool hasGrabTarget = false;
             float grabRange = Constants::Player::GRAB_RANGE;
+            if (ProgressionManager::HasQuickGrab()) grabRange *= 1.25f;
             for (GameObject* obj : Manager::GetGameObjectList()) {
                 if (!obj || obj == m_Owner || obj->IsDestroy()) continue;
                 if (obj->GetObjectType() != ObjectType::Enemy) continue;
@@ -298,6 +300,7 @@ void PlayerCombat::UpdateIdle()
     // Try grabbing a nearby enemy
     if (PlayerController::IsGrabOrThrowAction()) {
         float grabRange = Constants::Player::GRAB_RANGE;
+        if (ProgressionManager::HasQuickGrab()) grabRange *= 1.25f;
         Enemy* nearest  = nullptr;
         float  nearestDist = grabRange;
 
@@ -343,13 +346,16 @@ void PlayerCombat::UpdateGrabbed()
 }
 
 // =================================================================
-// SPINNING State Update
-// =================================================================
 void PlayerCombat::UpdateSpinning()
 {
     float targetSpinSpeed = Constants::Player::MAX_SPIN_SPEED;
+    float accel = Constants::Player::SPIN_ACCELERATION;
+    if (ProgressionManager::HasGiantSpin()) {
+        targetSpinSpeed *= 1.30f;
+        accel *= 1.40f;
+    }
     float currentSpeed = m_Owner->GetCurrentSpinSpeed();
-    currentSpeed += (targetSpinSpeed - currentSpeed) * Constants::Player::SPIN_ACCELERATION;
+    currentSpeed += (targetSpinSpeed - currentSpeed) * accel;
     m_Owner->SetCurrentSpinSpeed(currentSpeed);
 
     XMFLOAT3 rot = m_Owner->GetRotation();
@@ -434,6 +440,7 @@ void PlayerCombat::Throw()
         XMFLOAT3 fwdF = XMFLOAT3(sinf(rot.y), 0.0f, cosf(rot.y));
 
         float baseThrowSpeed = Constants::Player::THROW_FORCE;
+        if (ProgressionManager::HasHeavyThrow()) baseThrowSpeed *= 1.25f;
         float speedBoost = abs(m_Owner->GetAngularVelocity()) * 6.0f; 
         float totalSpeed = baseThrowSpeed + speedBoost;
 

@@ -1,4 +1,4 @@
-#include "boss_enemy.h"
+﻿#include "boss_enemy.h"
 #include "camera.h"
 #include "enemy_bullet.h"
 #include "event_system.h"
@@ -13,6 +13,7 @@
 #include "score_popup.h"
 #include "shockwave.h"
 #include "sound_manager.h"
+#include "material_drop.h"
 #include <algorithm> // std::remove_if 使用のため
 
 // namespace BossLightningConfig は削除され、Constants::Boss (game_constants.h)
@@ -1569,6 +1570,34 @@ void BossEnemy::SpawnDroppingObjects(int count, const DirectX::XMFLOAT3& baseDir
           (float)(rand() % 100) / 20.0f,
           (float)(rand() % 100) / 20.0f
       ));
+    }
+  }
+}
+
+void BossEnemy::SpawnMaterialDrops() {
+  // ボス撃破時：巨人の装甲片×3、巨人の動力核×1、エネルギーセル×2を放射状に放出
+  std::vector<MaterialType> bossDrops = {
+    MaterialType::TITAN_ARMOR,
+    MaterialType::TITAN_ARMOR,
+    MaterialType::TITAN_ARMOR,
+    MaterialType::TITAN_CORE,
+    MaterialType::ENERGY_CELL,
+    MaterialType::ENERGY_CELL
+  };
+
+  int count = static_cast<int>(bossDrops.size());
+  for (int i = 0; i < count; ++i) {
+    MaterialDrop* drop = Manager::AddGameObject<MaterialDrop>();
+    if (drop) {
+      // 全方位へ大きく広がる初速
+      float angle = (XM_2PI / count) * i + (((float)rand() / RAND_MAX) * 0.4f - 0.2f);
+      float speed = 0.12f + ((float)rand() / RAND_MAX) * 0.08f;
+      float speedY = 0.25f + ((float)rand() / RAND_MAX) * 0.10f; // 高く打ち上げる
+      XMFLOAT3 vel(cosf(angle) * speed, speedY, sinf(angle) * speed);
+
+      XMFLOAT3 spawnPos = m_Position;
+      spawnPos.y += 2.0f; // ボスの胸元から放出
+      drop->Setup(bossDrops[i], spawnPos, vel);
     }
   }
 }

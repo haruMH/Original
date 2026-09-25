@@ -15,6 +15,8 @@ enum class ObjectType
     Bullet,
     Boss,
     Skybox,
+    MaterialDrop,
+    Prop,
     Unknown
 };
 

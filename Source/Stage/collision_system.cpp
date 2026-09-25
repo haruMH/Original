@@ -1,4 +1,4 @@
-#include "collision_system.h"
+﻿#include "collision_system.h"
 #include <list>
 #include <algorithm> // std::find を使うため
 #include "manager.h"
@@ -17,6 +17,7 @@
 #include "boss_enemy.h"
 #include "sound_manager.h"
 #include "score_hud.h"
+#include "item_notification_hud.h"
 
 // namespace LightningConfig は削除され、Constants::Lightning (game_constants.h) に統合されました。
 
@@ -230,14 +231,17 @@ static void HandlePlayerItemPickup(Player* player, const std::vector<GameObject*
             switch (item->GetItemType()) {
             case ItemType::VACUUM:
                 player->SetHasVacuumItem(true);
+                ItemNotificationHUD::Add((const char*)u8"吸引アイテム", 1, XMFLOAT4(0.85f, 0.3f, 1.0f, 1.0f));
                 LOG_INFO("[CollisionSystem] 吸引アイテムを取得しました！\n");
                 break;
             case ItemType::GIGANT:
                 player->SetHasGigantItem(true);
+                ItemNotificationHUD::Add((const char*)u8"巨大化アイテム", 1, XMFLOAT4(1.0f, 0.35f, 0.2f, 1.0f));
                 LOG_INFO("[CollisionSystem] 巨大化アイテムを取得しました！\n");
                 break;
             case ItemType::LIGHTNING:
                 player->SetHasLightningItem(true);
+                ItemNotificationHUD::Add((const char*)u8"雷電アイテム", 1, XMFLOAT4(0.2f, 0.9f, 1.0f, 1.0f));
                 LOG_INFO("[CollisionSystem] 雷電アイテムを取得しました！\n");
                 break;
             }

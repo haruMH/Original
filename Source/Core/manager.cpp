@@ -29,6 +29,8 @@
 #include "event_types.h"
 #include "sound_manager.h"
 #include "option_ui.h"
+#include "progression_manager.h"
+#include "item_notification_hud.h"
 
 // DirectX 名前空間の使用
 using namespace DirectX;
@@ -36,6 +38,7 @@ using namespace DirectX;
 // 各シーンクラスのインクルード
 #include "title_scene.h"
 #include "tutorial_scene.h"
+#include "hub_scene.h"
 #include "gameplay_scene.h"
 #include "clear_scene.h"
 #include "gameover_scene.h"
@@ -55,6 +58,7 @@ int                    Manager::m_SlowMotionDuration = 0;
 Scene                  Manager::m_CurrentScene = Scene::TITLE;
 
 bool                   Manager::m_IsBossStage = true;
+bool                   Manager::m_StartFromBoss = false;
 Scene                  Manager::m_NextScene = Scene::TITLE;
 bool                   Manager::m_SceneTransitionRequested = false;
 bool                   Manager::m_PendingFadeIn = false;
@@ -86,6 +90,7 @@ void Manager::Init()
     Renderer::Init();
     Input::Init();
     GameRule::Init();
+    ProgressionManager::Init(); // セーブデータ読み込みと進行管理の初期化
     EnemyBullet::InitPool(); // 弾薬メモリプールの初期化
     m_IsCutsceneActive = false;
     m_CutsceneTimer = 0;
@@ -124,6 +129,9 @@ void Manager::Init()
 
     // 接地丸影（ドロップシャドウ）システムの初期化
     ShadowSystem::Init();
+
+    // アイテム入手通知HUDの初期化
+    ItemNotificationHUD::Init();
 
     // フェードシステムの初期化
     FadeSystem::Init(Renderer::GetDevice());
@@ -177,6 +185,9 @@ void Manager::Uninit()
 
     // 接地丸影（ドロップシャドウ）システムの終了処理
     ShadowSystem::Uninit();
+
+    // アイテム入手通知HUDの終了処理
+    ItemNotificationHUD::Uninit();
 
     // フェードシステムの終了処理
     FadeSystem::Uninit();
@@ -240,6 +251,9 @@ void Manager::Update()
 
     // 砂埃パーティクルシステムの更新
     DustSystem::Update();
+
+    // アイテム入手通知HUDのタイマー更新
+    ItemNotificationHUD::Update(1.0f / 60.0f);
 
     // 現在アクティブなシーンオブジェクトの更新を実行
     if (m_ActiveScene) {
@@ -437,6 +451,9 @@ void Manager::Draw()
     // オプション画面UIの描画（ImGuiコマンドを発行）
     OptionUI::Draw();
 
+    // アイテム入手通知HUDの描画（ImGuiオーバーレイ）
+    ItemNotificationHUD::Draw();
+
     Renderer::End();
 }
 
@@ -453,6 +470,7 @@ void Manager::DrawShadowAndOutlineObjects()
             || type == ObjectType::Wall
             || type == ObjectType::Boss
             || type == ObjectType::Bullet
+            || type == ObjectType::Prop
             || type == ObjectType::Unknown;
     };
 
@@ -653,6 +671,7 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     ShockwaveSystem::Clear();
     DustSystem::Clear();
     ScorePopupSystem::Clear();
+    ItemNotificationHUD::Clear();
 
     // カメラはどのシーンでも必要なので、共通で生成する
     g_Camera = new Camera();
@@ -668,6 +687,10 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     case Scene::TUTORIAL:
         m_ActiveScene = new TutorialScene();
         SoundManager::PlayBGM(SoundID::BGM_NORMAL_STAGE);
+        break;
+    case Scene::HUB:
+        m_ActiveScene = new HubScene();
+        SoundManager::PlayBGM(SoundID::BGM_TITLE);
         break;
     case Scene::GAMEPLAY:
         m_ActiveScene = new GameplayScene();

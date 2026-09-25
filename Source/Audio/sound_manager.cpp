@@ -1,4 +1,4 @@
-#include "sound_manager.h"
+﻿#include "sound_manager.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "main.h"

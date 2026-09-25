@@ -1,4 +1,4 @@
-// enemy_affix.cpp
+﻿// enemy_affix.cpp
 // Enemy Affix の実装（2-3 対応）
 // SandbagAffix::Update() および各Affixの非インラインメソッドをここに集約する。
 

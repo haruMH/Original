@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "gameobject.h"
 #include <memory>
 
@@ -78,6 +78,9 @@ public:
 
     // 攻撃エネミー判定用（dynamic_cast排除の最適化）
     virtual bool IsAttackingEnemy() const    { return false; }
+
+    // 素材ドロップ生成
+    virtual void SpawnMaterialDrops();
 
     // 属性オブジェクトのゲッター
     std::shared_ptr<IEnemyAffix> GetAffix() const { return m_Affix; }

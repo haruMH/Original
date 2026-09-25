@@ -18,6 +18,8 @@ public:
     void Draw() override;
 
 private:
+    void DrawRewardUI();
+
     float m_OrbitAngle;    // カメラ水平旋回角
     float m_CameraHeight;  // カメラ高度
     float m_Timer;         // 演出タイマー

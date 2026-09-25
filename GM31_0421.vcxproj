@@ -160,9 +160,12 @@
     <ClCompile Include="Source\Core\event_system.cpp" />
     <ClCompile Include="Source\Core\camera.cpp" />
     <ClCompile Include="Source\Core\input.cpp" />
+    <ClCompile Include="Source\Core\save_system.cpp" />
+    <ClCompile Include="Source\Core\progression_manager.cpp" />
     <!-- Scene -->
     <ClCompile Include="Source\Scene\title_scene.cpp" />
     <ClCompile Include="Source\Scene\tutorial_scene.cpp" />
+    <ClCompile Include="Source\Scene\hub_scene.cpp" />
     <ClCompile Include="Source\Scene\gameplay_scene.cpp" />
     <ClCompile Include="Source\Scene\clear_scene.cpp" />
     <ClCompile Include="Source\Scene\gameover_scene.cpp" />
@@ -183,18 +186,22 @@
     <ClCompile Include="Source\Stage\field.cpp" />
     <ClCompile Include="Source\Stage\wall.cpp" />
     <ClCompile Include="Source\Stage\item.cpp" />
+    <ClCompile Include="Source\Stage\material_drop.cpp" />
     <ClCompile Include="Source\Stage\collision.cpp" />
     <ClCompile Include="Source\Stage\collision_system.cpp" />
     <ClCompile Include="Source\Stage\spatial_grid.cpp" />
+    <ClCompile Include="Source\Stage\prop_model.cpp" />
     <!-- Graphics -->
     <ClCompile Include="Source\Graphics\renderer.cpp" />
     <ClCompile Include="Source\Graphics\render_system.cpp" />
     <ClCompile Include="Source\Graphics\resource_manager.cpp" />
     <ClCompile Include="Source\Graphics\shadow_system.cpp" />
+    <ClCompile Include="Source\Graphics\obj_model.cpp" />
     <!-- UI -->
     <ClCompile Include="Source\UI\score_hud.cpp" />
     <ClCompile Include="Source\UI\score_popup.cpp" />
     <ClCompile Include="Source\UI\option_ui.cpp" />
+    <ClCompile Include="Source\UI\item_notification_hud.cpp" />
     <!-- Effect -->
     <ClCompile Include="Source\Effect\shockwave.cpp" />
     <ClCompile Include="Source\Effect\explosion_system.cpp" />
@@ -223,10 +230,14 @@
     <ClInclude Include="Source\Core\camera.h" />
     <ClInclude Include="Source\Core\input.h" />
     <ClInclude Include="Source\Core\math_helper.h" />
+    <ClInclude Include="Source\Core\progression_types.h" />
+    <ClInclude Include="Source\Core\save_system.h" />
+    <ClInclude Include="Source\Core\progression_manager.h" />
     <!-- Scene -->
     <ClInclude Include="Source\Scene\scene_interface.h" />
     <ClInclude Include="Source\Scene\title_scene.h" />
     <ClInclude Include="Source\Scene\tutorial_scene.h" />
+    <ClInclude Include="Source\Scene\hub_scene.h" />
     <ClInclude Include="Source\Scene\gameplay_scene.h" />
     <ClInclude Include="Source\Scene\clear_scene.h" />
     <ClInclude Include="Source\Scene\gameover_scene.h" />
@@ -247,9 +258,11 @@
     <ClInclude Include="Source\Stage\field.h" />
     <ClInclude Include="Source\Stage\wall.h" />
     <ClInclude Include="Source\Stage\item.h" />
+    <ClInclude Include="Source\Stage\material_drop.h" />
     <ClInclude Include="Source\Stage\collision.h" />
     <ClInclude Include="Source\Stage\collision_system.h" />
     <ClInclude Include="Source\Stage\spatial_grid.h" />
+    <ClInclude Include="Source\Stage\prop_model.h" />
     <!-- Graphics -->
     <ClInclude Include="Source\Graphics\renderer.h" />
     <ClInclude Include="Source\Graphics\render_system.h" />
@@ -257,10 +270,12 @@
     <ClInclude Include="Source\Graphics\resource_manager.h" />
     <ClInclude Include="Source\Graphics\render_constants.h" />
     <ClInclude Include="Source\Graphics\shadow_system.h" />
+    <ClInclude Include="Source\Graphics\obj_model.h" />
     <!-- UI -->
     <ClInclude Include="Source\UI\score_hud.h" />
     <ClInclude Include="Source\UI\score_popup.h" />
     <ClInclude Include="Source\UI\option_ui.h" />
+    <ClInclude Include="Source\UI\item_notification_hud.h" />
     <!-- Effect -->
     <ClInclude Include="Source\Effect\shockwave.h" />
     <ClInclude Include="Source\Effect\explosion_system.h" />

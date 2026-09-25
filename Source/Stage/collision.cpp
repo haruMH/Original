@@ -1,4 +1,4 @@
-#include "collision.h"
+﻿#include "collision.h"
 #include "field.h"
 #include "enemy.h"
 #include "player.h"
@@ -34,12 +34,12 @@ bool Collision::CheckAABB(const GameObject* a, const DirectX::XMFLOAT3& nextPosA
     bool collisionX = std::abs(nextPosA.x - posB.x) < (sizeA.x * scaleA.x + sizeB.x * scaleB.x) * 0.5f;
     bool collisionZ = std::abs(nextPosA.z - posB.z) < (sizeA.z * scaleA.z + sizeB.z * scaleB.z) * 0.5f;
 
-    // 壁（Wall）との判定時は、プレイヤーがジャンプやノックバックで上空に浮いても
-    // 壁を飛び越えて場外へ飛び出さないよう、地面以上の高さであればY軸は常に衝突（無限高の壁）とみなす
+    // 壁（Wall）および固定オブジェクト（Prop）との判定時は、プレイヤーがジャンプやノックバックで上空に浮いても
+    // 飛び越えてめり込まないよう、地面以上の高さであればY軸は常に衝突（無限高の壁）とみなす
     bool collisionY = false;
-    if (b->GetObjectType() == ObjectType::Wall) {
+    if (b->GetObjectType() == ObjectType::Wall || b->GetObjectType() == ObjectType::Prop) {
         collisionY = (nextPosA.y >= -1.5f);
-    } else if (a->GetObjectType() == ObjectType::Wall) {
+    } else if (a->GetObjectType() == ObjectType::Wall || a->GetObjectType() == ObjectType::Prop) {
         collisionY = (posB.y >= -1.5f);
     } else {
         collisionY = std::abs(nextPosA.y - posB.y) < (sizeA.y * scaleA.y + sizeB.y * scaleB.y) * 0.5f;
@@ -77,7 +77,9 @@ bool Collision::CheckAABBCollision(const GameObject* self, const DirectX::XMFLOA
         if (ignoreObj && obj == *ignoreObj) continue;       // 既に掴んでいる敵は衝突除外
         if (grabbedEnemy && obj == grabbedEnemy) continue;  // 掴んでいる敵との衝突を自動除外
         ObjectType objType = obj->GetObjectType();
-        if (objType == ObjectType::Field || objType == ObjectType::Skybox || objType == ObjectType::Unknown) continue; // 地面・スカイドーム・システムは衝突除外
+        // 地面・スカイドーム・システム・アイテム・素材キューブ・弾は移動をブロックしない
+        if (objType == ObjectType::Field || objType == ObjectType::Skybox || objType == ObjectType::Unknown ||
+            objType == ObjectType::Item || objType == ObjectType::MaterialDrop || objType == ObjectType::Bullet) continue;
         if (obj->IsDestroy()) continue;
 
         // 撃破演出中・吹き飛び中・飛行投擲中の敵はプレイヤーの移動を妨げない（巨大エネミーによるスタック防止）

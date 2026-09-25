@@ -8,7 +8,8 @@
 class OptionUI
 {
 private:
-    static bool m_IsOpen;
+    static bool  m_IsOpen;
+    static float m_SaveFeedbackTimer;
 
 public:
     static void Init();

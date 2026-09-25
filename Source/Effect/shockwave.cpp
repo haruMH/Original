@@ -1,4 +1,4 @@
-#include "shockwave.h"
+﻿#include "shockwave.h"
 #include "renderer.h"
 #include "manager.h"
 #include "enemy.h"

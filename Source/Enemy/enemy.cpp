@@ -1,4 +1,4 @@
-#include "enemy.h"
+﻿#include "enemy.h"
 #include "event_system.h"
 #include "event_types.h"
 #include "enemy_affix.h"
@@ -12,6 +12,7 @@
 #include "game_rule.h"
 #include "score_popup.h"
 #include "game_constants.h"
+#include "material_drop.h"
 
 void Enemy::Init()
 {
@@ -271,6 +272,45 @@ void Enemy::Defeat(float colorR, float colorG, float colorB)
     defEvent.position.y += 1.0f; // ポップアップの高さオフセット
     defEvent.popupColor = DirectX::XMFLOAT3(colorR, colorG, colorB);
     EventSystem::Publish<EnemyDefeatedEvent>(defEvent);
+
+    // 素材ドロップのスポーン
+    if (!IsSandbag()) {
+        SpawnMaterialDrops();
+    }
+}
+
+void Enemy::SpawnMaterialDrops()
+{
+    // 敵の種別に応じた素材ドロップ決定
+    std::vector<MaterialType> drops;
+
+    if (IsExplosive()) {
+        drops.push_back(MaterialType::EXPLOSIVE_POWDER);
+        if (rand() % 2 == 0) drops.push_back(MaterialType::SCRAP_IRON);
+    } else if (IsLightning()) {
+        drops.push_back(MaterialType::LIGHTNING_CORE);
+        if (rand() % 2 == 0) drops.push_back(MaterialType::SCRAP_IRON);
+    } else if (IsAttackingEnemy()) {
+        drops.push_back(MaterialType::ENERGY_CELL);
+        if (rand() % 2 == 0) drops.push_back(MaterialType::SCRAP_IRON);
+    } else {
+        drops.push_back(MaterialType::SCRAP_IRON);
+        if (rand() % 3 == 0) drops.push_back(MaterialType::SCRAP_IRON);
+    }
+
+    for (MaterialType matType : drops) {
+        MaterialDrop* drop = Manager::AddGameObject<MaterialDrop>();
+        if (drop) {
+            // 中心からわずかに散らばる初期速度
+            float angle = ((float)rand() / RAND_MAX) * XM_2PI;
+            float speed = 0.04f + ((float)rand() / RAND_MAX) * 0.05f;
+            XMFLOAT3 vel(cosf(angle) * speed, 0.12f + ((float)rand() / RAND_MAX) * 0.06f, sinf(angle) * speed);
+
+            XMFLOAT3 spawnPos = m_Position;
+            spawnPos.y += 0.5f;
+            drop->Setup(matType, spawnPos, vel);
+        }
+    }
 }
 
 XMFLOAT3 Enemy::GetEmissive() const

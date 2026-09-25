@@ -26,6 +26,7 @@ class BossEnemy;
 enum class Scene {
     TITLE,
     TUTORIAL,
+    HUB,
     GAMEPLAY,
     CLEAR,
     GAMEOVER
@@ -49,6 +50,7 @@ private:
     static int                    m_SlowMotionTimer;  // スローモーションの残りフレーム数
     static int                    m_SlowMotionDuration;// スローモーションの総開始フレーム数
     static bool                   m_IsBossStage;      // ボスステージ中フラグ
+    static bool                   m_StartFromBoss;    // ボス直行フラグ（クエスト選択用）
     static Scene                  m_CurrentScene;     // 現在のシーン（既存コード互換用）
     static Scene                  m_NextScene;        // 遷移予定 of the next scene
     static bool                   m_SceneTransitionRequested; // シーン遷移リクエストフラグ
@@ -202,6 +204,8 @@ public:
     static bool  IsSlowMotionActive() { return m_SlowMotionTimer > 0; }
     static bool  IsBossStage() { return m_IsBossStage; }
     static void  SetIsBossStage(bool enable) { m_IsBossStage = enable; }
+    static bool  GetStartFromBoss() { return m_StartFromBoss; }
+    static void  SetStartFromBoss(bool enable) { m_StartFromBoss = enable; }
     static void  TransitionToBossStage();
     static void  ChangeScene(Scene nextScene, float fadeOutDuration = 0.5f, float fadeInDuration = 0.5f, XMFLOAT4 color = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
     static Scene GetCurrentScene() { return m_CurrentScene; }

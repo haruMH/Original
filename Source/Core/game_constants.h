@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // =================================================================
 // ゲーム定数定義ヘッダー (game_constants.h)
@@ -48,7 +48,7 @@ namespace Constants
         const float CUTSCENE_RESET_ANGLE_Y  = 0.0f;               // カットシーン終了時の復旧ヨー角
 
         // カメラシェイク（振動演出）
-        const float SHAKE_DAMPING           = 0.9f;               // 毎フレームの振動減衰率 (0.0〜1.0)
+        const float SHAKE_DAMPING           = 0.7f;               // 毎フレームの振動減衰率 (0.0〜1.0)
 
         // 垂直方向追従のスムージング（歩行揺れ・接地バウンスによるカメラのガタつき吸収: 0.0=追従なし, 1.0=即時）
         const float VERTICAL_SMOOTH         = 0.25f;

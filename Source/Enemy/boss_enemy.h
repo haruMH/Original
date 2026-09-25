@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <directxmath.h>
 #include <d3d11.h>
 #include "enemy.h"
@@ -117,6 +117,7 @@ public:
     void Draw() override;
 
     void OnHit(const HitInfo& info) override;
+    void SpawnMaterialDrops() override;
     bool CanReceiveSpinHit() const { return m_SpinHitCooldownTimer <= 0; }
     void TriggerSpinHitCooldown(int frames = Constants::Player::SPIN_BOSS_HIT_INTERVAL) { m_SpinHitCooldownTimer = frames; }
     int  GetHP() const { return m_HP; }

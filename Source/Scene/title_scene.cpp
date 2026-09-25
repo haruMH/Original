@@ -10,6 +10,8 @@
 #include "shockwave.h"
 #include "dust_system.h"
 #include "score_popup.h"
+#include "save_system.h"
+#include "player_controller.h"
 #include <cmath>
 
 // =================================================================
@@ -244,10 +246,14 @@ void TitleScene::Update()
         player->SetDamageTimer(99999);
     }
 
-    // 3. Enterキーでチュートリアルへ遷移
-    if (Input::GetKeyTrigger(VK_RETURN)) {
+    // 3. Enter/Space/決定ボタンで拠点HUBへ遷移（初回完全新規データ時はチュートリアルへ）
+    if (Input::GetKeyTrigger(VK_RETURN) || Input::GetKeyTrigger(VK_SPACE) || PlayerController::IsGrabOrThrowAction()) {
         SoundManager::PlaySE(SoundID::SE_DECIDE);
-        Manager::ChangeScene(Scene::TUTORIAL);
+        if (SaveSystem::GetData().totalClears == 0 && SaveSystem::GetData().totalKills == 0) {
+            Manager::ChangeScene(Scene::TUTORIAL);
+        } else {
+            Manager::ChangeScene(Scene::HUB);
+        }
     }
 }
 

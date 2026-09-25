@@ -58,11 +58,20 @@
     <ClCompile Include="Source\Core\input.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Core\save_system.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Core\progression_manager.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
     <!-- Scene -->
     <ClCompile Include="Source\Scene\title_scene.cpp">
       <Filter>Source\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Source\Scene\tutorial_scene.cpp">
+      <Filter>Source\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Scene\hub_scene.cpp">
       <Filter>Source\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Source\Scene\gameplay_scene.cpp">
@@ -119,6 +128,9 @@
     <ClCompile Include="Source\Stage\item.cpp">
       <Filter>Source\Stage</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Stage\material_drop.cpp">
+      <Filter>Source\Stage</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Stage\collision.cpp">
       <Filter>Source\Stage</Filter>
     </ClCompile>
@@ -126,6 +138,9 @@
       <Filter>Source\Stage</Filter>
     </ClCompile>
     <ClCompile Include="Source\Stage\spatial_grid.cpp">
+      <Filter>Source\Stage</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Stage\prop_model.cpp">
       <Filter>Source\Stage</Filter>
     </ClCompile>
     <!-- Graphics -->
@@ -141,6 +156,9 @@
     <ClCompile Include="Source\Graphics\shadow_system.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Graphics\obj_model.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
     <!-- UI -->
     <ClCompile Include="Source\UI\score_hud.cpp">
       <Filter>Source\UI</Filter>
@@ -149,6 +167,9 @@
       <Filter>Source\UI</Filter>
     </ClCompile>
     <ClCompile Include="Source\UI\option_ui.cpp">
+      <Filter>Source\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\UI\item_notification_hud.cpp">
       <Filter>Source\UI</Filter>
     </ClCompile>
     <!-- Effect -->
@@ -223,6 +244,15 @@
     <ClInclude Include="Source\Core\math_helper.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Core\progression_types.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Core\save_system.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Core\progression_manager.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
     <!-- Scene -->
     <ClInclude Include="Source\Scene\scene_interface.h">
       <Filter>Source\Scene</Filter>
@@ -231,6 +261,9 @@
       <Filter>Source\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Source\Scene\tutorial_scene.h">
+      <Filter>Source\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Scene\hub_scene.h">
       <Filter>Source\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Source\Scene\gameplay_scene.h">
@@ -287,6 +320,9 @@
     <ClInclude Include="Source\Stage\item.h">
       <Filter>Source\Stage</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Stage\material_drop.h">
+      <Filter>Source\Stage</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Stage\collision.h">
       <Filter>Source\Stage</Filter>
     </ClInclude>
@@ -294,6 +330,9 @@
       <Filter>Source\Stage</Filter>
     </ClInclude>
     <ClInclude Include="Source\Stage\spatial_grid.h">
+      <Filter>Source\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Stage\prop_model.h">
       <Filter>Source\Stage</Filter>
     </ClInclude>
     <!-- Graphics -->
@@ -315,6 +354,9 @@
     <ClInclude Include="Source\Graphics\shadow_system.h">
       <Filter>Source\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Graphics\obj_model.h">
+      <Filter>Source\Graphics</Filter>
+    </ClInclude>
     <!-- UI -->
     <ClInclude Include="Source\UI\score_hud.h">
       <Filter>Source\UI</Filter>
@@ -323,6 +365,9 @@
       <Filter>Source\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\UI\option_ui.h">
+      <Filter>Source\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\UI\item_notification_hud.h">
       <Filter>Source\UI</Filter>
     </ClInclude>
     <!-- Effect -->

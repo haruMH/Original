@@ -10,6 +10,7 @@
 #include "shockwave.h"
 #include "enemy_bullet.h"
 #include "enemy.h"
+#include "progression_manager.h"
 
 using namespace DirectX;
 
@@ -38,8 +39,9 @@ void Player::Init()
     m_MarkerTimer      = 0;
     m_LightningEffects.clear();
 
-    m_HP               = Constants::Player::MAX_HP;
-    m_MaxHP            = Constants::Player::MAX_HP;
+    int extraHP        = ProgressionManager::GetExtraMaxHP();
+    m_HP               = Constants::Player::MAX_HP + extraHP;
+    m_MaxHP            = Constants::Player::MAX_HP + extraHP;
     m_DamageTimer      = 0;
     m_InvincibleTimer  = 0;
     m_GuardTimer       = 0;
