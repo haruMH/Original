@@ -18,5 +18,8 @@ public:
     void Draw() override;
 
 private:
-    float m_OrbitAngle = 0.0f; // カメラ旋回用アングル
+    float m_OrbitAngle = 0.0f;       // カメラ旋回用アングル
+    int   m_SelectedIndex = 0;      // 0: つづきから, 1: はじめから
+    bool  m_HasSaveData = false;    // セーブデータの有無
+    bool  m_ShowNewGameConfirm = false; // 「はじめから」上書き確認
 };

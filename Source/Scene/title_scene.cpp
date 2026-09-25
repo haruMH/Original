@@ -12,6 +12,7 @@
 #include "score_popup.h"
 #include "save_system.h"
 #include "player_controller.h"
+#include "imgui/imgui.h"
 #include <cmath>
 
 // =================================================================
@@ -172,6 +173,12 @@ namespace {
 void TitleScene::Init()
 {
     m_OrbitAngle = 0.0f;
+    m_HasSaveData = SaveSystem::HasSaveFile();
+    m_SelectedIndex = 0; // デフォルトで「つづきから」（セーブデータ有時）
+    m_ShowNewGameConfirm = false;
+
+    // タイトル画面ではUI操作のためマウスロックを解除
+    Input::SetMouseLocked(false);
 
     // 前シーンのエフェクト残存を防止
     ShockwaveSystem::Clear();
@@ -246,20 +253,162 @@ void TitleScene::Update()
         player->SetDamageTimer(99999);
     }
 
-    // 3. Enter/Space/決定ボタンで拠点HUBへ遷移（初回完全新規データ時はチュートリアルへ）
-    if (Input::GetKeyTrigger(VK_RETURN) || Input::GetKeyTrigger(VK_SPACE) || PlayerController::IsGrabOrThrowAction()) {
-        SoundManager::PlaySE(SoundID::SE_DECIDE);
-        if (SaveSystem::GetData().totalClears == 0 && SaveSystem::GetData().totalKills == 0) {
-            Manager::ChangeScene(Scene::TUTORIAL);
+    // 3. メニューキーボード操作
+    if (m_ShowNewGameConfirm) {
+        // 上書き確認中: ESCキーまたはBボタンでキャンセル
+        if (Input::GetKeyTrigger(VK_ESCAPE) || PlayerController::IsGuardAction()) {
+            m_ShowNewGameConfirm = false;
+        }
+    } else {
+        if (m_HasSaveData) {
+            // 上下選択（W/S または 上下矢印キー）
+            if (Input::GetKeyTrigger('W') || Input::GetKeyTrigger(VK_UP)) {
+                m_SelectedIndex = (m_SelectedIndex - 1 + 2) % 2;
+            }
+            if (Input::GetKeyTrigger('S') || Input::GetKeyTrigger(VK_DOWN)) {
+                m_SelectedIndex = (m_SelectedIndex + 1) % 2;
+            }
+
+            // 決定入力
+            if (Input::GetKeyTrigger(VK_RETURN) || Input::GetKeyTrigger(VK_SPACE) || PlayerController::IsGrabOrThrowAction()) {
+                SoundManager::PlaySE(SoundID::SE_DECIDE);
+                if (m_SelectedIndex == 0) {
+                    // つづきから: データをロードして拠点へ
+                    SaveSystem::Load();
+                    Manager::ChangeScene(Scene::HUB);
+                } else {
+                    // はじめから: 上書き確認を表示
+                    m_ShowNewGameConfirm = true;
+                }
+            }
         } else {
-            Manager::ChangeScene(Scene::HUB);
+            // セーブデータなし: ゲーム開始（チュートリアルへ）
+            if (Input::GetKeyTrigger(VK_RETURN) || Input::GetKeyTrigger(VK_SPACE) || PlayerController::IsGrabOrThrowAction()) {
+                SoundManager::PlaySE(SoundID::SE_DECIDE);
+                Manager::ChangeScene(Scene::TUTORIAL);
+            }
         }
     }
 }
 
 // =================================================================
-// 描画処理
+// 描画処理 (ImGui によるタイトル画面メニューUI)
 // =================================================================
 void TitleScene::Draw()
 {
+    ImGuiIO& io = ImGui::GetIO();
+    float screenW = io.DisplaySize.x;
+    float screenH = io.DisplaySize.y;
+
+    // 画面下部中央にメニューパネルを配置
+    ImGui::SetNextWindowPos(ImVec2(screenW * 0.5f, screenH * 0.72f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(480.0f, 0.0f));
+
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
+                           | ImGuiWindowFlags_NoResize
+                           | ImGuiWindowFlags_NoMove
+                           | ImGuiWindowFlags_NoScrollbar
+                           | ImGuiWindowFlags_NoSavedSettings;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(24.0f, 20.0f));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.04f, 0.06f, 0.12f, 0.88f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.25f, 0.50f, 0.90f, 0.70f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
+
+    if (ImGui::Begin("TitleMenuOverlay", nullptr, flags)) {
+        // タイトル見出し
+        ImGui::SetWindowFontScale(1.4f);
+        const char* titleText = (const char*)u8"TOON SLASHER";
+        float titleW = ImGui::CalcTextSize(titleText).x;
+        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - titleW) * 0.5f);
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.25f, 1.0f), "%s", titleText);
+        ImGui::SetWindowFontScale(1.0f);
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (m_ShowNewGameConfirm) {
+            // 上書き確認ダイアログ
+            ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), (const char*)u8"※既存のセーブデータが上書きされます！");
+            ImGui::Text((const char*)u8"本当にはじめから開始しますか？");
+            ImGui::Spacing();
+
+            if (ImGui::Button((const char*)u8"はい (開始)", ImVec2(200, 42))) {
+                SoundManager::PlaySE(SoundID::SE_DECIDE);
+                SaveSystem::ResetData();
+                SaveSystem::Save();
+                Manager::ChangeScene(Scene::TUTORIAL);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button((const char*)u8"いいえ (戻る)", ImVec2(200, 42))) {
+                m_ShowNewGameConfirm = false;
+            }
+        } else {
+            if (m_HasSaveData) {
+                // 1. つづきから (CONTINUE)
+                bool isContinueSelected = (m_SelectedIndex == 0);
+                if (isContinueSelected) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.52f, 0.95f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.62f, 1.0f, 1.0f));
+                } else {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.8f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.30f, 0.45f, 1.0f));
+                }
+
+                std::string continueLabel = std::string((const char*)u8"つづきから (拠点キャンプ)") + (isContinueSelected ? "  <" : "");
+                if (ImGui::Button(continueLabel.c_str(), ImVec2(-1, 46))) {
+                    SoundManager::PlaySE(SoundID::SE_DECIDE);
+                    SaveSystem::Load();
+                    Manager::ChangeScene(Scene::HUB);
+                }
+                ImGui::PopStyleColor(2);
+
+                // セーブデータプレビュー
+                const SaveData& data = SaveSystem::GetData();
+                ImGui::TextColored(ImVec4(0.65f, 0.75f, 0.85f, 1.0f),
+                    (const char*)u8"  討伐: %d体 | クリア: %d回 | 最大コンボ: %d",
+                    data.totalKills, data.totalClears, data.highestCombo);
+
+                ImGui::Spacing();
+                ImGui::Spacing();
+
+                // 2. はじめから (NEW GAME)
+                bool isNewGameSelected = (m_SelectedIndex == 1);
+                if (isNewGameSelected) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.52f, 0.95f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.62f, 1.0f, 1.0f));
+                } else {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.8f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.30f, 0.45f, 1.0f));
+                }
+
+                std::string newGameLabel = std::string((const char*)u8"はじめから (チュートリアル)") + (isNewGameSelected ? "  <" : "");
+                if (ImGui::Button(newGameLabel.c_str(), ImVec2(-1, 40))) {
+                    SoundManager::PlaySE(SoundID::SE_DECIDE);
+                    m_ShowNewGameConfirm = true;
+                }
+                ImGui::PopStyleColor(2);
+            } else {
+                // 初回起動（セーブデータなし）: ゲーム開始
+                if (ImGui::Button((const char*)u8"ゲーム開始 (START)", ImVec2(-1, 50))) {
+                    SoundManager::PlaySE(SoundID::SE_DECIDE);
+                    Manager::ChangeScene(Scene::TUTORIAL);
+                }
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // 操作ガイド
+            ImGui::TextColored(ImVec4(0.50f, 0.55f, 0.65f, 1.0f),
+                (const char*)u8"操作: W/Sキー (上下選択) | Space/Enter (決定)");
+        }
+    }
+    ImGui::End();
+
+    ImGui::PopStyleColor(2);
+    ImGui::PopStyleVar(3);
 }

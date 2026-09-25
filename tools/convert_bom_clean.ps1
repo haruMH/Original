@@ -8,6 +8,7 @@ $files = @(
     "Source\Core\progression_manager.cpp",
     "Source\Stage\material_drop.h",
     "Source\Stage\material_drop.cpp",
+    "Source\Scene\title_scene.h",
     "Source\Scene\title_scene.cpp",
     "Source\Scene\hub_scene.h",
     "Source\Scene\hub_scene.cpp",

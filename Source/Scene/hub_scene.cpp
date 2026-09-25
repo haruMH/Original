@@ -45,6 +45,10 @@ void HubScene::Init()
     m_SelectedAbilityIndex = 0;
     m_SelectedQuestIndex = 0;
 
+    // 拠点キャンプ到達時にチュートリアル完了を記録・保存
+    SaveSystem::SetTutorialCompleted(true);
+    SaveSystem::Save();
+
     // 1. 地面と空
     Manager::AddGameObject<Field>();
     Manager::AddGameObject<Skybox>();

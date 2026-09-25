@@ -48,6 +48,7 @@ bool SaveSystem::Save()
     ofs << "TOTAL_CLEARS=" << m_CurrentData.totalClears << "\n";
     ofs << "MAX_COMBO=" << m_CurrentData.highestCombo << "\n";
     ofs << "PLAY_TIME=" << m_CurrentData.playTimeSeconds << "\n";
+    ofs << "TUTORIAL_COMPLETED=" << (m_CurrentData.tutorialCompleted ? 1 : 0) << "\n";
 
     ofs.flush();
     ofs.close();
@@ -61,6 +62,18 @@ bool SaveSystem::Save()
 
     OutputDebugStringA("[SaveSystem] Save successfully completed.\n");
     return true;
+}
+
+bool SaveSystem::HasSaveFile()
+{
+    std::ifstream ifs(m_SaveFilePath);
+    return ifs.good();
+}
+
+void SaveSystem::ResetData()
+{
+    m_CurrentData = SaveData();
+    m_IsLoaded = true;
 }
 
 bool SaveSystem::Load()
@@ -124,6 +137,10 @@ bool SaveSystem::Load()
         else if (key == "PLAY_TIME")
         {
             m_CurrentData.playTimeSeconds = std::stoi(val);
+        }
+        else if (key == "TUTORIAL_COMPLETED")
+        {
+            m_CurrentData.tutorialCompleted = (std::stoi(val) != 0);
         }
     }
 

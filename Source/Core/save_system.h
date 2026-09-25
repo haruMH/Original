@@ -20,6 +20,9 @@ struct SaveData
     int totalClears = 0;
     int highestCombo = 0;
     int playTimeSeconds = 0;
+
+    // Progression
+    bool tutorialCompleted = false;
 };
 
 // =================================================================
@@ -42,8 +45,17 @@ public:
     // Load
     static bool Load();
 
+    // Check save file existence
+    static bool HasSaveFile();
+
+    // Reset data to defaults (New Game)
+    static void ResetData();
+
     // Current save data reference
     static SaveData& GetData() { return m_CurrentData; }
+
+    static bool IsTutorialCompleted() { return m_CurrentData.tutorialCompleted; }
+    static void SetTutorialCompleted(bool completed = true) { m_CurrentData.tutorialCompleted = completed; }
 
     // Material inventory operations
     static int  GetMaterialCount(MaterialType type);
