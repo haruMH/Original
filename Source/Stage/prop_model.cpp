@@ -21,9 +21,9 @@ PropModel::~PropModel()
 void PropModel::Init()
 {
     m_Position = XMFLOAT3(0.0f, 0.0f, 0.0f);
-    m_Rotation = XMFLOAT3(0.0f, 0.5f, 0.0f);
+    m_Rotation = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_Scale    = XMFLOAT3(1.0f, 1.0f, 1.0f);
-    m_Size     = XMFLOAT3(1.0f, 1.0f, 1.0f);
+    m_Size     = XMFLOAT3(0.0f, 0.0f, 0.0f); // デフォルトは衝突なし。必要なプロップのみSetSizeで設定
 }
 
 // =================================================================

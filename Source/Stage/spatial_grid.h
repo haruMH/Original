@@ -1,7 +1,8 @@
-﻿#pragma once
+#pragma once
 #include <vector>
 #include <directxmath.h>
 #include "game_constants.h"
+#include <game_constants.h>
 
 class Enemy;
 

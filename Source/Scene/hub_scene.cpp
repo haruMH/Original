@@ -19,9 +19,9 @@
 using namespace DirectX;
 
 namespace {
-    const XMFLOAT3 FORGE_POS = XMFLOAT3(-5.0f, 0.0f, 4.0f);
-    const XMFLOAT3 GATE_POS  = XMFLOAT3(5.0f, 0.0f, 4.0f);
-    const float INTERACT_RADIUS = 3.0f;
+    const XMFLOAT3 FORGE_POS = XMFLOAT3(-10.0f, 0.0f, 8.0f);
+    const XMFLOAT3 GATE_POS  = XMFLOAT3(10.0f, 0.0f, 8.0f);
+    const float INTERACT_RADIUS = 4.0f;
 }
 
 HubScene::HubScene()
@@ -51,19 +51,22 @@ void HubScene::Init()
 
     // 1. 地面と空
     Manager::AddGameObject<Field>();
-    Manager::AddGameObject<Skybox>();
+    Skybox* sky = Manager::AddGameObject<Skybox>();
+    if (sky) {
+        sky->SetSkyType(SkyType::Sunset); // 夕暮れの温かいキャラバンキャンプ
+    }
 
-    // 2. プレイヤー
+    // 2. プレイヤー（広場南側からキャンプ全体を見渡せる位置にスポーン）
     Player* player = Manager::AddGameObject<Player>();
-    player->SetPosition(XMFLOAT3(0.0f, -0.5f, -3.0f));
+    player->SetPosition(XMFLOAT3(0.0f, -0.5f, -6.0f));
     player->SetRotation(XMFLOAT3(0.0f, 0.0f, 0.0f));
 
     if (g_Camera) {
-        g_Camera->SetAngles(0.25f, 0.0f);
+        g_Camera->SetAngles(0.28f, 0.0f);
     }
 
-    // 3. 拠点の外周壁 (16m x 16m)
-    float halfSize = 8.0f;
+    // 3. 拠点の外周壁 (44m x 44m) - プレイヤーの落下防止境界（広大な開放感）
+    float halfSize = 22.0f;
     float wallH = 4.0f;
     float wallY = 1.5f;
     float thick = 1.0f;
@@ -88,31 +91,122 @@ void HubScene::Init()
     wW->SetPosition(XMFLOAT3(-(halfSize + thick * 0.5f), wallY, 0.0f));
     wW->SetScale(XMFLOAT3(thick, wallH, halfSize * 2.0f + thick * 2.0f));
 
-    // 4. 工房（Forge）3Dモデルオブジェクト（Kenney: Workbench Anvil）
-    PropModel* forgeAnvil = Manager::AddGameObject<PropModel>();
-    forgeAnvil->LoadModel("Assets/model/workbench_anvil/workbenchAnvil.obj", "Assets/model/workbench_anvil/workbenchAnvil.mtl");
-    forgeAnvil->SetPosition(XMFLOAT3(FORGE_POS.x, -1.0f, FORGE_POS.z)); // 地面(-1.0f)に接地
-    forgeAnvil->SetScale(XMFLOAT3(7.0f, 7.0f, 7.0f));
-    forgeAnvil->SetRotation(XMFLOAT3(0.0f, XM_PI, 0.0f));     // 時計回りに90度回転 (XM_PI)
-    forgeAnvil->SetSize(XMFLOAT3(0.35f, 0.35f, 0.35f));       // 当たり判定のローカル直方体サイズ (実寸 0.35 * 7.0 = 2.45m)
+    // プロップ配置ヘルパー（collSizeが(0,0,0)の場合は当たり判定なし）
+    auto AddProp = [](const std::string& obj, const std::string& mtl, const XMFLOAT3& pos, const XMFLOAT3& scale, float rotY = 0.0f, const XMFLOAT3& collSize = XMFLOAT3(0.0f, 0.0f, 0.0f)) -> PropModel* {
+        PropModel* prop = Manager::AddGameObject<PropModel>();
+        prop->LoadModel(obj, mtl);
+        prop->SetPosition(pos);
+        prop->SetScale(scale);
+        prop->SetRotation(XMFLOAT3(0.0f, rotY, 0.0f));
+        prop->SetSize(collSize);
+        return prop;
+    };
 
-    // 5. 出撃ゲート（Quest Gate）オブジェクト
+    // =================================================================
+    // 4. キャラバン・ベースキャンプ 広々プロップ配置（44m x 44m空間）
+    // =================================================================
+
+    // --- (A) 広場中央：憩いの焚き火エリア ---
+    // 焚き火台（中央火床のみブロック、スタンドは通過可能）
+    AddProp("Assets/model/campfire/campfire-pit.obj", "Assets/model/campfire/campfire-pit.mtl",
+            XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT3(4.5f, 4.5f, 4.5f), 0.0f, XMFLOAT3(0.24f, 0.15f, 0.24f));
+    AddProp("Assets/model/campfire/campfire-stand.obj", "Assets/model/campfire/campfire-stand.mtl",
+            XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT3(4.5f, 4.5f, 4.5f), 0.0f, XMFLOAT3(0.0f, 0.0f, 0.0f));
+    // 焚き火脇の休憩用木箱・丸太
+    AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
+            XMFLOAT3(2.2f, -1.0f, 0.5f), XMFLOAT3(3.2f, 3.2f, 3.2f), 0.3f, XMFLOAT3(0.24f, 0.25f, 0.24f));
+    AddProp("Assets/model/barrel/barrel.obj", "Assets/model/barrel/barrel.mtl",
+            XMFLOAT3(-2.0f, -1.0f, -0.6f), XMFLOAT3(3.5f, 3.5f, 3.5f), 0.0f, XMFLOAT3(0.22f, 0.35f, 0.22f));
+
+    // --- (B) 西〜南西エリア：マイテント / 休息所・身支度エリア ---
+    // 大型テント（広場を向く・テント本体のみブロック）
+    AddProp("Assets/model/tent/tent.obj", "Assets/model/tent/tent.mtl",
+            XMFLOAT3(-11.0f, -1.0f, -8.0f), XMFLOAT3(7.0f, 7.0f, 7.0f), XM_PIDIV4 + 0.3f, XMFLOAT3(0.48f, 0.5f, 0.48f));
+    // 寝袋（敷布団：プレイヤーが上に乗れるよう当たり判定なし）
+    AddProp("Assets/model/bedroll/bedroll.obj", "Assets/model/bedroll/bedroll.mtl",
+            XMFLOAT3(-8.5f, -0.95f, -5.8f), XMFLOAT3(5.0f, 5.0f, 5.0f), XM_PIDIV4, XMFLOAT3(0.0f, 0.0f, 0.0f));
+    // アイテムBOX（宝箱）
+    AddProp("Assets/model/box/chest.obj", "Assets/model/box/chest.mtl",
+            XMFLOAT3(-6.8f, -1.0f, -8.8f), XMFLOAT3(4.2f, 4.2f, 4.2f), -0.25f, XMFLOAT3(0.24f, 0.25f, 0.25f));
+    // テント脇の備蓄木箱
+    AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
+            XMFLOAT3(-12.5f, -1.0f, -5.5f), XMFLOAT3(3.8f, 3.8f, 3.8f), 0.5f, XMFLOAT3(0.24f, 0.25f, 0.24f));
+
+    // --- (C) 北西エリア：工房・鍛冶屋エリア ---
+    // 金床作業台 (Forge)
+    PropModel* forgeAnvil = AddProp("Assets/model/workbench_anvil/workbenchAnvil.obj", "Assets/model/workbench_anvil/workbenchAnvil.mtl",
+                                    XMFLOAT3(FORGE_POS.x, -1.0f, FORGE_POS.z), XMFLOAT3(6.5f, 6.5f, 6.5f), XM_PI, XMFLOAT3(0.30f, 0.28f, 0.27f));
+    // 工房周りの道具箱と樽（水樽 / 冷却水）
+    AddProp("Assets/model/barrel/barrel-open.obj", "Assets/model/barrel/barrel-open.mtl",
+            XMFLOAT3(FORGE_POS.x - 2.5f, -1.0f, FORGE_POS.z + 1.2f), XMFLOAT3(4.5f, 4.5f, 4.5f), 0.0f, XMFLOAT3(0.22f, 0.35f, 0.22f));
+    AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
+            XMFLOAT3(FORGE_POS.x - 2.2f, -1.0f, FORGE_POS.z - 1.5f), XMFLOAT3(3.8f, 3.8f, 3.8f), 0.4f, XMFLOAT3(0.24f, 0.25f, 0.24f));
+    AddProp("Assets/model/box/box-open.obj", "Assets/model/box/box-open.mtl",
+            XMFLOAT3(FORGE_POS.x + 2.0f, -1.0f, FORGE_POS.z + 1.5f), XMFLOAT3(3.5f, 3.5f, 3.5f), -0.3f, XMFLOAT3(0.24f, 0.25f, 0.24f));
+    // 工房背後の木製フェンス（幅3m, 厚さ0.45m）
+    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
+            XMFLOAT3(FORGE_POS.x, -1.0f, FORGE_POS.z + 3.2f), XMFLOAT3(5.5f, 5.5f, 5.5f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
+
+    // --- (D) 北東エリア：出撃ゲート・クエスト掲示板エリア ---
+    // クエスト掲示板 (Signpost: 幅1.0m, 厚さ0.3m)
+    AddProp("Assets/model/signpost/signpost.obj", "Assets/model/signpost/signpost.mtl",
+            XMFLOAT3(GATE_POS.x - 3.2f, -1.0f, GATE_POS.z - 1.2f), XMFLOAT3(5.0f, 5.0f, 5.0f), -0.5f, XMFLOAT3(0.20f, 0.45f, 0.06f));
+    // 門脇の物資（樽と木箱）
+    AddProp("Assets/model/barrel/barrel.obj", "Assets/model/barrel/barrel.mtl",
+            XMFLOAT3(GATE_POS.x + 2.5f, -1.0f, GATE_POS.z - 1.0f), XMFLOAT3(4.5f, 4.5f, 4.5f), 0.0f, XMFLOAT3(0.22f, 0.35f, 0.22f));
+    AddProp("Assets/model/box/chest.obj", "Assets/model/box/chest.mtl",
+            XMFLOAT3(GATE_POS.x + 2.2f, -1.0f, GATE_POS.z + 1.2f), XMFLOAT3(4.0f, 4.0f, 4.0f), 0.2f, XMFLOAT3(0.24f, 0.25f, 0.25f));
+
+    // 出撃ゲート（Quest Gate）柱オブジェクト
     Wall* gateL = Manager::AddGameObject<Wall>();
-    gateL->SetPosition(XMFLOAT3(GATE_POS.x - 1.2f, 1.6f, GATE_POS.z));
+    gateL->SetPosition(XMFLOAT3(GATE_POS.x - 1.5f, 1.6f, GATE_POS.z));
     gateL->SetScale(XMFLOAT3(0.7f, 3.5f, 0.7f));
 
     Wall* gateR = Manager::AddGameObject<Wall>();
-    gateR->SetPosition(XMFLOAT3(GATE_POS.x + 1.2f, 1.6f, GATE_POS.z));
+    gateR->SetPosition(XMFLOAT3(GATE_POS.x + 1.5f, 1.6f, GATE_POS.z));
     gateR->SetScale(XMFLOAT3(0.7f, 3.5f, 0.7f));
 
     Wall* gateTop = Manager::AddGameObject<Wall>();
     gateTop->SetPosition(XMFLOAT3(GATE_POS.x, 3.4f, GATE_POS.z));
-    gateTop->SetScale(XMFLOAT3(3.2f, 0.6f, 0.8f));
+    gateTop->SetScale(XMFLOAT3(3.8f, 0.6f, 0.8f));
 
-    // 6. 試し振りサンドバッグ (HP無限)
+    // --- (E) 北中央：修練エリア（試し振りサンドバッグ） ---
     Enemy* dummy = Manager::AddGameObject<Enemy>();
-    dummy->SetPosition(XMFLOAT3(0.0f, -0.5f, 4.5f));
+    dummy->SetPosition(XMFLOAT3(0.0f, -0.5f, 13.0f));
     dummy->SetSandbag(true, 999999);
+    // サンドバッグ脇の案内立て札（細い看板なので衝突なし）
+    AddProp("Assets/model/signpost/signpost-single.obj", "Assets/model/signpost/signpost-single.mtl",
+            XMFLOAT3(-2.2f, -1.0f, 12.0f), XMFLOAT3(4.0f, 4.0f, 4.0f), 0.3f, XMFLOAT3(0.0f, 0.0f, 0.0f));
+    // 修練場の背景フェンス
+    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
+            XMFLOAT3(-3.0f, -1.0f, 15.5f), XMFLOAT3(5.5f, 5.5f, 5.5f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
+    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
+            XMFLOAT3(3.0f, -1.0f, 15.5f), XMFLOAT3(5.5f, 5.5f, 5.5f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
+
+    // --- (F) 南東エリア：将来の食事処・屋台スペース（生活感プロップ） ---
+    AddProp("Assets/model/barrel/barrel.obj", "Assets/model/barrel/barrel.mtl",
+            XMFLOAT3(9.5f, -1.0f, -6.5f), XMFLOAT3(4.2f, 4.2f, 4.2f), 0.0f, XMFLOAT3(0.22f, 0.35f, 0.22f));
+    AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
+            XMFLOAT3(11.0f, -1.0f, -5.2f), XMFLOAT3(3.5f, 3.5f, 3.5f), 0.4f, XMFLOAT3(0.24f, 0.25f, 0.24f));
+
+    // --- (G) キャンプ外周の防護柵（実寸幅3.0m, 厚さ0.48mの薄板コライダー） ---
+    // 南側（東西に伸びる柵：回転なし）
+    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
+            XMFLOAT3(-8.0f, -1.0f, -15.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
+    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
+            XMFLOAT3(0.0f, -1.0f, -15.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
+    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
+            XMFLOAT3(8.0f, -1.0f, -15.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
+    // 東側（南北に伸びる柵：90度回転）
+    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
+            XMFLOAT3(16.0f, -1.0f, -8.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2, XMFLOAT3(0.50f, 0.5f, 0.08f));
+    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
+            XMFLOAT3(16.0f, -1.0f, 2.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2, XMFLOAT3(0.50f, 0.5f, 0.08f));
+    // 西側（南北に伸びる柵：90度回転）
+    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
+            XMFLOAT3(-16.0f, -1.0f, -8.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2, XMFLOAT3(0.50f, 0.5f, 0.08f));
+    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
+            XMFLOAT3(-16.0f, -1.0f, 2.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2, XMFLOAT3(0.50f, 0.5f, 0.08f));
 }
 
 void HubScene::Uninit()

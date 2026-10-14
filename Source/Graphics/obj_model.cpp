@@ -32,13 +32,17 @@ void ObjModel::Uninit()
         m_RasterizerStateNoCull->Release();
         m_RasterizerStateNoCull = nullptr;
     }
+    if (m_TextureSRV) {
+        m_TextureSRV->Release();
+        m_TextureSRV = nullptr;
+    }
     m_VertexCount = 0;
 }
 
 // =================================================================
 // MTLマテリアル読み込み
 // =================================================================
-void ObjModel::LoadMtl(const std::string& mtlPath, std::unordered_map<std::string, XMFLOAT4>& materials)
+void ObjModel::LoadMtl(const std::string& mtlPath, std::unordered_map<std::string, XMFLOAT4>& materials, std::string& outTexture)
 {
     std::ifstream file(mtlPath);
     if (!file.is_open()) return;
@@ -63,6 +67,8 @@ void ObjModel::LoadMtl(const std::string& mtlPath, std::unordered_map<std::strin
             char mbuf[128];
             sprintf_s(mbuf, "[ObjModel] Mat: %s -> Kd(%.2f, %.2f, %.2f)\n", currentMatName.c_str(), r, g, b);
             OutputDebugStringA(mbuf);
+        } else if (tag == "map_Kd") {
+            iss >> outTexture;
         }
     }
 }
@@ -86,9 +92,10 @@ bool ObjModel::Load(const std::string& objPath, const std::string& mtlPath)
         dir = objPath.substr(0, lastSlash + 1);
     }
 
+    std::string textureFileName = "";
     std::unordered_map<std::string, XMFLOAT4> materials;
     if (!mtlPath.empty()) {
-        LoadMtl(mtlPath, materials);
+        LoadMtl(mtlPath, materials, textureFileName);
     }
 
     std::vector<XMFLOAT3> positions;
@@ -109,7 +116,7 @@ bool ObjModel::Load(const std::string& objPath, const std::string& mtlPath)
         if (tag == "mtllib" && mtlPath.empty()) {
             std::string mtlFileName;
             iss >> mtlFileName;
-            LoadMtl(dir + mtlFileName, materials);
+            LoadMtl(dir + mtlFileName, materials, textureFileName);
         } else if (tag == "usemtl") {
             std::string matName;
             iss >> matName;
@@ -221,8 +228,19 @@ bool ObjModel::Load(const std::string& objPath, const std::string& mtlPath)
     rd.DepthClipEnable = TRUE;
     Renderer::GetDevice()->CreateRasterizerState(&rd, &m_RasterizerStateNoCull);
 
+    // テクスチャがある場合はロード
+    if (!textureFileName.empty()) {
+        std::string texPath = dir + textureFileName;
+        std::ifstream tf(texPath);
+        if (!tf.is_open()) {
+            texPath = "Assets/model/Textures/colormap.png";
+        }
+        Renderer::CreateTexture(texPath.c_str(), &m_TextureSRV);
+    }
+
     char buf[256];
-    sprintf_s(buf, "[ObjModel] Successfully loaded: %s (Vertices: %d)\n", objPath.c_str(), m_VertexCount);
+    sprintf_s(buf, "[ObjModel] Successfully loaded: %s (Vertices: %d, Tex: %s)\n",
+        objPath.c_str(), m_VertexCount, m_TextureSRV ? "Yes" : "No");
     OutputDebugStringA(buf);
 
     return true;
@@ -238,10 +256,16 @@ void ObjModel::Draw(const XMMATRIX& worldMatrix)
 
     Renderer::SetWorldMatrix(worldMatrix);
 
-    // テクスチャ無効で頂点カラー（Diffuse）をライティング計算に反映
-    ID3D11ShaderResourceView* nullSRV = nullptr;
-    Renderer::GetDeviceContext()->PSSetShaderResources(0, 1, &nullSRV);
-    Renderer::GetDeviceContext()->PSSetShaderResources(1, 1, &nullSRV);
+    // テクスチャまたは頂点カラー（Diffuse）を設定
+    if (m_TextureSRV) {
+        Renderer::GetDeviceContext()->PSSetShaderResources(0, 1, &m_TextureSRV);
+        ID3D11ShaderResourceView* nullSRV = nullptr;
+        Renderer::GetDeviceContext()->PSSetShaderResources(1, 1, &nullSRV);
+    } else {
+        ID3D11ShaderResourceView* nullSRV = nullptr;
+        Renderer::GetDeviceContext()->PSSetShaderResources(0, 1, &nullSRV);
+        Renderer::GetDeviceContext()->PSSetShaderResources(1, 1, &nullSRV);
+    }
 
     MATERIAL material;
     ZeroMemory(&material, sizeof(material));
@@ -249,7 +273,7 @@ void ObjModel::Draw(const XMMATRIX& worldMatrix)
     material.Ambient = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     material.Specular = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
     material.Shininess = 20.0f;
-    material.TextureEnable = FALSE;
+    material.TextureEnable = (m_TextureSRV != nullptr) ? TRUE : FALSE;
     Renderer::SetMaterial(material);
 
     // キューブ共通のシェーダー・定数バッファ・パイプラインステートをセット

@@ -30,9 +30,33 @@ bool Collision::CheckAABB(const GameObject* a, const DirectX::XMFLOAT3& nextPosA
         scaleB = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
     }
 
-    // X, Y, Z 各軸でお互いに重なっているかを判定
-    bool collisionX = std::abs(nextPosA.x - posB.x) < (sizeA.x * scaleA.x + sizeB.x * scaleB.x) * 0.5f;
-    bool collisionZ = std::abs(nextPosA.z - posB.z) < (sizeA.z * scaleA.z + sizeB.z * scaleB.z) * 0.5f;
+    // 回転（Y軸回転）を考慮したワールド空間でのAABB半幅・半奥行きを計算
+    auto CalcExtents = [](const GameObject* obj, const DirectX::XMFLOAT3& scl) -> DirectX::XMFLOAT2 {
+        DirectX::XMFLOAT3 sz = obj->GetSize();
+        if (sz.x <= 0.001f || sz.z <= 0.001f) return DirectX::XMFLOAT2(0.0f, 0.0f);
+
+        float hw = sz.x * scl.x * 0.5f;
+        float hd = sz.z * scl.z * 0.5f;
+        float rotY = obj->GetRotation().y;
+        if (std::abs(rotY) > 0.001f) {
+            float cosR = std::abs(cosf(rotY));
+            float sinR = std::abs(sinf(rotY));
+            return DirectX::XMFLOAT2(hw * cosR + hd * sinR, hw * sinR + hd * cosR);
+        }
+        return DirectX::XMFLOAT2(hw, hd);
+    };
+
+    DirectX::XMFLOAT2 extA = CalcExtents(a, scaleA);
+    DirectX::XMFLOAT2 extB = CalcExtents(b, scaleB);
+
+    // どちらかの当たり判定サイズが0（装飾物など）の場合は衝突しない
+    if ((extA.x <= 0.001f && extA.y <= 0.001f) || (extB.x <= 0.001f && extB.y <= 0.001f)) {
+        return false;
+    }
+
+    // X, Z 各軸でお互いに重なっているかを判定
+    bool collisionX = std::abs(nextPosA.x - posB.x) < (extA.x + extB.x);
+    bool collisionZ = std::abs(nextPosA.z - posB.z) < (extA.y + extB.y);
 
     // 壁（Wall）および固定オブジェクト（Prop）との判定時は、プレイヤーがジャンプやノックバックで上空に浮いても
     // 飛び越えてめり込まないよう、地面以上の高さであればY軸は常に衝突（無限高の壁）とみなす
@@ -92,14 +116,17 @@ bool Collision::CheckAABBCollision(const GameObject* self, const DirectX::XMFLOA
         }
 
         if (CheckAABB(self, nextPos, obj)) {
-            // 既に相手のバウンディングボックス内にめり込んでいる場合、
-            // 相手の中心から離れる方向への移動であれば脱出を許可する
-            if (CheckAABB(self, curPos, obj)) {
-                DirectX::XMFLOAT3 objPos = obj->GetPosition();
-                float curDistSq  = MathHelper::DistanceSq(curPos, objPos);
-                float nextDistSq = MathHelper::DistanceSq(nextPos, objPos);
-                if (nextDistSq > curDistSq) {
-                    continue; // 離脱移動のため衝突とみなさない
+            // 壁や固定プロップは静的障害物のため、すり抜け・貫通を絶対に許さない
+            if (objType != ObjectType::Wall && objType != ObjectType::Prop) {
+                // 既に相手（動的エネミー等）のバウンディングボックス内にめり込んでいる場合のみ、
+                // 相手の中心から離れる方向への移動であれば脱出を許可する
+                if (CheckAABB(self, curPos, obj)) {
+                    DirectX::XMFLOAT3 objPos = obj->GetPosition();
+                    float curDistSq  = MathHelper::DistanceSq(curPos, objPos);
+                    float nextDistSq = MathHelper::DistanceSq(nextPos, objPos);
+                    if (nextDistSq > curDistSq) {
+                        continue; // 離脱移動のため衝突とみなさない
+                    }
                 }
             }
 
@@ -171,19 +198,34 @@ void Collision::ResolveAABBCollision(GameObject* self, const std::vector<GameObj
     if (!self || self->IsDestroy()) return;
 
     DirectX::XMFLOAT3 posA = self->GetPosition();
-    DirectX::XMFLOAT3 sizeA = self->GetSize();
     DirectX::XMFLOAT3 scaleA = self->GetScale();
     if (self->GetObjectType() == ObjectType::Player) {
         scaleA = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
     }
 
-    float radiusA_X = sizeA.x * scaleA.x * 0.5f;
-    float radiusA_Z = sizeA.z * scaleA.z * 0.5f;
+    auto CalcExtents = [](const GameObject* obj, const DirectX::XMFLOAT3& scl) -> DirectX::XMFLOAT2 {
+        DirectX::XMFLOAT3 sz = obj->GetSize();
+        if (sz.x <= 0.001f || sz.z <= 0.001f) return DirectX::XMFLOAT2(0.0f, 0.0f);
+
+        float hw = sz.x * scl.x * 0.5f;
+        float hd = sz.z * scl.z * 0.5f;
+        float rotY = obj->GetRotation().y;
+        if (std::abs(rotY) > 0.001f) {
+            float cosR = std::abs(cosf(rotY));
+            float sinR = std::abs(sinf(rotY));
+            return DirectX::XMFLOAT2(hw * cosR + hd * sinR, hw * sinR + hd * cosR);
+        }
+        return DirectX::XMFLOAT2(hw, hd);
+    };
+
+    DirectX::XMFLOAT2 extA = CalcExtents(self, scaleA);
+    if (extA.x <= 0.001f && extA.y <= 0.001f) return;
 
     for (GameObject* obj : objList) {
         if (!obj || obj == self || obj->IsDestroy()) continue;
         ObjectType objType = obj->GetObjectType();
-        if (objType == ObjectType::Field || objType == ObjectType::Skybox || objType == ObjectType::Unknown) continue;
+        if (objType == ObjectType::Field || objType == ObjectType::Skybox || objType == ObjectType::Unknown ||
+            objType == ObjectType::Item || objType == ObjectType::MaterialDrop || objType == ObjectType::Bullet) continue;
 
         if (objType == ObjectType::Enemy) {
             Enemy* enemy = static_cast<Enemy*>(obj);
@@ -191,34 +233,36 @@ void Collision::ResolveAABBCollision(GameObject* self, const std::vector<GameObj
             if (eState == EnemyState::GRABBED || eState == EnemyState::DEFEATED || eState == EnemyState::BLOWN_AWAY || eState == EnemyState::FLYING) continue;
         }
 
+        DirectX::XMFLOAT3 scaleB = obj->GetScale();
+        if (obj->GetObjectType() == ObjectType::Player) {
+            scaleB = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+        }
+
+        DirectX::XMFLOAT2 extB = CalcExtents(obj, scaleB);
+        if (extB.x <= 0.001f && extB.y <= 0.001f) continue;
+
         if (CheckAABB(self, posA, obj)) {
             DirectX::XMFLOAT3 posB = obj->GetPosition();
-            DirectX::XMFLOAT3 sizeB = obj->GetSize();
-            DirectX::XMFLOAT3 scaleB = obj->GetScale();
-            if (obj->GetObjectType() == ObjectType::Player) {
-                scaleB = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-            }
 
-            float radiusB_X = sizeB.x * scaleB.x * 0.5f;
-            float radiusB_Z = sizeB.z * scaleB.z * 0.5f;
+            float overlapX = (extA.x + extB.x) - std::abs(posA.x - posB.x);
+            float overlapZ = (extA.y + extB.y) - std::abs(posA.z - posB.z);
 
-            float overlapX = (radiusA_X + radiusB_X) - std::abs(posA.x - posB.x);
-            float overlapZ = (radiusA_Z + radiusB_Z) - std::abs(posA.z - posB.z);
-
-            if (overlapX < overlapZ) {
-                if (posA.x > posB.x) {
-                    posA.x += overlapX;
+            if (overlapX > 0.0f && overlapZ > 0.0f) {
+                if (overlapX < overlapZ) {
+                    if (posA.x > posB.x) {
+                        posA.x += overlapX;
+                    } else {
+                        posA.x -= overlapX;
+                    }
                 } else {
-                    posA.x -= overlapX;
+                    if (posA.z > posB.z) {
+                        posA.z += overlapZ;
+                    } else {
+                        posA.z -= overlapZ;
+                    }
                 }
-            } else {
-                if (posA.z > posB.z) {
-                    posA.z += overlapZ;
-                } else {
-                    posA.z -= overlapZ;
-                }
+                self->SetPosition(posA);
             }
-            self->SetPosition(posA);
         }
     }
 }

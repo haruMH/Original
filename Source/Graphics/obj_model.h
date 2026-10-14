@@ -27,9 +27,10 @@ public:
 
 private:
     // MTLマテリアル読み込みヘルパー
-    void LoadMtl(const std::string& mtlPath, std::unordered_map<std::string, DirectX::XMFLOAT4>& materials);
+    void LoadMtl(const std::string& mtlPath, std::unordered_map<std::string, DirectX::XMFLOAT4>& materials, std::string& outTexture);
 
-    ID3D11Buffer*          m_VertexBuffer = nullptr;
-    ID3D11RasterizerState* m_RasterizerStateNoCull = nullptr;
-    int                    m_VertexCount = 0;
+    ID3D11Buffer*              m_VertexBuffer = nullptr;
+    ID3D11RasterizerState*     m_RasterizerStateNoCull = nullptr;
+    ID3D11ShaderResourceView*  m_TextureSRV = nullptr;
+    int                        m_VertexCount = 0;
 };
