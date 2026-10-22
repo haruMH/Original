@@ -131,30 +131,32 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
     std::ofstream log("debug_log.txt", std::ios::app);
     log << "[RenderSystem::CreateResources] Start" << std::endl;
 
-    FILE* f = nullptr;
-    
+    // シェーダーバイナリ読み込みの共通ラムダ
+    auto ReadShaderBytecode = [&log](const char* shaderName, std::vector<unsigned char>& outBuffer) -> bool {
+        FILE* f = nullptr;
+        fopen_s(&f, Renderer::ResolveShaderPath(shaderName).c_str(), "rb");
+        if (!f) {
+            log << "[RenderSystem::CreateResources] Failed to open " << shaderName << "!" << std::endl;
+            return false;
+        }
+        fseek(f, 0, SEEK_END);
+        long size = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        outBuffer.resize(size);
+        fread(outBuffer.data(), 1, size, f);
+        fclose(f);
+        log << "[RenderSystem::CreateResources] Read " << shaderName << ", size=" << size << std::endl;
+        return true;
+    };
+
     // -------------------------------------------------------------
     // 1. 頂点シェーダー (instanced_vs.cso) の読み込みと生成
     // パス解決は Renderer::ResolveShaderPath で一元化（2-1 対応）
     // -------------------------------------------------------------
-    fopen_s(&f, Renderer::ResolveShaderPath("instanced_vs.cso").c_str(), "rb");
-    if (!f)
-    {
-        log << "[RenderSystem::CreateResources] Failed to open instanced_vs.cso!" << std::endl;
-        return false;
-    }
-    log << "[RenderSystem::CreateResources] Opened instanced_vs.cso successfully" << std::endl;
-    
-    fseek(f, 0, SEEK_END);
-    long vsSize = ftell(f);
-    fseek(f, 0, SEEK_SET);
+    std::vector<unsigned char> vsBuffer;
+    if (!ReadShaderBytecode("instanced_vs.cso", vsBuffer)) return false;
 
-    std::vector<unsigned char> vsBuffer(vsSize);
-    fread(vsBuffer.data(), 1, vsSize, f);
-    fclose(f);
-    log << "[RenderSystem::CreateResources] Read instanced_vs.cso, size=" << vsSize << std::endl;
-
-    HRESULT hr = device->CreateVertexShader(vsBuffer.data(), vsSize, nullptr, &m_InstancedVertexShader);
+    HRESULT hr = device->CreateVertexShader(vsBuffer.data(), vsBuffer.size(), nullptr, &m_InstancedVertexShader);
     if (FAILED(hr))
     {
         log << "[RenderSystem::CreateResources] CreateVertexShader failed, hr=" << std::hex << hr << std::endl;
@@ -180,7 +182,7 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
         { "EMISSIVE", 0, DXGI_FORMAT_R32G32B32_FLOAT,    1, 68, D3D11_INPUT_PER_INSTANCE_DATA, 1 }  // インスタンスごとのエミッシブ（自発光）を追加
     };
 
-    hr = device->CreateInputLayout(inputLayoutDesc, _countof(inputLayoutDesc), vsBuffer.data(), vsSize, &m_InstancedInputLayout);
+    hr = device->CreateInputLayout(inputLayoutDesc, _countof(inputLayoutDesc), vsBuffer.data(), vsBuffer.size(), &m_InstancedInputLayout);
     if (FAILED(hr))
     {
         log << "[RenderSystem::CreateResources] CreateInputLayout failed, hr=" << std::hex << hr << std::endl;
@@ -192,24 +194,10 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
     // 3. ピクセルシェーダー (instanced_ps.cso) の読み込みと生成
     // パス解決は Renderer::ResolveShaderPath で一元化（2-1 対応）
     // -------------------------------------------------------------
-    fopen_s(&f, Renderer::ResolveShaderPath("instanced_ps.cso").c_str(), "rb");
-    if (!f)
-    {
-        log << "[RenderSystem::CreateResources] Failed to open instanced_ps.cso!" << std::endl;
-        return false;
-    }
-    log << "[RenderSystem::CreateResources] Opened instanced_ps.cso successfully" << std::endl;
+    std::vector<unsigned char> psBuffer;
+    if (!ReadShaderBytecode("instanced_ps.cso", psBuffer)) return false;
 
-    fseek(f, 0, SEEK_END);
-    long psSize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    std::vector<unsigned char> psBuffer(psSize);
-    fread(psBuffer.data(), 1, psSize, f);
-    fclose(f);
-    log << "[RenderSystem::CreateResources] Read pixelShader.cso, size=" << psSize << std::endl;
-
-    hr = device->CreatePixelShader(psBuffer.data(), psSize, nullptr, &m_InstancedPixelShader);
+    hr = device->CreatePixelShader(psBuffer.data(), psBuffer.size(), nullptr, &m_InstancedPixelShader);
     if (FAILED(hr))
     {
         log << "[RenderSystem::CreateResources] CreatePixelShader failed, hr=" << std::hex << hr << std::endl;
@@ -221,24 +209,10 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
     // 4. インスタンスアウトライン用頂点シェーダー (outline_instanced_vs.cso) の読み込みと生成
     // パス解決は Renderer::ResolveShaderPath で一元化（2-1 対応）
     // -------------------------------------------------------------
-    fopen_s(&f, Renderer::ResolveShaderPath("outline_instanced_vs.cso").c_str(), "rb");
-    if (!f)
-    {
-        log << "[RenderSystem::CreateResources] Failed to open outline_instanced_vs.cso!" << std::endl;
-        return false;
-    }
-    log << "[RenderSystem::CreateResources] Opened outline_instanced_vs.cso successfully" << std::endl;
-    
-    fseek(f, 0, SEEK_END);
-    long ovsSize = ftell(f);
-    fseek(f, 0, SEEK_SET);
+    std::vector<unsigned char> ovsBuffer;
+    if (!ReadShaderBytecode("outline_instanced_vs.cso", ovsBuffer)) return false;
 
-    std::vector<unsigned char> ovsBuffer(ovsSize);
-    fread(ovsBuffer.data(), 1, ovsSize, f);
-    fclose(f);
-    log << "[RenderSystem::CreateResources] Read outline_instanced_vs.cso, size=" << ovsSize << std::endl;
-
-    hr = device->CreateVertexShader(ovsBuffer.data(), ovsSize, nullptr, &m_InstancedOutlineVertexShader);
+    hr = device->CreateVertexShader(ovsBuffer.data(), ovsBuffer.size(), nullptr, &m_InstancedOutlineVertexShader);
     if (FAILED(hr))
     {
         log << "[RenderSystem::CreateResources] CreateVertexShader for outline failed, hr=" << std::hex << hr << std::endl;
@@ -247,7 +221,7 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
     log << "[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully" << std::endl;
 
     // インプットレイアウトの作成（通常インスタンス用と同じレイアウト定義を流用）
-    hr = device->CreateInputLayout(inputLayoutDesc, _countof(inputLayoutDesc), ovsBuffer.data(), ovsSize, &m_InstancedOutlineInputLayout);
+    hr = device->CreateInputLayout(inputLayoutDesc, _countof(inputLayoutDesc), ovsBuffer.data(), ovsBuffer.size(), &m_InstancedOutlineInputLayout);
     if (FAILED(hr))
     {
         log << "[RenderSystem::CreateResources] CreateInputLayout for outline failed, hr=" << std::hex << hr << std::endl;
@@ -259,78 +233,83 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
 }
 
 // =================================================================
-// インスタンス描画の実行
+// 描画対象リストの構築（インスタンシング対象判定＋視錐台カリング）
 // =================================================================
-void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::vector<GameObject*>& objects, RenderPass pass)
+const std::vector<GameObject*>& RenderSystem::BuildDrawList(const std::vector<GameObject*>& objects, RenderPass pass)
 {
-    std::vector<GameObject*> drawList;
-
     // 3-3 対応: Normalパスでカリングした描画リストを保持し、Outlineパスで再利用する
     if (pass == RenderPass::Outline && !m_CachedDrawList.empty())
     {
-        drawList = m_CachedDrawList;
+        m_ActiveTexIndices = &m_CachedTexIndices;
+        return m_CachedDrawList;
     }
-    else
+
+    const bool isNormal = (pass == RenderPass::Normal);
+    std::vector<GameObject*>& targetList = isNormal ? m_CachedDrawList : m_TempDrawList;
+    std::vector<float>& targetIndices = isNormal ? m_CachedTexIndices : m_TempTexIndices;
+    targetList.clear();
+    targetIndices.clear();
+    m_ActiveTexIndices = &targetIndices;
+    if (targetList.capacity() < objects.size())
     {
-        // 1. 視錐台の構築（通常描画・アウトライン描画時のみカリングを行う。シャドウマップ描画時は画面外の影も落とすためスキップ）
-        bool useCulling = (pass != RenderPass::Shadow);
-        DirectX::BoundingFrustum frustum;
+        targetList.reserve(objects.size());
+        targetIndices.reserve(objects.size());
+    }
+
+    // 1. 視錐台の構築（通常描画・アウトライン描画時のみカリングを行う。シャドウマップ描画時は画面外の影も落とすためスキップ）
+    const bool useCulling = (pass != RenderPass::Shadow);
+    DirectX::BoundingFrustum frustum;
+    if (useCulling)
+    {
+        DirectX::BoundingFrustum::CreateFromMatrix(frustum, Renderer::GetProjectionMatrix());
+        DirectX::XMMATRIX invView = DirectX::XMMatrixInverse(nullptr, Renderer::GetViewMatrix());
+        frustum.Transform(frustum, invView);
+    }
+
+    // 2. シーン上の GameObject を走査し、インスタンシング描画対象のオブジェクトを格納する
+    for (GameObject* obj : objects)
+    {
+        if (!obj || obj->IsDestroy()) continue;
+
+        const RenderComponent& rc = obj->GetRenderComponent();
+        if (!rc.visible || rc.meshType != MeshType::Cube || rc.textureKey.empty())
+        {
+            continue; // 非表示、キューブメッシュ以外、またはテクスチャキーが空の場合はスキップ
+        }
+
+        // テクスチャキーがインデックスマップに存在することを確認
+        auto texIt = m_TextureIndexMap.find(rc.textureKey);
+        if (texIt == m_TextureIndexMap.end())
+        {
+            continue;
+        }
+
+        // 視錐台カリング判定
         if (useCulling)
         {
-            DirectX::BoundingFrustum::CreateFromMatrix(frustum, Renderer::GetProjectionMatrix());
-            DirectX::XMMATRIX invView = DirectX::XMMatrixInverse(nullptr, Renderer::GetViewMatrix());
-            frustum.Transform(frustum, invView);
-        }
+            DirectX::XMFLOAT3 pos = obj->GetPosition();
+            DirectX::XMFLOAT3 scale = obj->GetScale();
+            float radius = sqrtf(scale.x * scale.x + scale.y * scale.y + scale.z * scale.z) * 0.5f + 1.0f;
 
-        // 2. シーン上の GameObject を走査し、インスタンシング描画対象のオブジェクトをフラットなリストに格納する
-        for (GameObject* obj : objects)
-        {
-            if (!obj) continue;
-
-            const RenderComponent& rc = obj->GetRenderComponent();
-            if (!rc.visible || rc.meshType != MeshType::Cube || rc.textureKey.empty())
+            DirectX::BoundingSphere sphere(pos, radius);
+            if (!frustum.Intersects(sphere))
             {
-                continue; // 非表示、キューブメッシュ以外、またはテクスチャキーが空の場合はスキップ
-            }
-
-            // テクスチャキーがインデックスマップに存在することを確認
-            if (m_TextureIndexMap.find(rc.textureKey) != m_TextureIndexMap.end())
-            {
-                // 視錐台カリング判定
-                if (useCulling)
-                {
-                    // オブジェクトのスケールを考慮して、簡易バウンディング球（マージン付き）を構築
-                    DirectX::XMFLOAT3 pos = obj->GetPosition();
-                    DirectX::XMFLOAT3 scale = obj->GetScale();
-                    // 直方体の外接球半径（対角線の半分）で計算する
-                    // → 細長い壁など、最大スケール軸と直交する方向の広がりも正しく扱える
-                    float radius = sqrtf(scale.x * scale.x + scale.y * scale.y + scale.z * scale.z) * 0.5f + 1.0f;
-
-                    DirectX::BoundingSphere sphere(pos, radius);
-                    if (!frustum.Intersects(sphere))
-                    {
-                        continue; // 視界外の場合は描画リストに追加しない（カリング）
-                    }
-                }
-
-                drawList.push_back(obj);
+                continue; // 視界外の場合は描画リストに追加しない（カリング）
             }
         }
 
-        // 通常パスの場合は、アウトラインパスでカリング計算をスキップするために結果をキャッシュしておく
-        if (pass == RenderPass::Normal)
-        {
-            m_CachedDrawList = drawList;
-        }
+        targetList.push_back(obj);
+        targetIndices.push_back(texIt->second);
     }
 
-    // 描画対象が存在しない場合は何もしない
-    if (drawList.empty())
-    {
-        return;
-    }
+    return targetList;
+}
 
-    // 2. インスタンス描画用のステート設定
+// =================================================================
+// パスに応じたシェーダー・ラスタライザ・深度ステートの設定
+// =================================================================
+void RenderSystem::SetupPassState(ID3D11DeviceContext* context, RenderPass pass)
+{
     if (pass == RenderPass::Outline)
     {
         context->IASetInputLayout(m_InstancedOutlineInputLayout);
@@ -355,12 +334,28 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
         }
     }
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+// =================================================================
+// インスタンス描画の実行
+// =================================================================
+void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::vector<GameObject*>& objects, RenderPass pass)
+{
+    const std::vector<GameObject*>& drawList = BuildDrawList(objects, pass);
+    if (drawList.empty())
+    {
+        return;
+    }
 
     // 共通のキューブ用頂点バッファを取得
     ID3D11Buffer* cubeVertexBuffer = Renderer::GetCubeVertexBuffer();
-    if (!cubeVertexBuffer) {
+    if (!cubeVertexBuffer)
+    {
         return;
     }
+
+    // インスタンス描画用のパイプラインステート設定
+    SetupPassState(context, pass);
 
     // スロット0（頂点）とスロット1（インスタンス）の入力ストライドとオフセットを設定
     UINT strides[2] = { sizeof(VERTEX_3D), sizeof(InstanceData) };
@@ -403,28 +398,56 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
         {
             InstanceData* dataPtr = reinterpret_cast<InstanceData*>(mappedResource.pData);
             
-            for (size_t i = 0; i < batchSize; ++i)
+            if (pass == RenderPass::Outline && m_CachedWorldMatrices.size() >= indexOffset + batchSize)
             {
-                GameObject* obj = drawList[indexOffset + i];
-                const RenderComponent& rc = obj->GetRenderComponent();
-
-                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(obj->GetScale().x, obj->GetScale().y, obj->GetScale().z);
-                DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(obj->GetRotation().x, obj->GetRotation().y, obj->GetRotation().z);
-                DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(obj->GetPosition().x, obj->GetPosition().y, obj->GetPosition().z);
-
-                DirectX::XMMATRIX world = scale * rotation * translation;
-                if (pass == RenderPass::Shadow)
+                // Outlineパス: Normalパスで計算済みのWorld行列とEmissiveをそのまま転送（三角関数・行列乗算を全スキップ）
+                for (size_t i = 0; i < batchSize; ++i)
                 {
-                    // シャドウパス時は影のビュープロジェクション行列を乗算する
-                    world = world * Renderer::GetShadowMatrix();
+                    size_t idx = indexOffset + i;
+                    dataPtr[i].World = m_CachedWorldMatrices[idx];
+                    dataPtr[i].TextureIndex = (*m_ActiveTexIndices)[idx];
+                    dataPtr[i].Emissive = m_CachedEmissives[idx];
                 }
-                DirectX::XMStoreFloat4x4(&dataPtr[i].World, world);
+            }
+            else
+            {
+                const bool isNormal = (pass == RenderPass::Normal);
+                if (isNormal && m_CachedWorldMatrices.size() < totalInstances)
+                {
+                    m_CachedWorldMatrices.resize(totalInstances);
+                    m_CachedEmissives.resize(totalInstances);
+                }
 
-                // テクスチャインデックスを設定
-                dataPtr[i].TextureIndex = m_TextureIndexMap[rc.textureKey];
-                
-                // 自発光（Emissive）を設定
-                dataPtr[i].Emissive = obj->GetEmissive();
+                for (size_t i = 0; i < batchSize; ++i)
+                {
+                    size_t idx = indexOffset + i;
+                    GameObject* obj = drawList[idx];
+
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(obj->GetScale().x, obj->GetScale().y, obj->GetScale().z);
+                    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(obj->GetRotation().x, obj->GetRotation().y, obj->GetRotation().z);
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(obj->GetPosition().x, obj->GetPosition().y, obj->GetPosition().z);
+
+                    DirectX::XMMATRIX world = scale * rotation * translation;
+                    if (pass == RenderPass::Shadow)
+                    {
+                        // シャドウパス時は影のビュープロジェクション行列を乗算する
+                        world = world * Renderer::GetShadowMatrix();
+                    }
+                    DirectX::XMStoreFloat4x4(&dataPtr[i].World, world);
+
+                    // テクスチャインデックスを設定
+                    dataPtr[i].TextureIndex = (*m_ActiveTexIndices)[idx];
+                    
+                    // 自発光（Emissive）を設定
+                    dataPtr[i].Emissive = obj->GetEmissive();
+
+                    // Normalパスのときはキャッシュに保存
+                    if (isNormal)
+                    {
+                        m_CachedWorldMatrices[idx] = dataPtr[i].World;
+                        m_CachedEmissives[idx] = dataPtr[i].Emissive;
+                    }
+                }
             }
 
             context->Unmap(m_InstanceBuffer, 0);
@@ -474,6 +497,14 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
     std::vector<ID3D11Texture2D*> textures;
     std::vector<ID3D11Resource*> resources;
 
+    // 一時取得したCOMリソースの一括解放ラムダ（正常系・異常系で共通使用）
+    auto ReleaseTempResources = [&resources, &textures]() {
+        for (auto* r : resources) { if (r) r->Release(); }
+        for (auto* t : textures)  { if (t) t->Release(); }
+        resources.clear();
+        textures.clear();
+    };
+
     // 1. 各テクスチャリソースの取得と検証
     for (const auto& key : textureKeys)
     {
@@ -481,8 +512,7 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
         if (!srv)
         {
             log << "[RenderSystem::CreateTextureArray] Failed to get texture SRV for: " << key << std::endl;
-            for (auto* r : resources) r->Release();
-            for (auto* t : textures) t->Release();
+            ReleaseTempResources();
             return false;
         }
 
@@ -491,8 +521,7 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
         if (!res)
         {
             log << "[RenderSystem::CreateTextureArray] GetResource failed for: " << key << std::endl;
-            for (auto* r : resources) r->Release();
-            for (auto* t : textures) t->Release();
+            ReleaseTempResources();
             return false;
         }
         resources.push_back(res);
@@ -502,8 +531,7 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
         if (FAILED(hr) || !tex2D)
         {
             log << "[RenderSystem::CreateTextureArray] QueryInterface failed for ID3D11Texture2D: " << key << std::endl;
-            for (auto* r : resources) r->Release();
-            for (auto* t : textures) t->Release();
+            ReleaseTempResources();
             return false;
         }
         textures.push_back(tex2D);
@@ -530,8 +558,7 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
     if (FAILED(hr) || !textureArray)
     {
         log << "[RenderSystem::CreateTextureArray] CreateTexture2D for array failed, hr=" << std::hex << hr << std::endl;
-        for (auto* r : resources) r->Release();
-        for (auto* t : textures) t->Release();
+        ReleaseTempResources();
         return false;
     }
 
@@ -542,8 +569,7 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
     {
         log << "[RenderSystem::CreateTextureArray] GetImmediateContext failed!" << std::endl;
         textureArray->Release();
-        for (auto* r : resources) r->Release();
-        for (auto* t : textures) t->Release();
+        ReleaseTempResources();
         return false;
     }
 
@@ -573,15 +599,14 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
         log << "[RenderSystem::CreateTextureArray] CreateShaderResourceView failed, hr=" << std::hex << hr << std::endl;
         textureArray->Release();
         context->Release();
-        for (auto* r : resources) r->Release();
-        for (auto* t : textures) t->Release();
+        ReleaseTempResources();
         return false;
     }
 
     // 7. リソースの解放
     textureArray->Release();
     context->Release();
-    for (auto* r : resources) r->Release();
+    ReleaseTempResources();
     log << "[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV." << std::endl;
     return true;
 }
@@ -592,5 +617,10 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
 void RenderSystem::ClearCache()
 {
     m_CachedDrawList.clear();
+    m_TempDrawList.clear();
+    m_CachedTexIndices.clear();
+    m_TempTexIndices.clear();
+    m_CachedWorldMatrices.clear();
+    m_CachedEmissives.clear();
 }
 

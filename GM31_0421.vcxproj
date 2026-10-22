@@ -145,11 +145,14 @@
         if exist "$(ProjectDir)Assets\sound" xcopy /Y /Q /E "$(ProjectDir)Assets\sound\*" "$(OutDir)Assets\sound\"
         for %%f in ("$(ProjectDir)*.mp3") do xcopy /Y /Q "%%f" "$(OutDir)Assets\sound\"
         for %%f in ("$(ProjectDir)*.wav") do xcopy /Y /Q "%%f" "$(OutDir)Assets\sound\"
+        rem --- Assets\model フォルダを作成しOBJ / MTL / テクスチャ等をコピー ---
+        if not exist "$(OutDir)Assets\model" mkdir "$(OutDir)Assets\model"
+        if exist "$(ProjectDir)Assets\model" xcopy /Y /Q /E "$(ProjectDir)Assets\model\*" "$(OutDir)Assets\model\"
         rem --- Assets\shader フォルダを作成しCSOをコピー ---
         if not exist "$(OutDir)Assets\shader" mkdir "$(OutDir)Assets\shader"
         for %%f in ("$(ProjectDir)*.cso") do xcopy /Y /Q "%%f" "$(OutDir)Assets\shader\"
       </Command>
-      <Message>リリースフォルダに Assets/texture, Assets/sound, Assets/shader を整理中...</Message>
+      <Message>リリースフォルダに Assets/texture, Assets/sound, Assets/model, Assets/shader を整理中...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -197,10 +200,12 @@
     <ClCompile Include="Source\Graphics\resource_manager.cpp" />
     <ClCompile Include="Source\Graphics\shadow_system.cpp" />
     <ClCompile Include="Source\Graphics\obj_model.cpp" />
+    <ClCompile Include="Source\Graphics\graphics_config.cpp" />
     <!-- UI -->
     <ClCompile Include="Source\UI\score_hud.cpp" />
     <ClCompile Include="Source\UI\score_popup.cpp" />
     <ClCompile Include="Source\UI\option_ui.cpp" />
+    <ClCompile Include="Source\UI\localization.cpp" />
     <ClCompile Include="Source\UI\item_notification_hud.cpp" />
     <!-- Effect -->
     <ClCompile Include="Source\Effect\shockwave.cpp" />
@@ -275,6 +280,7 @@
     <ClInclude Include="Source\UI\score_hud.h" />
     <ClInclude Include="Source\UI\score_popup.h" />
     <ClInclude Include="Source\UI\option_ui.h" />
+    <ClInclude Include="Source\UI\localization.h" />
     <ClInclude Include="Source\UI\item_notification_hud.h" />
     <!-- Effect -->
     <ClInclude Include="Source\Effect\shockwave.h" />

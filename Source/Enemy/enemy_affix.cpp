@@ -26,6 +26,7 @@ DirectX::XMFLOAT3 ExplosiveAffix::GetEmissive() const
 
 bool ExplosiveAffix::OnImpact(Enemy* flying, GameObject* target, Player* player, bool& explosionThisFrame)
 {
+    if (!flying || !target) return false;
     if (explosionThisFrame) return false;
 
     // 爆弾同士の衝突は爆発しない
@@ -46,7 +47,14 @@ bool ExplosiveAffix::OnImpact(Enemy* flying, GameObject* target, Player* player,
 // ─────────────────────────────────────────────
 bool LightningAffix::OnImpact(Enemy* flying, GameObject* target, Player* player, bool& explosionThisFrame)
 {
+    if (!flying || !target) return false;
+
     CollisionSystem::TriggerChainLightning(flying->GetPosition(), player);
+
+    // 壁との衝突時はチェインライトニングのみ発動し、撃破・跳ね返り処理は通常の壁衝突へ委譲する
+    if (target->GetObjectType() == ObjectType::Wall) {
+        return false;
+    }
 
     HitInfo hitInfo;
     hitInfo.hitSourcePos = flying->GetPosition();
@@ -75,6 +83,8 @@ bool LightningAffix::OnImpact(Enemy* flying, GameObject* target, Player* player,
 // ─────────────────────────────────────────────
 void SandbagAffix::Update(Enemy* enemy)
 {
+    if (!enemy) return;
+
     // 通常状態のときのみ寿命をカウントダウンする
     // （被弾中・被投げ中は Enemy 側が別途状態を管理するため除外）
     if (enemy->GetEnemyState() == EnemyState::NORMAL) {

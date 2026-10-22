@@ -5,15 +5,24 @@
 #include "fade_system.h"
 #include "render_constants.h"
 #include "game_constants.h"
+#include "graphics_config.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx11.h"
 #include <stdio.h>
 #include <wincodec.h>
 #include <filesystem>
+#include <dxgi1_5.h>
+#include <wrl/client.h>
 
 #pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "windowscodecs.lib")
+
+// スワップチェーンのFlipモデル / テアリング許可状態（Init時に決定、ResizeBuffers/Presentで使用）
+static UINT s_SwapChainFlags = 0;
+static bool s_UseFlipModel   = false;
+static bool s_AllowTearing   = false;
 
 D3D_FEATURE_LEVEL Renderer::m_FeatureLevel = D3D_FEATURE_LEVEL_11_0;
 ID3D11Device*            Renderer::m_Device           = NULL;
@@ -87,6 +96,119 @@ XMFLOAT4X4           Renderer::m_ViewCache = {};
 XMFLOAT4X4           Renderer::m_ProjectionCache = {};
 bool                 Renderer::m_IsCacheInitialized = false;
 
+void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
+    // 1. バックバッファからRTVを作成
+    ID3D11Texture2D* pb = nullptr;
+    m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pb);
+    if (pb) {
+        m_Device->CreateRenderTargetView(pb, NULL, &m_RenderTargetView);
+        pb->Release();
+    }
+
+    // 2. 通常のデプスステンシルビュー作成
+    D3D11_TEXTURE2D_DESC td = {};
+    td.Width = width;
+    td.Height = height;
+    td.MipLevels = 1;
+    td.ArraySize = 1;
+    td.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    td.SampleDesc.Count = 1;
+    td.Usage = D3D11_USAGE_DEFAULT;
+    td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+    ID3D11Texture2D* pd = nullptr;
+    m_Device->CreateTexture2D(&td, NULL, &pd);
+    if (pd) {
+        m_Device->CreateDepthStencilView(pd, NULL, &m_DepthStencilView);
+        pd->Release();
+    }
+
+    // 3. ブルーム用レンダーターゲット
+    ID3D11Texture2D* tempTex = nullptr;
+    D3D11_TEXTURE2D_DESC rtDesc = {};
+    rtDesc.Width = width;
+    rtDesc.Height = height;
+    rtDesc.MipLevels = 1;
+    rtDesc.ArraySize = 1;
+    rtDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    rtDesc.SampleDesc.Count = 1;
+    rtDesc.Usage = D3D11_USAGE_DEFAULT;
+    rtDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+    // メインシーン描画用バッファ (等倍)
+    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
+    if (tempTex) {
+        m_Device->CreateRenderTargetView(tempTex, NULL, &m_SceneRTV);
+        m_Device->CreateShaderResourceView(tempTex, NULL, &m_SceneSRV);
+        tempTex->Release();
+    }
+
+    // 縮小バッファ設定 (1/4サイズ)
+    rtDesc.Width = width / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
+    rtDesc.Height = height / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
+    m_PostViewport.Width = (float)rtDesc.Width;
+    m_PostViewport.Height = (float)rtDesc.Height;
+    m_PostViewport.MinDepth = 0.0f;
+    m_PostViewport.MaxDepth = 1.0f;
+    m_PostViewport.TopLeftX = 0.0f;
+    m_PostViewport.TopLeftY = 0.0f;
+
+    // 高輝度抽出用バッファ
+    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
+    if (tempTex) {
+        m_Device->CreateRenderTargetView(tempTex, NULL, &m_LumRTV);
+        m_Device->CreateShaderResourceView(tempTex, NULL, &m_LumSRV);
+        tempTex->Release();
+    }
+
+    // ガウシアンぼかし用バッファ
+    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
+    if (tempTex) {
+        m_Device->CreateRenderTargetView(tempTex, NULL, &m_BlurRTV);
+        m_Device->CreateShaderResourceView(tempTex, NULL, &m_BlurSRV);
+        tempTex->Release();
+    }
+
+    // 4. 屈折エフェクト用背景コピーテクスチャ
+    D3D11_TEXTURE2D_DESC bgDesc = {};
+    bgDesc.Width = width;
+    bgDesc.Height = height;
+    bgDesc.MipLevels = 1;
+    bgDesc.ArraySize = 1;
+    bgDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    bgDesc.SampleDesc.Count = 1;
+    bgDesc.Usage = D3D11_USAGE_DEFAULT;
+    bgDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    m_Device->CreateTexture2D(&bgDesc, nullptr, &m_BackgroundCopyTexture);
+    if (m_BackgroundCopyTexture) {
+        m_Device->CreateShaderResourceView(m_BackgroundCopyTexture, nullptr, &m_BackgroundCopySRV);
+    }
+}
+
+void Renderer::ReleaseScreenSizeResources() {
+    if (m_RenderTargetView)      { m_RenderTargetView->Release();      m_RenderTargetView = nullptr; }
+    if (m_DepthStencilView)      { m_DepthStencilView->Release();      m_DepthStencilView = nullptr; }
+    if (m_SceneRTV)              { m_SceneRTV->Release();              m_SceneRTV = nullptr; }
+    if (m_SceneSRV)              { m_SceneSRV->Release();              m_SceneSRV = nullptr; }
+    if (m_LumRTV)                { m_LumRTV->Release();                m_LumRTV = nullptr; }
+    if (m_LumSRV)                { m_LumSRV->Release();                m_LumSRV = nullptr; }
+    if (m_BlurRTV)               { m_BlurRTV->Release();               m_BlurRTV = nullptr; }
+    if (m_BlurSRV)               { m_BlurSRV->Release();               m_BlurSRV = nullptr; }
+    if (m_BackgroundCopyTexture) { m_BackgroundCopyTexture->Release(); m_BackgroundCopyTexture = nullptr; }
+    if (m_BackgroundCopySRV)     { m_BackgroundCopySRV->Release();     m_BackgroundCopySRV = nullptr; }
+}
+
+void Renderer::SetScreenViewport() {
+    D3D11_VIEWPORT vp = {};
+    vp.Width = (FLOAT)m_ScreenWidth;
+    vp.Height = (FLOAT)m_ScreenHeight;
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    vp.TopLeftX = 0.0f;
+    vp.TopLeftY = 0.0f;
+    m_DeviceContext->RSSetViewports(1, &vp);
+}
+
 void Renderer::Init() {
     // スワップチェーンの作成
     DXGI_SWAP_CHAIN_DESC sd = {};
@@ -101,69 +223,54 @@ void Renderer::Init() {
     sd.SampleDesc.Count = 1;
     sd.Windowed = TRUE;
 
-    D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, NULL, 0, D3D11_SDK_VERSION, &sd, &m_SwapChain, &m_Device, &m_FeatureLevel, &m_DeviceContext);
+    // デバイスのみ先に作成し、DXGIファクトリからFlipモデルのスワップチェーンを作成する
+    HRESULT hrDev = D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, NULL, 0, D3D11_SDK_VERSION, &m_Device, &m_FeatureLevel, &m_DeviceContext);
+    if (SUCCEEDED(hrDev)) {
+        Microsoft::WRL::ComPtr<IDXGIDevice> dxgiDevice;
+        Microsoft::WRL::ComPtr<IDXGIAdapter> dxgiAdapter;
+        Microsoft::WRL::ComPtr<IDXGIFactory1> factory;
+        if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&dxgiDevice))) &&
+            SUCCEEDED(dxgiDevice->GetAdapter(&dxgiAdapter)) &&
+            SUCCEEDED(dxgiAdapter->GetParent(IID_PPV_ARGS(&factory)))) {
 
-    // バックバッファからRTVを作成
-    ID3D11Texture2D* pb = NULL;
-    m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pb);
-    m_Device->CreateRenderTargetView(pb, NULL, &m_RenderTargetView);
-    pb->Release();
+            // テアリング（可変リフレッシュ/無制限fps）対応の確認
+            BOOL allowTearing = FALSE;
+            Microsoft::WRL::ComPtr<IDXGIFactory5> factory5;
+            if (SUCCEEDED(factory.As(&factory5))) {
+                if (FAILED(factory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing)))) {
+                    allowTearing = FALSE;
+                }
+            }
 
-    // 通常のデプスステンシルビュー作成
-    D3D11_TEXTURE2D_DESC td = {};
-    td.Width = SCREEN_WIDTH;
-    td.Height = SCREEN_HEIGHT;
-    td.MipLevels = 1;
-    td.ArraySize = 1;
-    td.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    td.SampleDesc.Count = 1;
-    td.Usage = D3D11_USAGE_DEFAULT;
-    td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+            DXGI_SWAP_CHAIN_DESC flipDesc = sd;
+            flipDesc.BufferCount = 2;
+            flipDesc.BufferDesc.RefreshRate.Numerator = 0;
+            flipDesc.BufferDesc.RefreshRate.Denominator = 1;
+            flipDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+            flipDesc.Flags = allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
-    ID3D11Texture2D* pd = NULL;
-    m_Device->CreateTexture2D(&td, NULL, &pd);
-    m_Device->CreateDepthStencilView(pd, NULL, &m_DepthStencilView);
-    pd->Release();
+            if (SUCCEEDED(factory->CreateSwapChain(m_Device, &flipDesc, &m_SwapChain))) {
+                s_UseFlipModel = true;
+                s_AllowTearing = (allowTearing != FALSE);
+                s_SwapChainFlags = flipDesc.Flags;
+                // Alt+Enter は WndProc 側（ボーダレス全画面切替）で処理するため、DXGI標準の排他全画面切替は無効化
+                factory->MakeWindowAssociation(GetWindow(), DXGI_MWA_NO_ALT_ENTER);
+            }
+        }
+    }
 
-    // 一時的なテクスチャポインタ（バグ防止用）
-    ID3D11Texture2D* tempTex = nullptr;
+    // Flipモデルが使えない環境では、従来のBitBltモデルにフォールバック
+    if (!m_SwapChain) {
+        if (m_DeviceContext) { m_DeviceContext->Release(); m_DeviceContext = NULL; }
+        if (m_Device)        { m_Device->Release();        m_Device = NULL; }
+        s_UseFlipModel = false;
+        s_AllowTearing = false;
+        s_SwapChainFlags = 0;
+        D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, NULL, 0, D3D11_SDK_VERSION, &sd, &m_SwapChain, &m_Device, &m_FeatureLevel, &m_DeviceContext);
+    }
 
-    // === ブルーム用レンダーターゲット ===
-    D3D11_TEXTURE2D_DESC rtDesc = {};
-    rtDesc.Width = SCREEN_WIDTH;
-    rtDesc.Height = SCREEN_HEIGHT;
-    rtDesc.MipLevels = 1;
-    rtDesc.ArraySize = 1;
-    rtDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    rtDesc.SampleDesc.Count = 1;
-    rtDesc.Usage = D3D11_USAGE_DEFAULT;
-    rtDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-
-    // 1. メインシーン描画用バッファ (等倍)
-    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
-    m_Device->CreateRenderTargetView(tempTex, NULL, &m_SceneRTV);
-    m_Device->CreateShaderResourceView(tempTex, NULL, &m_SceneSRV);
-    tempTex->Release(); // RTV, SRVに紐づいたので解放してOK
-
-    // 縮小バッファ設定 (1/4サイズ)
-    rtDesc.Width = SCREEN_WIDTH / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
-    rtDesc.Height = SCREEN_HEIGHT / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
-    m_PostViewport.Width = (float)rtDesc.Width;
-    m_PostViewport.Height = (float)rtDesc.Height;
-    m_PostViewport.MinDepth = 0.0f;
-    m_PostViewport.MaxDepth = 1.0f;
-
-    // 2. 高輝度抽出用バッファ
-    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
-    m_Device->CreateRenderTargetView(tempTex, NULL, &m_LumRTV);
-    m_Device->CreateShaderResourceView(tempTex, NULL, &m_LumSRV);
-    tempTex->Release();
-
-    // 3. ガウシアンぼかし用バッファ
-    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
-    m_Device->CreateRenderTargetView(tempTex, NULL, &m_BlurRTV);
-    m_Device->CreateShaderResourceView(tempTex, NULL, &m_BlurSRV);
-    tempTex->Release();
+    // 解像度依存リソース（RTV / DSV / ブルーム / 屈折背景コピー）の一括作成
+    CreateScreenSizeResources(SCREEN_WIDTH, SCREEN_HEIGHT);
 
     // === シャドウマップ ===
     D3D11_TEXTURE2D_DESC sdDesc = {};
@@ -291,32 +398,12 @@ void Renderer::Init() {
     m_DeviceContext->RSSetState(m_RasterizerStateCullBack);
 
     // アウトライン用シェーダー読み込み（2-1 対応: ResolveShaderPath でパス解決を一元化）
-    FILE* fov = fopen(ResolveShaderPath("outline_vs.cso").c_str(), "rb");
-    if (fov) {
-        fseek(fov, 0, SEEK_END); long s = ftell(fov); fseek(fov, 0, SEEK_SET);
-        unsigned char* b = new unsigned char[s]; fread(b, s, 1, fov); fclose(fov);
-        m_Device->CreateVertexShader(b, s, NULL, &m_OutlineVS); delete[] b;
-    }
-    FILE* fop = fopen(ResolveShaderPath("outline_ps.cso").c_str(), "rb");
-    if (fop) {
-        fseek(fop, 0, SEEK_END); long s = ftell(fop); fseek(fop, 0, SEEK_SET);
-        unsigned char* b = new unsigned char[s]; fread(b, s, 1, fop); fclose(fop);
-        m_Device->CreatePixelShader(b, s, NULL, &m_OutlinePS); delete[] b;
-    }
+    CreateVertexShader(&m_OutlineVS, nullptr, ResolveShaderPath("outline_vs.cso").c_str());
+    CreatePixelShader(&m_OutlinePS,           ResolveShaderPath("outline_ps.cso").c_str());
 
     // ポストエフェクト用シェーダー読み込み（2-1 対応: ResolveShaderPath でパス解決を一元化）
-    FILE* fvs = fopen(ResolveShaderPath("postEffect_vs.cso").c_str(), "rb");
-    if (fvs) {
-        fseek(fvs, 0, SEEK_END); long s = ftell(fvs); fseek(fvs, 0, SEEK_SET);
-        unsigned char* b = new unsigned char[s]; fread(b, s, 1, fvs); fclose(fvs);
-        m_Device->CreateVertexShader(b, s, NULL, &m_PostVS); delete[] b;
-    }
-    FILE* fps = fopen(ResolveShaderPath("postEffect_ps.cso").c_str(), "rb");
-    if (fps) {
-        fseek(fps, 0, SEEK_END); long s = ftell(fps); fseek(fps, 0, SEEK_SET);
-        unsigned char* b = new unsigned char[s]; fread(b, s, 1, fps); fclose(fps);
-        m_Device->CreatePixelShader(b, s, NULL, &m_PostPS); delete[] b;
-    }
+    CreateVertexShader(&m_PostVS, nullptr, ResolveShaderPath("postEffect_vs.cso").c_str());
+    CreatePixelShader(&m_PostPS,           ResolveShaderPath("postEffect_ps.cso").c_str());
 
     // === キューブ共通リソースの作成 ===
     {
@@ -411,20 +498,6 @@ void Renderer::Init() {
         // GlassCB (32 bytes)
         cbd.ByteWidth = sizeof(GlassCB);
         m_Device->CreateBuffer(&cbd, nullptr, &m_GlassBuffer);
-
-        // 屈折エフェクト用背景コピーテクスチャの生成
-        D3D11_TEXTURE2D_DESC td = {};
-        td.Width = SCREEN_WIDTH;
-        td.Height = SCREEN_HEIGHT;
-        td.MipLevels = 1;
-        td.ArraySize = 1;
-        td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        td.SampleDesc.Count = 1;
-        td.Usage = D3D11_USAGE_DEFAULT;
-        td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        
-        m_Device->CreateTexture2D(&td, nullptr, &m_BackgroundCopyTexture);
-        m_Device->CreateShaderResourceView(m_BackgroundCopyTexture, nullptr, &m_BackgroundCopySRV);
     }
 
     // ImGui の初期化
@@ -498,110 +571,17 @@ void Renderer::OnResize(UINT width, UINT height) {
     m_DeviceContext->Flush();
 
     // 2. 解像度依存の全リソースを安全に解放
-    if (m_RenderTargetView)      { m_RenderTargetView->Release();      m_RenderTargetView = nullptr; }
-    if (m_DepthStencilView)      { m_DepthStencilView->Release();      m_DepthStencilView = nullptr; }
-    if (m_SceneRTV)              { m_SceneRTV->Release();              m_SceneRTV = nullptr; }
-    if (m_SceneSRV)              { m_SceneSRV->Release();              m_SceneSRV = nullptr; }
-    if (m_LumRTV)                { m_LumRTV->Release();                m_LumRTV = nullptr; }
-    if (m_LumSRV)                { m_LumSRV->Release();                m_LumSRV = nullptr; }
-    if (m_BlurRTV)               { m_BlurRTV->Release();               m_BlurRTV = nullptr; }
-    if (m_BlurSRV)               { m_BlurSRV->Release();               m_BlurSRV = nullptr; }
-    if (m_BackgroundCopyTexture) { m_BackgroundCopyTexture->Release(); m_BackgroundCopyTexture = nullptr; }
-    if (m_BackgroundCopySRV)     { m_BackgroundCopySRV->Release();     m_BackgroundCopySRV = nullptr; }
+    ReleaseScreenSizeResources();
 
     // 3. スワップチェーンのバッファをリサイズ
-    HRESULT hr = m_SwapChain->ResizeBuffers(1, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+    HRESULT hr = m_SwapChain->ResizeBuffers(s_UseFlipModel ? 2 : 1, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, s_SwapChainFlags);
     if (FAILED(hr)) return;
 
     m_ScreenWidth = width;
     m_ScreenHeight = height;
 
-    // 4. バックバッファからRTVを再作成
-    ID3D11Texture2D* pb = nullptr;
-    m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pb);
-    if (pb) {
-        m_Device->CreateRenderTargetView(pb, NULL, &m_RenderTargetView);
-        pb->Release();
-    }
-
-    // 5. 新解像度でDSVを再作成
-    D3D11_TEXTURE2D_DESC td = {};
-    td.Width = m_ScreenWidth;
-    td.Height = m_ScreenHeight;
-    td.MipLevels = 1;
-    td.ArraySize = 1;
-    td.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    td.SampleDesc.Count = 1;
-    td.Usage = D3D11_USAGE_DEFAULT;
-    td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-
-    ID3D11Texture2D* pd = nullptr;
-    m_Device->CreateTexture2D(&td, NULL, &pd);
-    if (pd) {
-        m_Device->CreateDepthStencilView(pd, NULL, &m_DepthStencilView);
-        pd->Release();
-    }
-
-    // 6. ブルーム用レンダーターゲットを新解像度で再作成
-    ID3D11Texture2D* tempTex = nullptr;
-    D3D11_TEXTURE2D_DESC rtDesc = {};
-    rtDesc.Width = m_ScreenWidth;
-    rtDesc.Height = m_ScreenHeight;
-    rtDesc.MipLevels = 1;
-    rtDesc.ArraySize = 1;
-    rtDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    rtDesc.SampleDesc.Count = 1;
-    rtDesc.Usage = D3D11_USAGE_DEFAULT;
-    rtDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-
-    // メインシーン等倍バッファ
-    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
-    if (tempTex) {
-        m_Device->CreateRenderTargetView(tempTex, NULL, &m_SceneRTV);
-        m_Device->CreateShaderResourceView(tempTex, NULL, &m_SceneSRV);
-        tempTex->Release();
-    }
-
-    // 縮小バッファ (1/4)
-    rtDesc.Width = m_ScreenWidth / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
-    rtDesc.Height = m_ScreenHeight / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
-    m_PostViewport.Width = (float)rtDesc.Width;
-    m_PostViewport.Height = (float)rtDesc.Height;
-    m_PostViewport.MinDepth = 0.0f;
-    m_PostViewport.MaxDepth = 1.0f;
-    m_PostViewport.TopLeftX = 0.0f;
-    m_PostViewport.TopLeftY = 0.0f;
-
-    // 高輝度抽出用
-    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
-    if (tempTex) {
-        m_Device->CreateRenderTargetView(tempTex, NULL, &m_LumRTV);
-        m_Device->CreateShaderResourceView(tempTex, NULL, &m_LumSRV);
-        tempTex->Release();
-    }
-
-    // ガウシアンぼかし用
-    m_Device->CreateTexture2D(&rtDesc, NULL, &tempTex);
-    if (tempTex) {
-        m_Device->CreateRenderTargetView(tempTex, NULL, &m_BlurRTV);
-        m_Device->CreateShaderResourceView(tempTex, NULL, &m_BlurSRV);
-        tempTex->Release();
-    }
-
-    // 7. 屈折背景コピーテクスチャ
-    D3D11_TEXTURE2D_DESC bgDesc = {};
-    bgDesc.Width = m_ScreenWidth;
-    bgDesc.Height = m_ScreenHeight;
-    bgDesc.MipLevels = 1;
-    bgDesc.ArraySize = 1;
-    bgDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    bgDesc.SampleDesc.Count = 1;
-    bgDesc.Usage = D3D11_USAGE_DEFAULT;
-    bgDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-    m_Device->CreateTexture2D(&bgDesc, nullptr, &m_BackgroundCopyTexture);
-    if (m_BackgroundCopyTexture) {
-        m_Device->CreateShaderResourceView(m_BackgroundCopyTexture, nullptr, &m_BackgroundCopySRV);
-    }
+    // 4. 新解像度でRTV・DSV・ブルーム・背景コピーリソースを一括再作成
+    CreateScreenSizeResources(m_ScreenWidth, m_ScreenHeight);
 
     // 8. カメラのプロジェクション行列（アスペクト比）を更新
     XMMATRIX proj = XMMatrixPerspectiveFovLH(
@@ -623,8 +603,7 @@ void Renderer::EndShadowPass() {
     // シャドウマップの書き込み（DSV）を解除する
     m_DeviceContext->OMSetRenderTargets(0, NULL, NULL);
 
-    D3D11_VIEWPORT vp; vp.Width = (FLOAT)m_ScreenWidth; vp.Height = (FLOAT)m_ScreenHeight; vp.MinDepth = 0; vp.MaxDepth = 1; vp.TopLeftX = 0; vp.TopLeftY = 0;
-    m_DeviceContext->RSSetViewports(1, &vp);
+    SetScreenViewport();
 
     // DSVが解除されたので、安全にテクスチャ（SRV）として読み込めるようにバインド
     m_DeviceContext->PSSetShaderResources(2, 1, &m_ShadowMapSRV);
@@ -646,8 +625,7 @@ void Renderer::EndOutlinePass() {
 
 void Renderer::Begin() {
     // 中間バッファ（SceneRTV）に描画し、ビューポートを現在の解像度に設定
-    D3D11_VIEWPORT vp; vp.Width = (FLOAT)m_ScreenWidth; vp.Height = (FLOAT)m_ScreenHeight; vp.MinDepth = 0; vp.MaxDepth = 1; vp.TopLeftX = 0; vp.TopLeftY = 0;
-    m_DeviceContext->RSSetViewports(1, &vp);
+    SetScreenViewport();
 
     // バックバッファではなく、SceneRTV（中間バッファ）に描画する
     float c[4] = {0.1f, 0.1f, 0.2f, 1.0f};
@@ -678,52 +656,59 @@ void Renderer::End() {
     m_DeviceContext->OMSetDepthStencilState(m_DepthStateDisable, 0);
     ID3D11ShaderResourceView* nullSRV[] = { NULL, NULL };
 
+    const GraphicsSettings& gs = GraphicsConfig::GetConst();
+    bool enableBloom = (gs.postProcess != PostProcessQuality::Post_Low);
+
+    // ポストプロセス定数バッファをピクセルシェーダーのスロット0に確実にバインド
+    m_DeviceContext->PSSetConstantBuffers(0, 1, &m_PostBuffer);
+
     POSTEFFECT pe;
     ZeroMemory(&pe, sizeof(pe));
     pe.Threshold     = 0.85f;
-    pe.BlurIntensity = 0.6f;
+    pe.BlurIntensity = enableBloom ? (gs.postProcess == PostProcessQuality::Post_High ? 0.6f : 0.35f) : 0.0f;
 
-    // 1. 高輝度抽出 (SceneRTV → LumRTV)
-    m_DeviceContext->RSSetViewports(1, &m_PostViewport);
-    m_DeviceContext->OMSetRenderTargets(1, &m_LumRTV, NULL);
-    m_DeviceContext->PSSetShaderResources(0, 1, &m_SceneSRV);
-    pe.Mode = 0;
-    m_DeviceContext->UpdateSubresource(m_PostBuffer, 0, NULL, &pe, 0, 0);
-    m_DeviceContext->PSSetConstantBuffers(0, 1, &m_PostBuffer);
-    m_DeviceContext->Draw(3, 0);
+    if (enableBloom) {
+        // 1. 高輝度抽出 (SceneRTV → LumRTV)
+        m_DeviceContext->RSSetViewports(1, &m_PostViewport);
+        m_DeviceContext->OMSetRenderTargets(1, &m_LumRTV, NULL);
+        m_DeviceContext->PSSetShaderResources(0, 1, &m_SceneSRV);
+        pe.Mode = 0;
+        m_DeviceContext->UpdateSubresource(m_PostBuffer, 0, NULL, &pe, 0, 0);
+        m_DeviceContext->Draw(3, 0);
 
-    // 2. 横ぼかし (LumRTV → BlurRTV)
-    m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
-    m_DeviceContext->OMSetRenderTargets(1, &m_BlurRTV, NULL);
-    m_DeviceContext->PSSetShaderResources(0, 1, &m_LumSRV);
-    pe.Mode = 1;
-    m_DeviceContext->UpdateSubresource(m_PostBuffer, 0, NULL, &pe, 0, 0);
-    m_DeviceContext->Draw(3, 0);
+        // 2. 横ぼかし (LumRTV → BlurRTV)
+        m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
+        m_DeviceContext->OMSetRenderTargets(1, &m_BlurRTV, NULL);
+        m_DeviceContext->PSSetShaderResources(0, 1, &m_LumSRV);
+        pe.Mode = 1;
+        m_DeviceContext->UpdateSubresource(m_PostBuffer, 0, NULL, &pe, 0, 0);
+        m_DeviceContext->Draw(3, 0);
 
-    // 3. 縦ぼかし (BlurRTV → LumRTV)
-    m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
-    m_DeviceContext->OMSetRenderTargets(1, &m_LumRTV, NULL);
-    m_DeviceContext->PSSetShaderResources(0, 1, &m_BlurSRV);
-    pe.Mode = 2;
-    m_DeviceContext->UpdateSubresource(m_PostBuffer, 0, NULL, &pe, 0, 0);
-    m_DeviceContext->Draw(3, 0);
+        // 3. 縦ぼかし (BlurRTV → LumRTV)
+        m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
+        m_DeviceContext->OMSetRenderTargets(1, &m_LumRTV, NULL);
+        m_DeviceContext->PSSetShaderResources(0, 1, &m_BlurSRV);
+        pe.Mode = 2;
+        m_DeviceContext->UpdateSubresource(m_PostBuffer, 0, NULL, &pe, 0, 0);
+        m_DeviceContext->Draw(3, 0);
+    }
 
     // 4. 合成 (SceneRTV + LumRTV → バックバッファ)
-    D3D11_VIEWPORT vp;
-    vp.Width = (FLOAT)m_ScreenWidth; vp.Height = (FLOAT)m_ScreenHeight;
-    vp.MinDepth = 0; vp.MaxDepth = 1; vp.TopLeftX = 0; vp.TopLeftY = 0;
-    m_DeviceContext->RSSetViewports(1, &vp);
+    SetScreenViewport();
     m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
     m_DeviceContext->OMSetRenderTargets(1, &m_RenderTargetView, NULL);
     m_DeviceContext->PSSetShaderResources(0, 1, &m_SceneSRV);
-    m_DeviceContext->PSSetShaderResources(1, 1, &m_LumSRV);
+    m_DeviceContext->PSSetShaderResources(1, 1, enableBloom ? &m_LumSRV : &m_SceneSRV);
     pe.Mode = 3;
     pe.SlowMotionIntensity = Manager::GetSlowMotionIntensity();
     pe.FlashColor = Manager::GetFlashColor();
-    pe.RadialBlurIntensity = Manager::GetRadialBlurIntensity();
-    pe.ChromaticAberration = Manager::GetChromaticAberration();
+    pe.RadialBlurIntensity = gs.radialBlur ? Manager::GetRadialBlurIntensity() : 0.0f;
+    pe.ChromaticAberration = (gs.postProcess == PostProcessQuality::Post_High) ? Manager::GetChromaticAberration() : 0.0f;
     pe.RadialBlurCenter = Manager::GetRadialBlurCenter();
+    pe.TexelSize = XMFLOAT2(1.0f / (float)m_ScreenWidth, 1.0f / (float)m_ScreenHeight);
+    pe.Dummy.x = gs.casSharpness;
     m_DeviceContext->UpdateSubresource(m_PostBuffer, 0, NULL, &pe, 0, 0);
+    m_DeviceContext->PSSetConstantBuffers(0, 1, &m_PostBuffer);
     m_DeviceContext->Draw(3, 0);
 
     // SRV バインド解除（次フレームへの干渉を防ぐ）
@@ -737,7 +722,9 @@ void Renderer::End() {
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-    m_SwapChain->Present(1, 0);
+    // 垂直同期（VSync）はオフにし、メインループ側で指定FPS（30/60/120/180/240/無制限）に高精度制御
+    // Flipモデル＋テアリング許可時は DXGI_PRESENT_ALLOW_TEARING を指定（DWM合成待ちを回避）
+    m_SwapChain->Present(0, s_AllowTearing ? DXGI_PRESENT_ALLOW_TEARING : 0);
 }
 void Renderer::SetWorldMatrix(XMMATRIX m) {
     XMMATRIX f = m; if(m_IsShadowMode) f = m * m_ShadowMatrix;
@@ -784,6 +771,21 @@ void Renderer::SetCameraPosition(XMFLOAT3 p) {
 }
 void Renderer::SetShadowMode(bool e) { m_IsShadowMode = e; }
 void Renderer::SetShadowMatrix(XMMATRIX m) { m_ShadowMatrix = m; }
+void Renderer::SetAnisotropy(int maxAniso) {
+    if (!m_Device || !m_DeviceContext) return;
+    if (m_SamplerState) {
+        m_SamplerState->Release();
+        m_SamplerState = NULL;
+    }
+    D3D11_SAMPLER_DESC sm = {};
+    sm.Filter = D3D11_FILTER_ANISOTROPIC;
+    sm.AddressU = sm.AddressV = sm.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    sm.MaxAnisotropy = (UINT)(maxAniso < 1 ? 1 : (maxAniso > 16 ? 16 : maxAniso));
+    sm.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+    sm.MaxLOD = D3D11_FLOAT32_MAX;
+    m_Device->CreateSamplerState(&sm, &m_SamplerState);
+    m_DeviceContext->PSSetSamplers(0, 1, &m_SamplerState);
+}
 // ─────────────────────────────────────────────
 // シェーダーパス解決（2-1 対応）
 // テクスチャの ResourceManager::GetTexture と同じ考え方で一元化する。
@@ -914,83 +916,60 @@ void Renderer::CreateTexture(const char* name, ID3D11ShaderResourceView** tex) {
 }
 void Renderer::SetTexture(ID3D11ShaderResourceView* t) { m_DeviceContext->PSSetShaderResources(0, 1, &t); }
 void Renderer::SetNormalMap(ID3D11ShaderResourceView* t) { m_DeviceContext->PSSetShaderResources(1, 1, &t); }
-void Renderer::SetupCubeDraw() {
+void Renderer::BindCubePipeline(ID3D11VertexShader* customVS, ID3D11PixelShader* customPS) {
     UINT stride = sizeof(VERTEX_3D), offset = 0;
     m_DeviceContext->IASetVertexBuffers(0, 1, &m_CubeVertexBuffer, &stride, &offset);
     m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_DeviceContext->IASetInputLayout(m_CubeInputLayout);
-    
-    // アウトライン描画パスの場合は、専用のアウトラインシェーダーをバインドする
+
+    // アウトライン描画パスの場合は専用のアウトラインシェーダーを優先バインド
     if (m_IsOutlineMode) {
         m_DeviceContext->VSSetShader(m_OutlineVS, NULL, 0);
         m_DeviceContext->PSSetShader(m_OutlinePS, NULL, 0);
     } else {
-        m_DeviceContext->VSSetShader(m_CubeVertexShader, NULL, 0);
-        m_DeviceContext->PSSetShader(m_CubePixelShader, NULL, 0);
+        m_DeviceContext->VSSetShader(customVS ? customVS : m_CubeVertexShader, NULL, 0);
+        m_DeviceContext->PSSetShader(customPS ? customPS : m_CubePixelShader, NULL, 0);
     }
+}
+
+void Renderer::DrawCubeInternal(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* texture, ID3D11PixelShader* customPS) {
+    SetWorldMatrix(worldMatrix);
+    SetTexture(texture);
+
+    ID3D11ShaderResourceView* nullSRV = NULL;
+    m_DeviceContext->PSSetShaderResources(1, 1, &nullSRV);
+
+    MATERIAL material = {};
+    material.Diffuse = XMFLOAT4(1, 1, 1, 1);
+    material.Ambient = XMFLOAT4(1, 1, 1, 1);
+    material.Specular = XMFLOAT4(0.6f, 0.6f, 0.6f, 1);
+    material.Shininess = 20.0f;
+    material.TextureEnable = TRUE;
+    SetMaterial(material);
+
+    BindCubePipeline(m_CubeVertexShader, customPS);
+    m_DeviceContext->Draw(36, 0);
+}
+
+void Renderer::SetupCubeDraw() {
+    BindCubePipeline();
 }
 
 // Rendererクラス側（renderer.cpp など）に実装を追加
 void Renderer::DrawCube(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* texture)
 {
-    SetWorldMatrix(worldMatrix);
-    SetTexture(texture);
-
-    ID3D11ShaderResourceView* nullSRV = NULL;
-    m_DeviceContext->PSSetShaderResources(1, 1, &nullSRV);
-
-    // 共通のマテリアル設定
-    MATERIAL material;
-    ZeroMemory(&material, sizeof(material));
-    material.Diffuse = XMFLOAT4(1, 1, 1, 1);
-    material.Ambient = XMFLOAT4(1, 1, 1, 1);
-    material.Specular = XMFLOAT4(0.6f, 0.6f, 0.6f, 1);
-    material.Shininess = 20.0f;
-    material.TextureEnable = TRUE;
-    SetMaterial(material);
-
-    SetupCubeDraw();
-    GetDeviceContext()->Draw(36, 0);
+    DrawCubeInternal(worldMatrix, texture, m_CubePixelShader);
 }
 
 void Renderer::DrawCubeWithTestShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* texture)
 {
-    SetWorldMatrix(worldMatrix);
-    SetTexture(texture);
-
-    ID3D11ShaderResourceView* nullSRV = NULL;
-    m_DeviceContext->PSSetShaderResources(1, 1, &nullSRV);
-
-    // 共通のマテリアル設定
-    MATERIAL material;
-    ZeroMemory(&material, sizeof(material));
-    material.Diffuse = XMFLOAT4(1, 1, 1, 1);
-    material.Ambient = XMFLOAT4(1, 1, 1, 1);
-    material.Specular = XMFLOAT4(0.6f, 0.6f, 0.6f, 1);
-    material.Shininess = 20.0f;
-    material.TextureEnable = TRUE;
-    SetMaterial(material);
-
-    // SetupCubeDraw() と同様だが、ピクセルシェーダーだけ m_TestPixelShader を使う
-    UINT stride = sizeof(VERTEX_3D), offset = 0;
-    m_DeviceContext->IASetVertexBuffers(0, 1, &m_CubeVertexBuffer, &stride, &offset);
-    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_DeviceContext->IASetInputLayout(m_CubeInputLayout);
-    
-    if (m_IsOutlineMode) {
-        m_DeviceContext->VSSetShader(m_OutlineVS, NULL, 0);
-        m_DeviceContext->PSSetShader(m_OutlinePS, NULL, 0);
-    } else {
-        m_DeviceContext->VSSetShader(m_CubeVertexShader, NULL, 0);
-        m_DeviceContext->PSSetShader(m_TestPixelShader, NULL, 0);
-    }
-
-    GetDeviceContext()->Draw(36, 0);
+    DrawCubeInternal(worldMatrix, texture, m_TestPixelShader);
 }
 
 void Renderer::CopySceneTexture()
 {
     if (!m_DeviceContext || !m_BackgroundCopyTexture || !m_SceneRTV) return;
+    if (!GraphicsConfig::GetConst().refractionCopy) return;
 
     ID3D11Resource* pRtvResource = nullptr;
     m_SceneRTV->GetResource(&pRtvResource);
@@ -1036,18 +1015,7 @@ void Renderer::DrawCubeWithWaterShader(const XMMATRIX& worldMatrix, ID3D11Shader
     ID3D11ShaderResourceView* srvs[2] = { normalMap1, normalMap2 };
     m_DeviceContext->PSSetShaderResources(0, 2, srvs);
 
-    UINT stride = sizeof(VERTEX_3D), offset = 0;
-    m_DeviceContext->IASetVertexBuffers(0, 1, &m_CubeVertexBuffer, &stride, &offset);
-    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_DeviceContext->IASetInputLayout(m_CubeInputLayout);
-
-    if (m_IsOutlineMode) {
-        m_DeviceContext->VSSetShader(m_OutlineVS, NULL, 0);
-        m_DeviceContext->PSSetShader(m_OutlinePS, NULL, 0);
-    } else {
-        m_DeviceContext->VSSetShader(m_WaterVS, NULL, 0);
-        m_DeviceContext->PSSetShader(m_WaterPS, NULL, 0);
-    }
+    BindCubePipeline(m_WaterVS, m_WaterPS);
 
     m_DeviceContext->Draw(36, 0);
 
@@ -1075,18 +1043,7 @@ void Renderer::DrawCubeWithDissolveShader(const XMMATRIX& worldMatrix, ID3D11Sha
     ID3D11ShaderResourceView* srvs[2] = { mainTexture, noiseTexture };
     m_DeviceContext->PSSetShaderResources(0, 2, srvs);
 
-    UINT stride = sizeof(VERTEX_3D), offset = 0;
-    m_DeviceContext->IASetVertexBuffers(0, 1, &m_CubeVertexBuffer, &stride, &offset);
-    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_DeviceContext->IASetInputLayout(m_CubeInputLayout);
-
-    if (m_IsOutlineMode) {
-        m_DeviceContext->VSSetShader(m_OutlineVS, NULL, 0);
-        m_DeviceContext->PSSetShader(m_OutlinePS, NULL, 0);
-    } else {
-        m_DeviceContext->VSSetShader(m_CubeVertexShader, NULL, 0);
-        m_DeviceContext->PSSetShader(m_DissolvePS, NULL, 0);
-    }
+    BindCubePipeline(m_CubeVertexShader, m_DissolvePS);
 
     m_DeviceContext->Draw(36, 0);
 
@@ -1098,7 +1055,7 @@ void Renderer::DrawCubeWithRefractShader(const XMMATRIX& worldMatrix, ID3D11Shad
 {
     SetWorldMatrix(worldMatrix);
 
-    GlassCB cb;
+    GlassCB cb = {};
     cb.RefractionIndex = refractionIndex;
     cb.FresnelPower = fresnelPower;
     cb.ScreenSize = XMFLOAT2((float)m_ScreenWidth, (float)m_ScreenHeight);
@@ -1110,18 +1067,7 @@ void Renderer::DrawCubeWithRefractShader(const XMMATRIX& worldMatrix, ID3D11Shad
     ID3D11ShaderResourceView* srvs[2] = { m_BackgroundCopySRV, normalMap };
     m_DeviceContext->PSSetShaderResources(0, 2, srvs);
 
-    UINT stride = sizeof(VERTEX_3D), offset = 0;
-    m_DeviceContext->IASetVertexBuffers(0, 1, &m_CubeVertexBuffer, &stride, &offset);
-    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_DeviceContext->IASetInputLayout(m_CubeInputLayout);
-
-    if (m_IsOutlineMode) {
-        m_DeviceContext->VSSetShader(m_OutlineVS, NULL, 0);
-        m_DeviceContext->PSSetShader(m_OutlinePS, NULL, 0);
-    } else {
-        m_DeviceContext->VSSetShader(m_CubeVertexShader, NULL, 0);
-        m_DeviceContext->PSSetShader(m_RefractPS, NULL, 0);
-    }
+    BindCubePipeline(m_CubeVertexShader, m_RefractPS);
 
     m_DeviceContext->Draw(36, 0);
 

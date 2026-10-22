@@ -81,6 +81,12 @@ private:
     static bool m_IsCutsceneActive;
     static int  m_CutsceneTimer;
 
+    // フレームレート（FPS）制御用
+    static int   m_TargetFPS;          // 目標FPS (30, 60, 120, 180, 240, 0=無制限)
+    static float m_CurrentFPS;         // 実測FPS
+    static int   m_FpsFrameCount;      // FPS計測用フレームカウンタ
+    static float m_FpsTimeAccumulator; // FPS計測用時間累積
+
     // シャドウマップ／アウトラインパス共通のオブジェクト描画ヘルパー
     static void DrawShadowAndOutlineObjects();
 
@@ -91,7 +97,7 @@ public:
     
     // 更新と描画（アクティブなシーンオブジェクトに処理を委譲します）
     static void Update();
-    static void Draw();
+    static void Draw(float alpha = 1.0f);
     static void DestroyObjectsIf(); // オブジェクト破棄処理の一元化（IsDestroy == true）
 
     // 条件指定によるオブジェクト破棄の一元化（ボスステージ遷移等で使用）
@@ -142,10 +148,16 @@ public:
         }
 
         ObjectType targetType = TargetType::GetStaticType();
-        for (GameObject* gameObject : m_GameObjects)
+        const std::vector<GameObject*>& categoryList = GetCategoryList(targetType);
+        for (GameObject* gameObject : categoryList)
         {
-            if (gameObject && gameObject->GetObjectType() == targetType)
-                return static_cast<TargetType*>(gameObject);
+            if (gameObject && !gameObject->IsDestroy())
+            {
+                if (TargetType* casted = dynamic_cast<TargetType*>(gameObject))
+                {
+                    return casted;
+                }
+            }
         }
         return nullptr;
     }
@@ -156,11 +168,16 @@ public:
     {
         std::vector<TargetType*> list;
         ObjectType targetType = TargetType::GetStaticType();
-        for (GameObject* gameObject : m_GameObjects)
+        const std::vector<GameObject*>& categoryList = GetCategoryList(targetType);
+        list.reserve(categoryList.size());
+        for (GameObject* gameObject : categoryList)
         {
-            if (gameObject && gameObject->GetObjectType() == targetType)
+            if (gameObject && !gameObject->IsDestroy())
             {
-                list.push_back(static_cast<TargetType*>(gameObject));
+                if (TargetType* casted = dynamic_cast<TargetType*>(gameObject))
+                {
+                    list.push_back(casted);
+                }
             }
         }
         return list;
@@ -253,4 +270,10 @@ public:
     static float GetRadialBlurIntensity() { return m_RadialBlurIntensity; }
     static float GetChromaticAberration() { return m_ChromaticAberration; }
     static DirectX::XMFLOAT2 GetRadialBlurCenter() { return m_RadialBlurCenter; }
+
+    // フレームレート（FPS）制御
+    static int   GetTargetFPS() { return m_TargetFPS; }
+    static void  SetTargetFPS(int fps) { m_TargetFPS = fps; }
+    static float GetCurrentFPS() { return m_CurrentFPS; }
+    static void  UpdateFPSCounter(float deltaDrawTime);
 };

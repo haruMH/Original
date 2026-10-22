@@ -88,7 +88,7 @@ void CollisionSystem::TriggerChainLightning(const XMFLOAT3& startPos, Player* pl
             HitInfo hitInfo;
             hitInfo.hitSourcePos = currentPos;
             if (nearest->GetObjectType() == ObjectType::Boss) {
-                hitInfo.damage = 3; // 連鎖ダメージは3
+                hitInfo.damage = Constants::Lightning::CHAIN_DAMAGE; // 連鎖ダメージは3
                 nearest->OnHit(hitInfo);
             } else {
                 hitInfo.damage = 1;
@@ -113,22 +113,48 @@ void CollisionSystem::TriggerChainLightning(const XMFLOAT3& startPos, Player* pl
 
 // ─────────────────────────────────────────────
 // 飛行エネミーが対象に衝突したときの衝撃を解決する
-// 爆発・電撃・通常の3パターンを一か所に集約して重複を排除する。
+// 壁・ボス・通常敵への爆発・電撃・通常衝突を一か所に集約して重複を排除する。
 // 戻り値：衝突処理を実施した場合は true。
 // ─────────────────────────────────────────────
-static bool ResolveFlyingEnemyImpact(
+bool CollisionSystem::ResolveFlyingEnemyImpact(
     Enemy*      flying,
     GameObject* target,
     Player*     player,
     bool&       explosionThisFrame)
 {
+    if (!flying || !target) return false;
+
     // 属性（Affix）による多態的な衝突解決
     std::shared_ptr<IEnemyAffix> affix = flying->GetAffix();
     if (affix && affix->OnImpact(flying, target, player, explosionThisFrame)) {
+        // 壁激突で爆発した場合も壁ヒット演出（SE・シェイク）を再生する
+        if (target->GetObjectType() == ObjectType::Wall) {
+            SoundManager::PlaySE(SoundID::SE_HIT_WALL);
+            Manager::AddHitStop(6);
+            if (g_Camera) g_Camera->Shake(0.15f, 10);
+            ScoreHUD::Shake(8.0f, 8);
+        }
         return true;
     }
 
     // ─── 3. 通常衝突 ───
+    if (target->GetObjectType() == ObjectType::Wall) {
+        flying->Defeat();
+        flying->SetEnemyState(EnemyState::DEFEATED);
+        if (flying->GetScale().x > 2.0f) {
+            flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f)); // 巨大エネミーは壁衝突時に跳ね返らない
+        } else {
+            XMFLOAT3 oldVel = flying->GetVelocity();
+            flying->SetVelocity(XMFLOAT3(oldVel.x * -0.3f, 0.1f, oldVel.z * -0.3f));
+        }
+
+        SoundManager::PlaySE(SoundID::SE_HIT_WALL);
+        Manager::AddHitStop(6);
+        if (g_Camera) g_Camera->Shake(0.15f, 10);
+        ScoreHUD::Shake(8.0f, 8);
+        return true;
+    }
+
     if (target->GetObjectType() == ObjectType::Boss) {
         float spinRatio = flying->GetThrowSpinRatio(); // 0.0f〜1.0f
         int baseDmg = Constants::Boss::THROW_NORMAL_DAMAGE;
@@ -216,7 +242,7 @@ static bool ResolveFlyingEnemyImpact(
 // ─────────────────────────────────────────────
 // プレイヤーとアイテムの衝突判定（各種アイテム取得）
 // ─────────────────────────────────────────────
-static void HandlePlayerItemPickup(Player* player, const std::vector<GameObject*>& items)
+void CollisionSystem::HandlePlayerItemPickup(Player* player, const std::vector<GameObject*>& items)
 {
     XMFLOAT3 pPos = player->GetPosition();
     for (GameObject* obj : items) {
@@ -254,7 +280,7 @@ static void HandlePlayerItemPickup(Player* player, const std::vector<GameObject*
 // ─────────────────────────────────────────────
 // プレイヤーのスピン中におけるなぎ払い判定
 // ─────────────────────────────────────────────
-static void HandleSpinSweep(Player* player, SpatialGrid& grid)
+void CollisionSystem::HandleSpinSweep(Player* player, SpatialGrid& grid)
 {
     if (player->GetState() != PlayerState::SPINNING) return;
 
@@ -375,47 +401,20 @@ static void HandleSpinSweep(Player* player, SpatialGrid& grid)
 // 飛行エネミー vs 壁の衝突判定
 // 壁に衝突した場合、飛行エネミーを撃破または跳ね返す。
 // ─────────────────────────────────────────────
-static void HandleFlyingVsWall(
-    Enemy*                         flying,
+void CollisionSystem::HandleFlyingVsWall(
+    Enemy*                          flying,
     const std::vector<GameObject*>& walls,
-    Player*                        player,
-    bool&                          explosionThisFrame)
+    Player*                         player,
+    bool&                           explosionThisFrame)
 {
     for (GameObject* obj : walls) {
         Wall* wall = static_cast<Wall*>(obj);
-        if (wall->IsDestroy()) continue;
+        if (!wall || wall->IsDestroy()) continue;
         if (!Collision::CheckAABB(flying, wall)) continue;
 
-        bool triggeredLightning = false;
-        if (flying->IsLightning()) {
-            CollisionSystem::TriggerChainLightning(flying->GetPosition(), player);
-            // 電撃属性は維持したまま撃破消滅へ移行し、スパークを散らし続ける
-            triggeredLightning = true;
+        if (ResolveFlyingEnemyImpact(flying, wall, player, explosionThisFrame)) {
+            break;
         }
-
-        if (!triggeredLightning && !explosionThisFrame && flying->IsExplosive()) {
-            ExplosionSystem::TriggerExplosion(flying->GetPosition());
-            flying->SetEnemyState(EnemyState::DEFEATED);
-            flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
-            explosionThisFrame = true;
-        } else {
-            // 撃破処理（壁衝突）
-            flying->Defeat();
-            flying->SetEnemyState(EnemyState::DEFEATED);
-            if (flying->GetScale().x > 2.0f) {
-                flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f)); // 巨大エネミーは壁衝突時に跳ね返らない
-            } else {
-                XMFLOAT3 oldVel = flying->GetVelocity();
-                flying->SetVelocity(XMFLOAT3(oldVel.x * -0.3f, 0.1f, oldVel.z * -0.3f));
-            }
-        }
-
-        SoundManager::PlaySE(SoundID::SE_HIT_WALL);
-
-        Manager::AddHitStop(6);
-        if (g_Camera) g_Camera->Shake(0.15f, 10);
-        ScoreHUD::Shake(8.0f, 8);
-        break;
     }
 }
 
@@ -424,7 +423,7 @@ static void HandleFlyingVsWall(
 // グリッドのセル跨ぎによる貫通バグを防ぐため個別に処理する。
 // 戻り値：衝突が起きた場合は true。
 // ─────────────────────────────────────────────
-static bool HandleFlyingVsBoss(
+bool CollisionSystem::HandleFlyingVsBoss(
     Enemy*    flying,
     Player*   player,
     bool&     explosionThisFrame)
@@ -443,7 +442,7 @@ static bool HandleFlyingVsBoss(
 // ─────────────────────────────────────────────
 // 飛行エネミー vs 他のエネミーの衝突判定（グリッド利用）
 // ─────────────────────────────────────────────
-static void HandleFlyingVsEnemy(
+void CollisionSystem::HandleFlyingVsEnemy(
     Enemy*          flying,
     Player*         player,
     SpatialGrid&    grid,

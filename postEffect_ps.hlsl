@@ -7,6 +7,8 @@ cbuffer PostEffectBuffer : register(b0) {
     float    RadialBlurIntensity;  // 放射ブラー強度 (0.0〜1.0)
     float    ChromaticAberration;  // 色収差強度 (0.0〜1.0)
     float2   RadialBlurCenter;     // 放射ブラー中心UV
+    float2   TexelSize;            // 実画面テクセルサイズ (1/width, 1/height)
+    float2   PostDummy;            // 16バイト境界パディング
 }
 
 Texture2D    g_Texture1 : register(t0);
@@ -29,13 +31,13 @@ float3 ACESFilm(float3 x)
 // 局所コントラストに応じてリンギング（白縁）を防止しながら輪郭線とテクスチャを鮮明化
 float3 ApplyCAS(Texture2D tex, SamplerState samp, float2 uv, float sharpness)
 {
-    float2 texelSize = float2(1.0f / 1280.0f, 1.0f / 720.0f);
+    float2 texel = TexelSize;
 
     float3 c = tex.Sample(samp, uv).rgb;
-    float3 u = tex.Sample(samp, uv + float2( 0.0f, -texelSize.y)).rgb;
-    float3 d = tex.Sample(samp, uv + float2( 0.0f,  texelSize.y)).rgb;
-    float3 l = tex.Sample(samp, uv + float2(-texelSize.x,  0.0f)).rgb;
-    float3 r = tex.Sample(samp, uv + float2( texelSize.x,  0.0f)).rgb;
+    float3 u = tex.Sample(samp, uv + float2( 0.0f, -texel.y)).rgb;
+    float3 d = tex.Sample(samp, uv + float2( 0.0f,  texel.y)).rgb;
+    float3 l = tex.Sample(samp, uv + float2(-texel.x,  0.0f)).rgb;
+    float3 r = tex.Sample(samp, uv + float2( texel.x,  0.0f)).rgb;
 
     // 局所の最小輝度・最大輝度（RGB独立評価）
     float3 minColor = min(c, min(min(u, d), min(l, r)));
@@ -87,7 +89,8 @@ float4 main(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD) : SV_TARG
         float3 caBase = float3(rCol, gCol, bCol);
 
         // (b) CAS 適応型シャープネス（中心部・基本テクスチャを鮮明化）
-        float3 sharpBase = ApplyCAS(g_Texture1, g_Sampler, TexCoord, 0.60f);
+        float casAmount = (PostDummy.x > 0.001f) ? PostDummy.x : 0.60f;
+        float3 sharpBase = ApplyCAS(g_Texture1, g_Sampler, TexCoord, casAmount);
         float3 finalBase = lerp(sharpBase, caBase, saturate(length(uvOffset) * 1.5f + ChromaticAberration * 2.0f));
 
         // (c) アクション連動ラジアルブラー（ダッシュ・スピン・投擲時の放射速度線）

@@ -81,18 +81,25 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 
 
-	DWORD dwExecLastTime;
-	DWORD dwCurrentTime;
 	timeBeginPeriod(1);
-	dwExecLastTime = timeGetTime();
-	dwCurrentTime = 0;
 
+	// 高精度タイマーの初期化
+	LARGE_INTEGER qpcFreq;
+	QueryPerformanceFrequency(&qpcFreq);
+	const double invFreq = 1.0 / static_cast<double>(qpcFreq.QuadPart);
 
+	LARGE_INTEGER lastCounter;
+	QueryPerformanceCounter(&lastCounter);
+	LARGE_INTEGER lastDrawCounter = lastCounter;
+
+	// ゲームロジックは常に 60Hz（約16.666ms）固定で更新
+	const double FIXED_DELTA_TIME = 1.0 / 60.0;
+	double accumulator = 0.0;
 
 	MSG msg;
 	while(1)
 	{
-        if(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		if(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
 			if(msg.message == WM_QUIT)
 			{
@@ -103,17 +110,74 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
-        }
+		}
 		else
 		{
-			dwCurrentTime = timeGetTime();
+			LARGE_INTEGER currentCounter;
+			QueryPerformanceCounter(&currentCounter);
+			double frameDelta = static_cast<double>(currentCounter.QuadPart - lastCounter.QuadPart) * invFreq;
+			lastCounter = currentCounter;
 
-			if((dwCurrentTime - dwExecLastTime) >= (1000 / 60))
+			// ウィンドウ移動や一時停止などによる極端な時間の跳躍（スパイラル・オブ・デス）を防止（最大0.1秒）
+			if (frameDelta > 0.1) {
+				frameDelta = 0.1;
+			}
+
+			accumulator += frameDelta;
+
+			// ゲームロジックの固定ステップ更新（60Hz）
+			while (accumulator >= FIXED_DELTA_TIME)
 			{
-				dwExecLastTime = dwCurrentTime;
-
 				Manager::Update();
-				Manager::Draw();
+				accumulator -= FIXED_DELTA_TIME;
+			}
+
+			// 描画フレームレート制御
+			int targetFPS = Manager::GetTargetFPS();
+			bool canDraw = false;
+
+			if (targetFPS <= 0)
+			{
+				// 無制限（即座に描画）
+				canDraw = true;
+			}
+			else
+			{
+				double targetInterval = 1.0 / static_cast<double>(targetFPS);
+				double elapsedSinceLastDraw = static_cast<double>(currentCounter.QuadPart - lastDrawCounter.QuadPart) * invFreq;
+				if (elapsedSinceLastDraw >= targetInterval)
+				{
+					canDraw = true;
+				}
+			}
+
+			if (canDraw)
+			{
+				double drawDelta = static_cast<double>(currentCounter.QuadPart - lastDrawCounter.QuadPart) * invFreq;
+				lastDrawCounter = currentCounter;
+
+				// 60Hz固定ステップ間の余剰時間から描画補間係数（0.0〜1.0）を算出
+				float alpha = static_cast<float>(accumulator / FIXED_DELTA_TIME);
+				if (alpha > 1.0f) alpha = 1.0f;
+				if (alpha < 0.0f) alpha = 0.0f;
+
+				Manager::Draw(alpha);
+				Manager::UpdateFPSCounter(static_cast<float>(drawDelta));
+			}
+			else
+			{
+				// 次の描画タイミングまで余裕がある場合は、CPU使用率100%張り付きを防ぐため休止
+				double targetInterval = 1.0 / static_cast<double>(targetFPS);
+				double elapsedSinceLastDraw = static_cast<double>(currentCounter.QuadPart - lastDrawCounter.QuadPart) * invFreq;
+				double remaining = targetInterval - elapsedSinceLastDraw;
+				if (remaining > 0.002) // 2ms以上あるならSleep(1)
+				{
+					Sleep(1);
+				}
+				else
+				{
+					YieldProcessor(); // スピン待機
+				}
 			}
 		}
 	}

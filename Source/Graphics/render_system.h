@@ -69,7 +69,23 @@ private:
     // テクスチャ配列の生成
     bool CreateTextureArray(ID3D11Device* device);
 
+    // 描画対象リストの構築（インスタンシング対象判定＋視錐台カリング）
+    const std::vector<GameObject*>& BuildDrawList(const std::vector<GameObject*>& objects, RenderPass pass);
+
+    // パスに応じたシェーダー・ラスタライザ・深度ステートの設定
+    void SetupPassState(ID3D11DeviceContext* context, RenderPass pass);
+
     // カリング済み描画オブジェクトリストのキャッシュ（3-3 対応）
     // Normalパスで構築したリストをOutlineパスで再利用し、重複カリング計算を回避する
     std::vector<GameObject*> m_CachedDrawList;
+    std::vector<GameObject*> m_TempDrawList; // Shadowパス等の一時リスト用（毎フレームの再確保防止）
+
+    // 描画リストと並列のテクスチャ配列インデックス（文字列ハッシュ検索を毎インスタンス行わないためのキャッシュ）
+    std::vector<float> m_CachedTexIndices;
+    std::vector<float> m_TempTexIndices;
+    const std::vector<float>* m_ActiveTexIndices = nullptr; // 直近のBuildDrawListが返したリストに対応するインデックス配列
+
+    // Normalパスで算出したワールド行列とEmissiveをキャッシュし、Outlineパスでの再計算をスキップ
+    std::vector<DirectX::XMFLOAT4X4> m_CachedWorldMatrices;
+    std::vector<DirectX::XMFLOAT3>   m_CachedEmissives;
 };

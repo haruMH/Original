@@ -20,6 +20,9 @@ void Camera::Init()
     m_ShakeIntensity = 0.0f;
     m_ShakeTimer = 0;
 
+    m_PrevPosition = m_Position;
+    m_PrevTarget   = m_Target;
+
     // プロジェクション行列の設定
     XMMATRIX proj = XMMatrixPerspectiveFovLH(
         Constants::Camera::FOV,
@@ -36,6 +39,10 @@ void Camera::Uninit() {}
 
 void Camera::Update()
 {
+    // 前回の位置と注視点を退避（描画補間用）
+    m_PrevPosition = m_Position;
+    m_PrevTarget   = m_Target;
+
     // 1. プレイヤーを取得
     GameObject* player = Manager::GetGameObject<Player>();
 
@@ -211,16 +218,39 @@ void Camera::Update()
         m_ShakeIntensity *= Constants::Camera::SHAKE_DAMPING; // 徐々に減衰
     }
 
-    // 行列設定
+    // 行列設定（デフォルト: alpha=1.0 として即時反映）
+    ApplyViewMatrix(1.0f);
+}
+
+void Camera::ApplyViewMatrix(float alpha)
+{
+    // プレイヤーとカメラの同期を保ち相対ブレ・ジッターを防ぐため、実座標を即時使用
+    (void)alpha;
+    XMFLOAT3 finalPosition = m_Position;
+    XMFLOAT3 finalTarget = m_Target;
+
+    if (m_ShakeTimer > 0) {
+        float rx = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * m_ShakeIntensity;
+        float ry = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * m_ShakeIntensity;
+        float rz = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * m_ShakeIntensity;
+        
+        finalPosition.x += rx;
+        finalPosition.y += ry;
+        finalPosition.z += rz;
+
+        finalTarget.x += rx;
+        finalTarget.y += ry;
+        finalTarget.z += rz;
+    }
+
     XMVECTOR eye = XMLoadFloat3(&finalPosition);
-    XMVECTOR at = XMLoadFloat3(&finalTarget);
-    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    XMVECTOR at  = XMLoadFloat3(&finalTarget);
+    XMVECTOR up  = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMMATRIX view = XMMatrixLookAtLH(eye, at, up);
 
     Renderer::SetViewMatrix(view);
     Renderer::SetCameraPosition(finalPosition);
 }
-
 
 void Camera::Draw() {}
 

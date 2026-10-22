@@ -31,6 +31,7 @@
 #include "option_ui.h"
 #include "progression_manager.h"
 #include "item_notification_hud.h"
+#include "graphics_config.h"
 
 // DirectX 名前空間の使用
 using namespace DirectX;
@@ -75,6 +76,11 @@ float                  Manager::m_LowHPAlpha = 0.0f;
 
 bool                   Manager::m_IsCutsceneActive = false;
 int                    Manager::m_CutsceneTimer = 0;
+
+int                    Manager::m_TargetFPS = 60;
+float                  Manager::m_CurrentFPS = 60.0f;
+int                    Manager::m_FpsFrameCount = 0;
+float                  Manager::m_FpsTimeAccumulator = 0.0f;
 
 float                  Manager::m_RadialBlurIntensity = 0.0f;
 float                  Manager::m_ChromaticAberration = 0.0f;
@@ -195,18 +201,8 @@ void Manager::Uninit()
     m_RenderSystem.ClearCache();
     m_RenderSystem.Uninit();
 
-    // 登録されているゲームオブジェクトの破棄
-    for (auto& gameObject : m_ManagedObjects) {
-        if (gameObject) {
-            gameObject->Uninit();
-        }
-    }
-    m_ManagedObjects.clear();
-    m_GameObjects.clear();
-    m_UpdateObjects.clear();
-    m_CachedPlayer = nullptr;
-    m_CachedBoss = nullptr;
-    ClearCategoryLists();
+    // 登録されているゲームオブジェクトの破棄（DestroyObjectsIf に一元化）
+    DestroyObjectsIf([](GameObject*) { return true; });
 
     if (g_Camera) {
         g_Camera->Uninit();
@@ -226,14 +222,20 @@ void Manager::Uninit()
 // ─────────────────────────────────────────────
 void Manager::Update()
 {
-    // ImGui の新規フレーム開始
-    Renderer::BeginNewFrame();
-
     Input::Update();
     SoundManager::Update();
 
     // オプションUIの更新（Tabキー監視）
     OptionUI::Update();
+
+    // グラフィック設定変更の即時反映（ポーズ中も反映）
+    if (GraphicsConfig::ConsumeDirty()) {
+        const GraphicsSettings& s = GraphicsConfig::GetConst();
+        int aniso = (s.anisotropy == AnisoQuality::Aniso16x) ? 16 :
+                    (s.anisotropy == AnisoQuality::Aniso8x)  ? 8 :
+                    (s.anisotropy == AnisoQuality::Aniso4x)  ? 4 : 2;
+        Renderer::SetAnisotropy(aniso);
+    }
 
     // オプション画面が開いている間は、背後のゲームプレイ更新を一時停止（ポーズ）する
     if (OptionUI::IsOpen()) {
@@ -367,9 +369,18 @@ void Manager::Update()
 // ─────────────────────────────────────────────
 // 描画処理
 // ─────────────────────────────────────────────
-void Manager::Draw()
+void Manager::Draw(float alpha)
 {
+    // 描画補間: カメラのビュー行列を alpha に応じて補間適用
+    if (g_Camera) {
+        g_Camera->ApplyViewMatrix(alpha);
+    }
+
+    // ImGui の新規フレーム開始（Drawと1:1でペアにする）
+    Renderer::BeginNewFrame();
+
     m_RenderSystem.ClearCache(); // キャッシュクリア
+    ID3D11DeviceContext* context = Renderer::GetDeviceContext();
 
     XMMATRIX cameraView = Renderer::GetViewMatrix();
     XMMATRIX cameraProj = Renderer::GetProjectionMatrix();
@@ -392,7 +403,7 @@ void Manager::Draw()
     Renderer::BeginShadowPass();
     Renderer::SetupCubeDraw();
     DrawShadowAndOutlineObjects();
-    m_RenderSystem.RenderCubeInstances(Renderer::GetDeviceContext(), m_GameObjects, RenderPass::Shadow);
+    m_RenderSystem.RenderCubeInstances(context, m_GameObjects, RenderPass::Shadow);
     Renderer::EndShadowPass();
 
     // === 2. 通常描画パス ===
@@ -400,40 +411,49 @@ void Manager::Draw()
     Renderer::SetProjectionMatrix(cameraProj);
     Renderer::Begin();
 
-    for (GameObject* obj : m_GameObjects) {
-        if (obj->GetObjectType() == ObjectType::Unknown) { obj->Draw(); }
+    for (GameObject* obj : GetCategoryList(ObjectType::Unknown)) {
+        if (obj && !obj->IsDestroy()) { obj->Draw(); }
     }
-    Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    for (GameObject* obj : m_GameObjects) {
-        if (obj->GetObjectType() == ObjectType::Field) { obj->Draw(); }
+    for (GameObject* obj : GetCategoryList(ObjectType::Field)) {
+        if (obj && !obj->IsDestroy()) { obj->Draw(); }
     }
-    Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    const GraphicsSettings& gs = GraphicsConfig::GetConst();
 
     // 全キャラクター・敵・アイテムの接地丸影（ドロップシャドウ）を描画
-    ShadowSystem::Draw(m_GameObjects);
+    if (gs.blobShadow) {
+        ShadowSystem::Draw(m_GameObjects);
+    }
 
     // 1. 本体キューブのインスタンシング描画（敵、プレイヤー、壁など）
-    m_RenderSystem.RenderCubeInstances(Renderer::GetDeviceContext(), m_GameObjects, RenderPass::Normal);
-    Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_RenderSystem.RenderCubeInstances(context, m_GameObjects, RenderPass::Normal);
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    // 2. 各オブジェクトの個別装飾・目・個別エフェクトの描画
+    // 2. 各オブジェクトの個別装飾・目・個別エフェクトの描画（常時有効）
     Renderer::SetupCubeDraw();
     for (GameObject* obj : m_GameObjects) {
+        if (!obj || obj->IsDestroy()) continue;
         ObjectType type = obj->GetObjectType();
-        if (type == ObjectType::Field || type == ObjectType::Wall) {
+        if (type == ObjectType::Field || type == ObjectType::Wall || type == ObjectType::Unknown) {
             continue;
         }
         obj->Draw();
-        Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
 
     // === 3. アウトライン描画パス (シャドウと同様の除外判定) ===
-    Renderer::BeginOutlinePass();
-    Renderer::SetupCubeDraw();
-    DrawShadowAndOutlineObjects();
-    m_RenderSystem.RenderCubeInstances(Renderer::GetDeviceContext(), m_GameObjects, RenderPass::Outline);
-    Renderer::EndOutlinePass();
+    if (gs.outline != OutlineQuality::Outline_Off) {
+        Renderer::BeginOutlinePass();
+        Renderer::SetupCubeDraw();
+        if (gs.outline == OutlineQuality::Outline_All) {
+            DrawShadowAndOutlineObjects();
+        }
+        m_RenderSystem.RenderCubeInstances(context, m_GameObjects, RenderPass::Outline);
+        Renderer::EndOutlinePass();
+    }
 
     if (g_Camera) g_Camera->Draw();
 
@@ -633,19 +653,8 @@ void Manager::ExecuteChangeScene(Scene nextScene)
         m_ActiveScene = nullptr;
     }
 
-    // 既存登録オブジェクトのクリーンアップ
-    for (auto& gameObject : m_ManagedObjects) {
-        if (gameObject) {
-            gameObject->Uninit();
-        }
-    }
-    m_ManagedObjects.clear();
-    m_GameObjects.clear();
-    m_UpdateObjects.clear();
-    m_CachedPlayer = nullptr;
-    m_CachedBoss = nullptr;
-    ClearCategoryLists(); // カテゴリ別キャッシュリストも必ずクリアする（ダングリングポインタ防止）
-    m_RenderSystem.ClearCache();
+    // 既存登録オブジェクトのクリーンアップ（DestroyObjectsIf に一元化）
+    DestroyObjectsIf([](GameObject*) { return true; });
 
     if (g_Camera) {
         g_Camera->Uninit();
@@ -792,12 +801,14 @@ void Manager::DestroyObjectsIf()
 // ─────────────────────────────────────────────
 void Manager::DestroyObjectsIf(std::function<bool(GameObject*)> pred)
 {
+    if (!pred || m_ManagedObjects.empty()) {
+        return;
+    }
+
     Player* player = GetGameObject<Player>();
 
     // 1. 破棄対象ポインタの収集（predの評価を一度だけ安全に行う）
     std::vector<GameObject*> targets;
-    targets.reserve(m_ManagedObjects.size());
-
     for (const auto& uptr : m_ManagedObjects) {
         if (uptr && pred(uptr.get())) {
             targets.push_back(uptr.get());
@@ -827,28 +838,37 @@ void Manager::DestroyObjectsIf(std::function<bool(GameObject*)> pred)
         obj->Uninit();
     }
 
-    // 3. 生ポインタキャッシュ（m_GameObjects, m_UpdateObjects）から除外
-    m_GameObjects.erase(
-        std::remove_if(m_GameObjects.begin(), m_GameObjects.end(),
-            [&targetSet](GameObject* obj) {
-                return obj == nullptr || targetSet.count(obj) > 0;
-            }),
-        m_GameObjects.end());
+    // 3. 生ポインタキャッシュ（m_GameObjects, m_UpdateObjects）から swap-and-pop で除外
+    auto swapAndPopRawList = [&targetSet](std::vector<GameObject*>& vec) {
+        for (size_t i = vec.size(); i-- > 0; ) {
+            if (!vec[i] || targetSet.count(vec[i]) > 0) {
+                vec[i] = vec.back();
+                vec.pop_back();
+            }
+        }
+    };
+    swapAndPopRawList(m_GameObjects);
+    swapAndPopRawList(m_UpdateObjects);
 
-    m_UpdateObjects.erase(
-        std::remove_if(m_UpdateObjects.begin(), m_UpdateObjects.end(),
-            [&targetSet](GameObject* obj) {
-                return obj == nullptr || targetSet.count(obj) > 0;
-            }),
-        m_UpdateObjects.end());
-
-    // 4. 所有権リスト（unique_ptr）から安全に解放・破棄
-    m_ManagedObjects.erase(
-        std::remove_if(m_ManagedObjects.begin(), m_ManagedObjects.end(),
-            [&targetSet](const std::unique_ptr<GameObject>& uptr) {
-                return !uptr || targetSet.count(uptr.get()) > 0;
-            }),
-        m_ManagedObjects.end());
+    // 4. 所有権リスト（unique_ptr）から swap-and-pop で安全に解放・破棄
+    for (size_t i = m_ManagedObjects.size(); i-- > 0; ) {
+        if (!m_ManagedObjects[i] || targetSet.count(m_ManagedObjects[i].get()) > 0) {
+            m_ManagedObjects[i] = std::move(m_ManagedObjects.back());
+            m_ManagedObjects.pop_back();
+        }
+    }
 
     m_RenderSystem.ClearCache();
 }
+
+void Manager::UpdateFPSCounter(float deltaDrawTime)
+{
+    m_FpsFrameCount++;
+    m_FpsTimeAccumulator += deltaDrawTime;
+    if (m_FpsTimeAccumulator >= 0.5f) {
+        m_CurrentFPS = static_cast<float>(m_FpsFrameCount) / m_FpsTimeAccumulator;
+        m_FpsFrameCount = 0;
+        m_FpsTimeAccumulator = 0.0f;
+    }
+}
+

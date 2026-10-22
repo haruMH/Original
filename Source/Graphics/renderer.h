@@ -43,6 +43,8 @@ struct POSTEFFECT {
     float    RadialBlurIntensity;  // 放射ブラー強度 (0.0〜1.0)
     float    ChromaticAberration;  // 色収差強度 (0.0〜1.0)
     XMFLOAT2 RadialBlurCenter;     // 放射ブラー中心UV (0.5, 0.5)
+    XMFLOAT2 TexelSize;            // 画面テクセルサイズ (1/幅, 1/高さ)
+    XMFLOAT2 Dummy;                // 16バイトアライメントパディング
 };
 
 // 水面シェーダー用定数バッファ構造体 (VS)
@@ -163,6 +165,13 @@ private:
     static XMFLOAT4X4           m_ProjectionCache;
     static bool                 m_IsCacheInitialized;
 
+    // 内部共通化ヘルパー（重複排除用）
+    static void CreateScreenSizeResources(UINT width, UINT height);
+    static void ReleaseScreenSizeResources();
+    static void SetScreenViewport();
+    static void BindCubePipeline(ID3D11VertexShader* customVS = nullptr, ID3D11PixelShader* customPS = nullptr);
+    static void DrawCubeInternal(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* texture, ID3D11PixelShader* customPS);
+
 public:
     static void Init();
     static void Uninit();
@@ -222,6 +231,7 @@ public:
     static void DrawCubeWithWaterShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* normalMap1, ID3D11ShaderResourceView* normalMap2, float time, const XMFLOAT3& waveParams, float shininess, float fresnelPower, const XMFLOAT4& shallowColor, const XMFLOAT4& deepColor, const XMFLOAT2& scrollSpeed1, const XMFLOAT2& scrollSpeed2);
     static void DrawCubeWithDissolveShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* mainTexture, ID3D11ShaderResourceView* noiseTexture, float threshold, float edgeWidth, const XMFLOAT4& edgeColor);
     static void DrawCubeWithRefractShader(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* normalMap, float refractionIndex, float fresnelPower, const XMFLOAT4& highlightColor);
+    static void SetAnisotropy(int maxAniso);
     
     // カリングモード切り替え関数
     static void SetCullMode(bool cullBack)

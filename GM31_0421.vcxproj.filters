@@ -159,6 +159,9 @@
     <ClCompile Include="Source\Graphics\obj_model.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Graphics\graphics_config.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
     <!-- UI -->
     <ClCompile Include="Source\UI\score_hud.cpp">
       <Filter>Source\UI</Filter>
@@ -167,6 +170,9 @@
       <Filter>Source\UI</Filter>
     </ClCompile>
     <ClCompile Include="Source\UI\option_ui.cpp">
+      <Filter>Source\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\UI\localization.cpp">
       <Filter>Source\UI</Filter>
     </ClCompile>
     <ClCompile Include="Source\UI\item_notification_hud.cpp">
@@ -357,6 +363,9 @@
     <ClInclude Include="Source\Graphics\obj_model.h">
       <Filter>Source\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Graphics\graphics_config.h">
+      <Filter>Source\Graphics</Filter>
+    </ClInclude>
     <!-- UI -->
     <ClInclude Include="Source\UI\score_hud.h">
       <Filter>Source\UI</Filter>
@@ -365,6 +374,9 @@
       <Filter>Source\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\UI\option_ui.h">
+      <Filter>Source\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\UI\localization.h">
       <Filter>Source\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\UI\item_notification_hud.h">

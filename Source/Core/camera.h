@@ -26,11 +26,16 @@ private:
     XMFLOAT3 m_CutsceneTarget = XMFLOAT3(0.0f, 0.0f, 0.0f);
     float    m_InterpolationFactor = 0.0f; // 0.0=通常, 1.0=カットシーン
 
+    // 描画補間（高FPS時のスタッター解消）用
+    XMFLOAT3 m_PrevPosition;
+    XMFLOAT3 m_PrevTarget;
+
 public:
     void Init();
     void Uninit();
     void Update();
     void Draw();
+    void ApplyViewMatrix(float alpha = 1.0f);
 
     void Shake(float intensity, int duration) {
         m_ShakeIntensity = intensity;

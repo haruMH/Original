@@ -104,8 +104,8 @@ void GameplayScene::Init()
             shockPos.y = -0.95f;
             ShockwaveSystem::AddShockwave(shockPos, 8.0f, 1.5f, 0.0f, 0.0f, 24, 1.2f, 0);
 
-            for (GameObject* obj : Manager::GetGameObjectList()) {
-                if (!obj || obj->IsDestroy() || obj->GetObjectType() != ObjectType::Enemy) continue;
+            for (GameObject* obj : Manager::GetCategoryList(ObjectType::Enemy)) {
+                if (!obj || obj->IsDestroy()) continue;
                 Enemy* enemy = static_cast<Enemy*>(obj);
                 if (enemy->GetEnemyState() == EnemyState::DEFEATED || enemy->IsSandbag()) continue;
 
@@ -473,25 +473,25 @@ void GameplayScene::UpdateGameplay()
     Player* player = Manager::GetGameObject<Player>();
 
     // Update list iteration
-    for (size_t i = 0; i < Manager::GetUpdateObjectList().size(); i++) {
-        GameObject* obj = Manager::GetUpdateObjectList()[i];
+    const std::vector<GameObject*>& updateList = Manager::GetUpdateObjectList();
+    for (size_t i = 0; i < updateList.size(); i++) {
+        GameObject* obj = updateList[i];
+        if (!obj) continue;
+
         bool shouldUpdate = true;
-
-        bool isGrabbedEnemy = (player && player->GetGrabbedEnemy() == obj);
-        bool isSandbag = false;
-        if (obj->GetObjectType() == ObjectType::Enemy) {
-            Enemy* enemy = static_cast<Enemy*>(obj);
-            if (enemy->IsSandbag()) {
-                isSandbag = true;
+        if (!updateOthers) {
+            ObjectType type = obj->GetObjectType();
+            bool isGrabbedEnemy = (player && player->GetGrabbedEnemy() == obj);
+            bool isSandbag = (type == ObjectType::Enemy && static_cast<Enemy*>(obj)->IsSandbag());
+            bool isUnlaunchedMagBullet = false;
+            if (type == ObjectType::Bullet) {
+                MagneticBullet* magBullet = dynamic_cast<MagneticBullet*>(obj);
+                isUnlaunchedMagBullet = (magBullet && !magBullet->IsLaunched());
             }
-        }
 
-        MagneticBullet* magBullet = dynamic_cast<MagneticBullet*>(obj);
-        if (magBullet && !magBullet->IsLaunched()) {
-            shouldUpdate = true; // 射出前はスローモーション（タイムストップ・スロー）を無視して毎フレーム滑らかに動く
-        }
-        else if (obj->GetObjectType() != ObjectType::Player && !isGrabbedEnemy && !isSandbag) {
-            shouldUpdate = updateOthers;
+            if (type != ObjectType::Player && !isGrabbedEnemy && !isSandbag && !isUnlaunchedMagBullet) {
+                shouldUpdate = false;
+            }
         }
 
         if (shouldUpdate) {
@@ -521,8 +521,8 @@ void GameplayScene::UpdateGameplay()
     if (!Manager::IsBossStage()) {
         // Normal stage: monitor all enemies
         bool enemyExists = false; 
-        for (GameObject* obj : Manager::GetGameObjectList()) {
-            if (obj && obj->GetObjectType() == ObjectType::Enemy) {
+        for (GameObject* obj : Manager::GetCategoryList(ObjectType::Enemy)) {
+            if (obj && !obj->IsDestroy()) {
                 Enemy* enemy = static_cast<Enemy*>(obj);
                 if (enemy->GetEnemyState() != EnemyState::DEFEATED) {
                     enemyExists = true;
@@ -537,16 +537,8 @@ void GameplayScene::UpdateGameplay()
     } else {
         // Boss stage: monitor boss defeat
         if (!GameRule::IsGameClear()) {
-            bool bossExists = false;
-            for (GameObject* obj : Manager::GetGameObjectList()) {
-                if (obj->GetObjectType() == ObjectType::Boss) {
-                    Enemy* boss = static_cast<Enemy*>(obj);
-                    if (boss->GetEnemyState() != EnemyState::DEFEATED) {
-                        bossExists = true;
-                        break;
-                    }
-                }
-            }
+            BossEnemy* boss = Manager::GetGameObject<BossEnemy>();
+            bool bossExists = (boss && !boss->IsDestroy() && boss->GetEnemyState() != EnemyState::DEFEATED);
 
             if (!bossExists) {
                 // ボス撃破直後にタイマーを確定停止＆低HP警告解除
