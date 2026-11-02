@@ -87,4 +87,5 @@ public:
     virtual float GetRadius() const { return m_Size.x * m_Scale.x; }
     virtual XMFLOAT3 GetEmissive() const { return XMFLOAT3(0.0f, 0.0f, 0.0f); }
     virtual ObjectType GetObjectType() const { return ObjectType::Unknown; }
+    virtual bool IgnoreSlowMotion() const { return false; }
 };

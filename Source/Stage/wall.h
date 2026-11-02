@@ -23,4 +23,7 @@ public:
     void SetTexture(std::string_view textureName);
     void SetEmissive(const DirectX::XMFLOAT3& emissive) { m_Emissive = emissive; }
     DirectX::XMFLOAT3 GetEmissive() const override { return m_Emissive; }
+
+    // 四方（北・南・東・西）の外周境界壁を一括生成するヘルパー
+    static void CreateBoundaryWalls(float roomHalfSize, float wallHeight, float wallCenterY, float thickness);
 };

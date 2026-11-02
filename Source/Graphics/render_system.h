@@ -5,6 +5,7 @@
 #include <list>
 #include <d3d11.h>
 #include <DirectXMath.h>
+#include <wrl/client.h>
 #include "render_component.h"
 #include "render_constants.h"
 
@@ -52,15 +53,15 @@ public:
     void ClearCache();
 
 private:
-    ID3D11Buffer*       m_InstanceBuffer = nullptr;       // 動的インスタンスバッファ（スロット1用）
-    ID3D11InputLayout*  m_InstancedInputLayout = nullptr;  // インスタンス描画専用インプットレイアウト
-    ID3D11VertexShader* m_InstancedVertexShader = nullptr;  // インスタンス描画専用頂点シェーダー
-    ID3D11PixelShader*  m_InstancedPixelShader = nullptr;   // インスタンス描画専用ピクセルシェーダー
+    Microsoft::WRL::ComPtr<ID3D11Buffer>             m_InstanceBuffer;                 // 動的インスタンスバッファ（スロット1用）
+    Microsoft::WRL::ComPtr<ID3D11InputLayout>        m_InstancedInputLayout;           // インスタンス描画専用インプットレイアウト
+    Microsoft::WRL::ComPtr<ID3D11VertexShader>       m_InstancedVertexShader;          // インスタンス描画専用頂点シェーダー
+    Microsoft::WRL::ComPtr<ID3D11PixelShader>        m_InstancedPixelShader;           // インスタンス描画専用ピクセルシェーダー
 
-    ID3D11InputLayout*  m_InstancedOutlineInputLayout = nullptr; // インスタンスアウトライン専用インプットレイアウト
-    ID3D11VertexShader* m_InstancedOutlineVertexShader = nullptr; // インスタンスアウトライン専用頂点シェーダー
+    Microsoft::WRL::ComPtr<ID3D11InputLayout>        m_InstancedOutlineInputLayout;    // インスタンスアウトライン専用インプットレイアウト
+    Microsoft::WRL::ComPtr<ID3D11VertexShader>       m_InstancedOutlineVertexShader;   // インスタンスアウトライン専用頂点シェーダー
 
-    ID3D11ShaderResourceView* m_TextureArraySRV = nullptr;       // テクスチャ配列用SRV
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_TextureArraySRV;                // テクスチャ配列用SRV
     std::unordered_map<std::string, float> m_TextureIndexMap;    // テクスチャ名から配列インデックスへのマップ
 
     // シェーダーおよびレイアウトのリソース作成

@@ -457,6 +457,7 @@ void PlayerMovement::UpdateNormalMovement()
 
     if (MathHelper::LengthSq(moveDir) > 0.001f) {
         float speed = Constants::Player::MOVE_SPEED;
+        if (m_Owner->GetState() == PlayerState::SPINNING) speed *= Constants::Player::SPIN_MOVE_SPEED_MULT;
         XMFLOAT3 curPos = m_Owner->GetPosition();
 
         // 1. まず進行方向そのまま（斜め含む）の移動を試みる

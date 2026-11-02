@@ -169,7 +169,7 @@ bool ShockwaveSystem::Init(ID3D11Device* device)
     Renderer::CreatePixelShader(&m_PS, Renderer::ResolveShaderPath("ui_ps.cso").c_str());
 
     if (!m_VS || !m_PS || !m_IL) {
-        OutputDebugStringA("[ShockwaveSystem] VS/PS/IL Load Failed\n");
+        LOG_INFO("[ShockwaveSystem] VS/PS/IL Load Failed\n");
         return false;
     }
 
@@ -188,7 +188,7 @@ bool ShockwaveSystem::Init(ID3D11Device* device)
         m_Shockwaves[i].Used = false;
     }
 
-    OutputDebugStringA("[ShockwaveSystem] Init Succeeded\n");
+    LOG_INFO("[ShockwaveSystem] Init Succeeded\n");
     return true;
 }
 

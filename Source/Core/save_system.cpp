@@ -1,4 +1,5 @@
 ﻿#include "save_system.h"
+#include "main.h"
 #include <fstream>
 #include <sstream>
 #include <windows.h>
@@ -19,7 +20,7 @@ bool SaveSystem::Save()
     std::ofstream ofs(tempPath, std::ios::out | std::ios::trunc);
     if (!ofs.is_open())
     {
-        OutputDebugStringA("[SaveSystem] Failed to open temp save file for writing.\n");
+        LOG_INFO("[SaveSystem] Failed to open temp save file for writing.\n");
         return false;
     }
 
@@ -60,7 +61,7 @@ bool SaveSystem::Save()
         std::rename(tempPath.c_str(), m_SaveFilePath.c_str());
     }
 
-    OutputDebugStringA("[SaveSystem] Save successfully completed.\n");
+    LOG_INFO("[SaveSystem] Save successfully completed.\n");
     return true;
 }
 
@@ -81,7 +82,7 @@ bool SaveSystem::Load()
     std::ifstream ifs(m_SaveFilePath);
     if (!ifs.is_open())
     {
-        OutputDebugStringA("[SaveSystem] Save file not found. Starting with new save data.\n");
+        LOG_INFO("[SaveSystem] Save file not found. Starting with new save data.\n");
         m_CurrentData = SaveData();
         m_IsLoaded = true;
         return false;
@@ -145,7 +146,7 @@ bool SaveSystem::Load()
     }
 
     m_IsLoaded = true;
-    OutputDebugStringA("[SaveSystem] Save successfully loaded.\n");
+    LOG_INFO("[SaveSystem] Save successfully loaded.\n");
     return true;
 }
 

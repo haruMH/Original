@@ -24,7 +24,7 @@
 using namespace DirectX;
 
 // =================================================================
-// �R���X�g���N�^ / �f�X�g���N�^
+// コンストラクタ / デストラクタ
 // =================================================================
 GameplayScene::GameplayScene()
 {
@@ -35,7 +35,7 @@ GameplayScene::~GameplayScene()
 }
 
 // =================================================================
-// 
+// 初期化処理
 // =================================================================
 void GameplayScene::Init()
 {
@@ -52,22 +52,22 @@ void GameplayScene::Init()
     });
 
     EventSystem::Subscribe<EnemyDefeatedEvent>([this](const EnemyDefeatedEvent& ev) {
-        m_ComboTimer = 120; // 2秒間コンボ維持
+        m_ComboTimer = Constants::TimeAttack::COMBO_DURATION_FRAMES; // 2秒間コンボ維持
         m_ComboCount++;
 
         int finalScore = ev.scoreValue;
-        if (m_ComboCount >= 3) {
+        if (m_ComboCount >= Constants::TimeAttack::COMBO_BONUS_MIN_COUNT) {
             // 3コンボ以上でスコア倍率を適用 (x1.3, x1.4...)
-            float multiplier = 1.0f + (m_ComboCount * 0.1f);
+            float multiplier = 1.0f + (m_ComboCount * Constants::TimeAttack::COMBO_SCORE_STEP);
             finalScore = static_cast<int>(ev.scoreValue * multiplier);
         }
 
         // タイムアタック：雑魚敵撃破で -1.0秒短縮！
-        GameRule::ReduceTime(1.0f);
+        GameRule::ReduceTime(Constants::TimeAttack::ENEMY_DEFEAT_TIME_REDUCE);
         GameRule::OnEnemyDefeated(finalScore);
         ScorePopupSystem::AddTextPopup(ev.position.x, ev.position.y + 0.5f, ev.position.z, L"-1.0s", 0.3f, 2.2f, 0.8f);
 
-        if (m_ComboCount >= 3) {
+        if (m_ComboCount >= Constants::TimeAttack::COMBO_BONUS_MIN_COUNT) {
             // コンボ数を金色ポップアップで通知
             ScorePopupSystem::AddPopup(ev.position.x, ev.position.y + 1.2f, ev.position.z, m_ComboCount, 2.5f, 1.8f, 0.0f);
             Manager::AddHitStop(3); // コンボ時の手応えヒットストップ
@@ -86,13 +86,15 @@ void GameplayScene::Init()
 
     EventSystem::Subscribe<PlayerParriedEvent>([](const PlayerParriedEvent& ev) {
         // タイムアタック：パリィ成功で -2.0秒短縮！
-        GameRule::ReduceTime(2.0f);
+        GameRule::ReduceTime(Constants::TimeAttack::PARRY_TIME_REDUCE);
         ScorePopupSystem::AddTextPopup(ev.position.x, ev.position.y + 1.2f, ev.position.z, L"-2.0s", 0.0f, 2.5f, 2.5f);
 
         Manager::TriggerFlash(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.02f); // パリィ成功時に真っ白閃光
 
         // パリィタイム延長強化
-        int slowDuration = ProgressionManager::HasParryExtension() ? 135 : 90;
+        int slowDuration = ProgressionManager::HasParryExtension()
+            ? Constants::TimeAttack::PARRY_SLOW_EXTENDED_FRAMES
+            : Constants::TimeAttack::PARRY_SLOW_NORMAL_FRAMES;
         Manager::StartSlowMotion(slowDuration);
         Manager::AddHitStop(15);      // 手応えヒットストップ
         Manager::TriggerRadialBlur(0.75f);
@@ -112,7 +114,7 @@ void GameplayScene::Init()
                 XMFLOAT3 diff = enemy->GetPosition() - ev.position;
                 diff.y = 0.0f;
                 float d = MathHelper::Length(diff);
-                if (d < 6.5f && d > 0.01f) {
+                if (d < Constants::TimeAttack::COUNTER_SHOCK_RADIUS && d > 0.01f) {
                     diff.x /= d;
                     diff.z /= d;
                     HitInfo hInfo;
@@ -136,7 +138,7 @@ void GameplayScene::Init()
         // 磁力旋回弾の生成 (等間隔に8個)
         BossEnemy* boss = Manager::GetGameObject<BossEnemy>();
         if (boss) {
-            const int BULLET_COUNT = 8;
+            const int BULLET_COUNT = Constants::TimeAttack::MAGNETIC_BULLET_COUNT;
             for (int i = 0; i < BULLET_COUNT; ++i) {
                 float startAngle = (XM_2PI / BULLET_COUNT) * i;
                 MagneticBullet* bullet = Manager::AddGameObject<MagneticBullet>();
@@ -144,11 +146,11 @@ void GameplayScene::Init()
                     bullet->Setup(
                         boss,
                         startAngle,
-                        16.0f,  // 初期半径 (ボスの外側から螺旋で吸い寄せられる)
-                        6.5f,   // 目標周回半径 (ボスScale=5.0f、うねり幅±1.2fを考慮してボス外周をクリアに周回)
-                        0.05f,  // 回転速度
-                        0.02f,  // 吸引力
-                        0.0f    // ボスの中心(胸元)を周回するため高さオフセットは0.0f
+                        Constants::TimeAttack::MAGNETIC_BULLET_INIT_RADIUS,  // 初期半径 (ボスの外側から螺旋で吸い寄せられる)
+                        Constants::TimeAttack::MAGNETIC_BULLET_ORBIT_RADIUS, // 目標周回半径 (ボスScale=5.0f、うねり幅±1.2fを考慮してボス外周をクリアに周回)
+                        Constants::TimeAttack::MAGNETIC_BULLET_ROT_SPEED,    // 回転速度
+                        Constants::TimeAttack::MAGNETIC_BULLET_ATTRACT,      // 吸引力
+                        0.0f                                                 // ボスの中心(胸元)を周回するため高さオフセットは0.0f
                     );
                 }
             }
@@ -181,19 +183,19 @@ void GameplayScene::Init()
         }
     });
 
-    // Q[vC{҂̏
-    GameRule::Init(); // XRAGAQ[NAԂ̃Zbg
+    // ゲームプレイ本編の初期化
+    GameRule::Init(); // スコアやゲームクリア状態のリセット
     
     Manager::SetHitStopFrames(0);
     Manager::SetSlowMotionTimer(0);
     Manager::SetSlowMotionDuration(0);
     m_ClearDelayTimer = 0;
 
-    // 1. nʃIuWFNg̐
+    // 1. 地面・空オブジェクトの生成
     Manager::AddGameObject<Field>();
     Manager::AddGameObject<Skybox>();
 
-    // 2. vC[IuWFNg̐
+    // 2. プレイヤーオブジェクトの生成
     Player* player = Manager::AddGameObject<Player>();
     player->SetPosition(XMFLOAT3(0.0f, -0.5f, 0.0f));
 
@@ -202,28 +204,12 @@ void GameplayScene::Init()
     if (startBoss) {
         Manager::SetIsBossStage(true);
         
-        // ボス部屋の壁を生成（高く・厚くしてプレイヤーの場外飛び出しを防止）
-        float roomSize   = Constants::Stage::BOSS_ROOM_SIZE;
-        float wallH      = Constants::Stage::BOSS_WALL_HEIGHT;
-        float wallY      = Constants::Stage::BOSS_WALL_Y;
-        float thick      = Constants::Stage::BOSS_WALL_THICKNESS;
-        float halfThick  = thick * 0.5f;
-
-        Wall* wallN = Manager::AddGameObject<Wall>();
-        wallN->SetPosition(XMFLOAT3(0.0f, wallY, roomSize + halfThick));
-        wallN->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
-        
-        Wall* wallS = Manager::AddGameObject<Wall>();
-        wallS->SetPosition(XMFLOAT3(0.0f, wallY, -(roomSize + halfThick)));
-        wallS->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
-        
-        Wall* wallE = Manager::AddGameObject<Wall>();
-        wallE->SetPosition(XMFLOAT3(roomSize + halfThick, wallY, 0.0f));
-        wallE->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
-        
-        Wall* wallW = Manager::AddGameObject<Wall>();
-        wallW->SetPosition(XMFLOAT3(-(roomSize + halfThick), wallY, 0.0f));
-        wallW->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
+        // ボス部屋の四方壁を生成（高く・厚くしてプレイヤーの場外飛び出しを防止）
+        Wall::CreateBoundaryWalls(
+            Constants::Stage::BOSS_ROOM_SIZE,
+            Constants::Stage::BOSS_WALL_HEIGHT,
+            Constants::Stage::BOSS_WALL_Y,
+            Constants::Stage::BOSS_WALL_THICKNESS);
 
         // ボスエネミーの生成
         BossEnemy* boss = Manager::AddGameObject<BossEnemy>();
@@ -235,27 +221,11 @@ void GameplayScene::Init()
         Manager::SetIsBossStage(false);
         
         // 通常ステージ外周壁の生成（60m×60m バトルアリーナ）
-        float roomSize   = Constants::Stage::NORMAL_ROOM_SIZE;
-        float wallH      = Constants::Stage::NORMAL_WALL_HEIGHT;
-        float wallY      = Constants::Stage::NORMAL_WALL_Y;
-        float thick      = Constants::Stage::NORMAL_WALL_THICKNESS;
-        float halfThick  = thick * 0.5f;
-
-        Wall* wallN = Manager::AddGameObject<Wall>();
-        wallN->SetPosition(XMFLOAT3(0.0f, wallY, roomSize + halfThick));
-        wallN->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
-
-        Wall* wallS = Manager::AddGameObject<Wall>();
-        wallS->SetPosition(XMFLOAT3(0.0f, wallY, -(roomSize + halfThick)));
-        wallS->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
-
-        Wall* wallE = Manager::AddGameObject<Wall>();
-        wallE->SetPosition(XMFLOAT3(roomSize + halfThick, wallY, 0.0f));
-        wallE->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
-
-        Wall* wallW = Manager::AddGameObject<Wall>();
-        wallW->SetPosition(XMFLOAT3(-(roomSize + halfThick), wallY, 0.0f));
-        wallW->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
+        Wall::CreateBoundaryWalls(
+            Constants::Stage::NORMAL_ROOM_SIZE,
+            Constants::Stage::NORMAL_WALL_HEIGHT,
+            Constants::Stage::NORMAL_WALL_Y,
+            Constants::Stage::NORMAL_WALL_THICKNESS);
 
         // 通常ステージ障害物：左右のピラー（柱）
         Wall* pillarL = Manager::AddGameObject<Wall>();
@@ -366,7 +336,7 @@ void GameplayScene::Init()
         GameRule::SetTotalEnemies(totalEnemies);
     }
 
-    // �e��A�C�e���𐶐�
+    // 各種アイテムを生成
     Item* itemVacuum = Manager::AddGameObject<Item>();
     itemVacuum->SetItemType(ItemType::VACUUM);
 
@@ -392,7 +362,7 @@ void GameplayScene::Init()
 }
 
 // =================================================================
-// �I������
+// 終了処理
 // =================================================================
 void GameplayScene::Uninit()
 {
@@ -441,30 +411,30 @@ void GameplayScene::Update()
 }
 
 // =================================================================
-// �Q�[���v���C�̍X�V�����̎��́i�� Manager::UpdateGameplay�j
+// ゲームプレイの更新処理の実体（旧 Manager::UpdateGameplay）
 // =================================================================
 void GameplayScene::UpdateGameplay()
 {
-    // �X���[���[�V�����^�C�}�[�̍X�V
+    // スローモーションタイマーの更新
     if (Manager::GetSlowMotionTimer() > 0) {
         Manager::SetSlowMotionTimer(Manager::GetSlowMotionTimer() - 1);
     }
 
-    // �X���[���[�V�������͍X�V�p�x�� 1/5 �ɊԈ���
+    // スローモーション中は更新頻度を 1/5 に間引く
     bool updateOthers = true;
     if (Manager::GetSlowMotionTimer() > 0) {
         updateOthers = (Manager::GetSlowMotionTimer() % 5 == 0);
     }
 
-    // �Ռ��g�V�X�e���̍X�V
+    // 衝撃波システムの更新
     if (updateOthers) {
         ShockwaveSystem::Update();
     }
 
-    // �Q�[���N���A��͍X�V��s��Ȃ�
+    // ゲームクリア後は更新を行わない
     if (GameRule::IsGameClear()) return;
 
-    // �q�b�g�X�g�b�v���͑��̍X�V��X�L�b�v
+    // ヒットストップ中は他の更新をスキップ
     if (Manager::GetHitStopFrames() > 0) {
         Manager::SetHitStopFrames(Manager::GetHitStopFrames() - 1);
         return;
@@ -483,13 +453,8 @@ void GameplayScene::UpdateGameplay()
             ObjectType type = obj->GetObjectType();
             bool isGrabbedEnemy = (player && player->GetGrabbedEnemy() == obj);
             bool isSandbag = (type == ObjectType::Enemy && static_cast<Enemy*>(obj)->IsSandbag());
-            bool isUnlaunchedMagBullet = false;
-            if (type == ObjectType::Bullet) {
-                MagneticBullet* magBullet = dynamic_cast<MagneticBullet*>(obj);
-                isUnlaunchedMagBullet = (magBullet && !magBullet->IsLaunched());
-            }
 
-            if (type != ObjectType::Player && !isGrabbedEnemy && !isSandbag && !isUnlaunchedMagBullet) {
+            if (type != ObjectType::Player && !isGrabbedEnemy && !isSandbag && !obj->IgnoreSlowMotion()) {
                 shouldUpdate = false;
             }
         }
@@ -499,15 +464,15 @@ void GameplayScene::UpdateGameplay()
         }
     }
 
-    // �j���ΏۃI�u�W�F�N�g��ꊇ�N���[���A�b�v
+    // 破棄対象オブジェクトを一括クリーンアップ
     Manager::DestroyObjectsIf();
 
-    // �Փ˔���V�X�e���̎��s
+    // 衝突判定システムの実行
     if (updateOthers) {
         CollisionSystem::Update();
     }
 
-    // ���݈ʒu�̓����iLateUpdate�j�F�X���[���[�V�������ł���t���[���������ăK�N����h��
+    // つかみ位置の同期（LateUpdate）：スローモーション中でも毎フレーム実行してガクつきを防ぐ
     if (player) {
         if (player->GetState() == PlayerState::GRABBED || player->GetState() == PlayerState::SPINNING) {
             Enemy* grabbedEnemy = player->GetGrabbedEnemy();
@@ -567,7 +532,7 @@ void GameplayScene::UpdateGameplay()
                     GameRule::SetGameClear(true);
                     ProgressionManager::CommitSession(true); // クリア確定＆素材・討伐数セーブ
                     Manager::ChangeScene(Scene::CLEAR);
-                    OutputDebugStringA("[GameRule] *** ボス撃破！ゲームクリア！ ***\n");
+                    LOG_INFO("[GameRule] *** ボス撃破！ゲームクリア！ ***\n");
                 }
             } else {
                 m_ClearDelayTimer = 0;

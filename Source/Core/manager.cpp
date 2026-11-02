@@ -23,6 +23,7 @@
 #include "score_popup.h"
 #include "score_hud.h"
 #include "shockwave.h"
+#include "aura_effect.h"
 #include "dust_system.h"
 #include "shadow_system.h"
 #include "event_system.h"
@@ -129,6 +130,7 @@ void Manager::Init()
 
     // 衝撃波システムの初期化
     ShockwaveSystem::Init(Renderer::GetDevice());
+    AuraEffect::Init(Renderer::GetDevice());
 
     // 砂埃パーティクルシステムの初期化
     DustSystem::Init();
@@ -185,6 +187,7 @@ void Manager::Uninit()
 
     // 衝撃波システムの終了処理
     ShockwaveSystem::Uninit();
+    AuraEffect::Uninit();
 
     // 砂埃パーティクルシステムの終了処理
     DustSystem::Uninit();
@@ -284,54 +287,7 @@ void Manager::Update()
 
     // ボス登場カットシーンのタイムライン更新
     if (m_IsCutsceneActive) {
-        m_CutsceneTimer--;
-
-        // 1. スローモーション（ウィッチタイム）の持続
-        // カットシーン中は、ボスとプレイヤー以外の動きを0.3倍速のスローモーションにする
-        if (m_CutsceneTimer > 30) {
-            m_SlowMotionTimer = 2; // 毎フレーム 2 を代入してスロー状態を維持
-            m_SlowMotionDuration = 10;
-        }
-
-        // 2. タイムラインごとのイベントトリガー
-        if (m_CutsceneTimer == 180) {
-            // 開始時: 白フラッシュ（フェード速度はゆっくり 0.02f）
-            TriggerFlash(XMFLOAT4(1.0f, 1.0f, 1.0f, 0.8f), 0.02f);
-        }
-        else if (m_CutsceneTimer == 120) {
-            // ボス咆哮・着地時: 足元に巨大でゆっくり広がる赤い衝撃波を発生（ダメージなし、force=0）
-            BossEnemy* boss = GetGameObject<BossEnemy>();
-            if (boss) {
-                XMFLOAT3 bossPos = boss->GetPosition();
-                // 衝撃波の発生（半径 15.0f, 赤, 継続 60フレーム, 吹き飛ばし力 0.0f, ディレイ 0, 収縮なし）
-                ShockwaveSystem::AddShockwave(bossPos, 15.0f, 2.5f, 0.2f, 0.0f, 60, 0.0f, 0, false);
-            }
-            // 咆哮に合わせて、画面全体を「ゆったりとした警告赤パルス」で明滅させるために警告状態をON
-            m_IsLowHPWarning = true;
-            m_LowHPPulseTime = 0.0f; // パルス角度をリセット
-        }
-        else if (m_CutsceneTimer == 40) {
-            // 咆哮終了: 赤パルス明滅をOFFにする
-            m_IsLowHPWarning = false;
-            // 通常画面に戻るフェード
-            TriggerFlash(XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f), 0.05f);
-        }
-        else if (m_CutsceneTimer <= 0) {
-            // カットシーン終了
-            m_IsCutsceneActive = false;
-            m_IsLowHPWarning = false;
-            m_SlowMotionTimer = 0; // スローモーション解除
-            
-            Player* player = GetGameObject<Player>();
-            if (player) {
-                player->SetLockOnTarget(nullptr);
-                player->SetLockOnFrame(0);
-            }
-
-            // 戦闘開始イベントを発行
-            BossBattleStartEvent startEvent;
-            EventSystem::Publish<BossBattleStartEvent>(startEvent);
-        }
+        UpdateBossCutscene();
     }
 
     if (m_IsLowHPWarning) {
@@ -459,6 +415,7 @@ void Manager::Draw(float alpha)
 
     ScorePopupSystem::Draw();
     ShockwaveSystem::Draw();
+    AuraEffect::Draw();
     DustSystem::Draw();
     ScoreHUD::Draw();
 
@@ -545,51 +502,29 @@ void Manager::TransitionToBossStage()
     });
     LOG_INFO("[Manager] オブジェクト破棄クリーンアップ完了\n");
 
-    // ボス部屋の壁を生成（高く・厚くしてプレイヤーの場外飛び出しを防止）
-    LOG_INFO("[Manager] ボス部屋の壁を生成します...\n");
-    float roomSize   = Constants::Stage::BOSS_ROOM_SIZE;
-    float wallH      = Constants::Stage::BOSS_WALL_HEIGHT;
-    float wallY      = Constants::Stage::BOSS_WALL_Y;
-    float thick      = Constants::Stage::BOSS_WALL_THICKNESS;
-    float halfThick  = thick * 0.5f;
-
-    // 北の壁
-    Wall* wallN = AddGameObject<Wall>();
-    wallN->SetPosition(XMFLOAT3(0.0f, wallY, roomSize + halfThick));
-    wallN->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
-    // 南の壁
-    Wall* wallS = AddGameObject<Wall>();
-    wallS->SetPosition(XMFLOAT3(0.0f, wallY, -(roomSize + halfThick)));
-    wallS->SetScale(XMFLOAT3(roomSize * 2.0f + thick * 2.0f, wallH, thick));
-    // 東の壁
-    Wall* wallE = AddGameObject<Wall>();
-    wallE->SetPosition(XMFLOAT3(roomSize + halfThick, wallY, 0.0f));
-    wallE->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
-    // 西の壁
-    Wall* wallW = AddGameObject<Wall>();
-    wallW->SetPosition(XMFLOAT3(-(roomSize + halfThick), wallY, 0.0f));
-    wallW->SetScale(XMFLOAT3(thick, wallH, roomSize * 2.0f + thick * 2.0f));
-    LOG_INFO("[Manager] 壁の配置完了\n");
+    // ボス部屋の四方壁を生成（高く・厚くしてプレイヤーの場外飛び出しを防止）
+    Wall::CreateBoundaryWalls(
+        Constants::Stage::BOSS_ROOM_SIZE,
+        Constants::Stage::BOSS_WALL_HEIGHT,
+        Constants::Stage::BOSS_WALL_Y,
+        Constants::Stage::BOSS_WALL_THICKNESS);
 
     // ボスエネミーの生成
-    LOG_INFO("[Manager] ボスエネミーの生成を開始します...\n");
     BossEnemy* boss = AddGameObject<BossEnemy>();
-    boss->SetPosition(XMFLOAT3(0.0f, 1.5f, 10.0f));
+    boss->SetPosition(XMFLOAT3(0.0f, Constants::Boss::GROUND_Y, Constants::Stage::BOSS_SPAWN_OFFSET_Z));
     boss->SetRotation(XMFLOAT3(0.0f, XM_PI, 0.0f));
-    LOG_INFO("[Manager] ボスエネミー生成完了\n");
 
     // ボス戦用のアイテム生成
-    LOG_INFO("[Manager] ボス部屋用のアイテムを生成します...\n");
     Item* itemVacuum = AddGameObject<Item>();
-    itemVacuum->SetPosition(XMFLOAT3(0.0f, 0.5f, -15.0f));
+    itemVacuum->SetPosition(XMFLOAT3(0.0f, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_BOSS_VACUUM_Z));
     itemVacuum->SetItemType(ItemType::VACUUM);
 
     Item* itemGigant = AddGameObject<Item>();
-    itemGigant->SetPosition(XMFLOAT3(-4.0f, 0.5f, -15.0f));
+    itemGigant->SetPosition(XMFLOAT3(Constants::Stage::ITEM_BOSS_GIGANT_X, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_BOSS_GIGANT_Z));
     itemGigant->SetItemType(ItemType::GIGANT);
 
     Item* itemLightning = AddGameObject<Item>();
-    itemLightning->SetPosition(XMFLOAT3(4.0f, 0.5f, -15.0f));
+    itemLightning->SetPosition(XMFLOAT3(Constants::Stage::ITEM_BOSS_LIGHTNING_X, Constants::Stage::ITEM_SPAWN_Y, Constants::Stage::ITEM_BOSS_LIGHTNING_Z));
     itemLightning->SetItemType(ItemType::LIGHTNING);
     
     // ボス登場カットシーンのトリガー
@@ -604,6 +539,48 @@ void Manager::TransitionToBossStage()
 // ─────────────────────────────────────────────
 // ボス登場カットシーンのトリガー
 // ─────────────────────────────────────────────
+void Manager::UpdateBossCutscene()
+{
+    m_CutsceneTimer--;
+
+    // 1. スローモーション（ウィッチタイム）の持続
+    if (m_CutsceneTimer > 30) {
+        m_SlowMotionTimer = 2;
+        m_SlowMotionDuration = 10;
+    }
+
+    // 2. タイムラインごとのイベントトリガー
+    if (m_CutsceneTimer == 180) {
+        TriggerFlash(XMFLOAT4(1.0f, 1.0f, 1.0f, 0.8f), 0.02f);
+    }
+    else if (m_CutsceneTimer == 120) {
+        BossEnemy* boss = GetGameObject<BossEnemy>();
+        if (boss) {
+            ShockwaveSystem::AddShockwave(boss->GetPosition(), 15.0f, 2.5f, 0.2f, 0.0f, 60, 0.0f, 0, false);
+        }
+        m_IsLowHPWarning = true;
+        m_LowHPPulseTime = 0.0f;
+    }
+    else if (m_CutsceneTimer == 40) {
+        m_IsLowHPWarning = false;
+        TriggerFlash(XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f), 0.05f);
+    }
+    else if (m_CutsceneTimer <= 0) {
+        m_IsCutsceneActive = false;
+        m_IsLowHPWarning = false;
+        m_SlowMotionTimer = 0;
+
+        Player* player = GetGameObject<Player>();
+        if (player) {
+            player->SetLockOnTarget(nullptr);
+            player->SetLockOnFrame(0);
+        }
+
+        BossBattleStartEvent startEvent;
+        EventSystem::Publish<BossBattleStartEvent>(startEvent);
+    }
+}
+
 void Manager::TriggerBossSpawnCutscene()
 {
     m_IsCutsceneActive = true;

@@ -1,4 +1,5 @@
 ﻿#include "progression_manager.h"
+#include "main.h"
 #include <windows.h>
 
 int ProgressionManager::m_SessionMaterials[static_cast<int>(MaterialType::COUNT)] = { 0 };
@@ -64,7 +65,7 @@ void ProgressionManager::CommitSession(bool isClear)
     }
 
     SaveSystem::Save();
-    OutputDebugStringA("[ProgressionManager] Session committed and saved.\n");
+    LOG_INFO("[ProgressionManager] Session committed and saved.\n");
 }
 
 bool ProgressionManager::CanUnlockAbility(AbilityType type)

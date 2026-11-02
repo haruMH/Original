@@ -8,6 +8,8 @@
 #include "enemy.h"
 #include "boss_enemy.h"
 #include "game_constants.h"
+#include "player_combat.h"
+#include "aura_effect.h"
 
 using namespace DirectX;
 
@@ -50,6 +52,12 @@ void PlayerVisual::Update()
 // =================================================================
 // Draw Elements
 // =================================================================
+// チャージ段階ごとの発光色（0=通常スピンのゴールド）
+static XMFLOAT3 ChargeStageColor(int stage)
+{
+    return AuraEffect::StageColor(stage);
+}
+
 void PlayerVisual::Draw()
 {
     if (Renderer::IsShadowMode() || Renderer::IsOutlineMode()) return;
@@ -278,7 +286,8 @@ void PlayerVisual::DrawEyes()
         pupilMat.Emission = XMFLOAT4(2.5f, 0.3f, 0.3f, 1.0f);
     } else if (m_Owner->GetState() == PlayerState::SPINNING) {
         // スピン時：ゴールド発光
-        pupilMat.Emission = XMFLOAT4(2.5f, 2.0f, 0.2f, 1.0f);
+        XMFLOAT3 sc = ChargeStageColor(m_Owner->GetCombatModule() ? m_Owner->GetCombatModule()->GetChargeStage() : 0);
+        pupilMat.Emission = XMFLOAT4(sc.x, sc.y, sc.z, 1.0f);
     } else {
         // 通常時：鮮やかなネオンシアン発光（正面方向が遠目からでも明瞭に視認可能）
         pupilMat.Emission = XMFLOAT4(0.4f, 2.0f, 2.5f, 1.0f);
@@ -434,7 +443,7 @@ void PlayerVisual::DrawLockOnReticle(Enemy* target)
         return;
     }
 
-    bool isBoss = (dynamic_cast<BossEnemy*>(target) != nullptr);
+    bool isBoss = (target->GetObjectType() == ObjectType::Boss);
     XMFLOAT3 tPos = target->GetPosition();
     float radius = target->GetRadius();
 

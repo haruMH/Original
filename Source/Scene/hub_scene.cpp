@@ -66,30 +66,7 @@ void HubScene::Init()
     }
 
     // 3. 拠点の外周壁 (44m x 44m) - プレイヤーの落下防止境界（広大な開放感）
-    float halfSize = 22.0f;
-    float wallH = 4.0f;
-    float wallY = 1.5f;
-    float thick = 1.0f;
-
-    // 北壁
-    Wall* wN = Manager::AddGameObject<Wall>();
-    wN->SetPosition(XMFLOAT3(0.0f, wallY, halfSize + thick * 0.5f));
-    wN->SetScale(XMFLOAT3(halfSize * 2.0f + thick * 2.0f, wallH, thick));
-
-    // 南壁
-    Wall* wS = Manager::AddGameObject<Wall>();
-    wS->SetPosition(XMFLOAT3(0.0f, wallY, -(halfSize + thick * 0.5f)));
-    wS->SetScale(XMFLOAT3(halfSize * 2.0f + thick * 2.0f, wallH, thick));
-
-    // 東壁
-    Wall* wE = Manager::AddGameObject<Wall>();
-    wE->SetPosition(XMFLOAT3(halfSize + thick * 0.5f, wallY, 0.0f));
-    wE->SetScale(XMFLOAT3(thick, wallH, halfSize * 2.0f + thick * 2.0f));
-
-    // 西壁
-    Wall* wW = Manager::AddGameObject<Wall>();
-    wW->SetPosition(XMFLOAT3(-(halfSize + thick * 0.5f), wallY, 0.0f));
-    wW->SetScale(XMFLOAT3(thick, wallH, halfSize * 2.0f + thick * 2.0f));
+    Wall::CreateBoundaryWalls(22.0f, 4.0f, 1.5f, 1.0f);
 
     // プロップ配置ヘルパー（collSizeが(0,0,0)の場合は当たり判定なし）
     auto AddProp = [](const std::string& obj, const std::string& mtl, const XMFLOAT3& pos, const XMFLOAT3& scale, float rotY = 0.0f, const XMFLOAT3& collSize = XMFLOAT3(0.0f, 0.0f, 0.0f)) -> PropModel* {

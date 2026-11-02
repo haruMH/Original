@@ -36,9 +36,9 @@ private:
 
 public:
 
-    // 2点間にジグザグの稲妻を描画する（外部公開）
-    void DrawLightningBolt(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness, const DirectX::XMFLOAT4& color);
+    // 2点間にジグザグの稲妻を描画する（静的共通エフェクト関数）
+    static void DrawLightningBolt(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness, const DirectX::XMFLOAT4& color);
 
-    // 稲妻描画の実体（再帰的な枝分かれやランダムノイズ計算）
-    void DrawLightningBoltInternal(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness, const DirectX::XMFLOAT4& color, bool drawBranches, int seedOffset = 0);
+    // 稲妻描画の実体（静的共通エフェクト関数）
+    static void DrawLightningBoltInternal(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end, float thickness, const DirectX::XMFLOAT4& color, bool drawBranches, int seedOffset = 0);
 };

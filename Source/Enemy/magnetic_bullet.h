@@ -43,6 +43,7 @@ public:
     // GameObject の仮想関数のオーバーライド
     DirectX::XMFLOAT3 GetEmissive() const override { return m_EmissiveColor; }
     ObjectType GetObjectType() const override { return ObjectType::Bullet; }
+    bool IgnoreSlowMotion() const override { return !m_IsLaunched; }
 
     static ObjectType GetStaticType() { return ObjectType::Bullet; }
 };

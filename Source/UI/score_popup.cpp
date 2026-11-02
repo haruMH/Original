@@ -178,7 +178,7 @@ bool ScorePopupSystem::Init(ID3D11Device* device)
     Renderer::CreatePixelShader(&m_PS, Renderer::ResolveShaderPath("ui_ps.cso").c_str());
 
     if (!m_VS || !m_PS || !m_IL) {
-        OutputDebugStringA("[ScorePopupSystem] シェーダー読み込み失敗\n");
+        LOG_INFO("[ScorePopupSystem] シェーダー読み込み失敗\n");
         return false;
     }
 
@@ -195,7 +195,7 @@ bool ScorePopupSystem::Init(ID3D11Device* device)
         m_Popups[i].Texture = nullptr;
     }
 
-    OutputDebugStringA("[ScorePopupSystem] 初期化完了\n");
+    LOG_INFO("[ScorePopupSystem] 初期化完了\n");
     return true;
 }
 

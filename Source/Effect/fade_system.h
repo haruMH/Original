@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <d3d11.h>
 #include <directxmath.h>
+#include <wrl/client.h>
 
 using namespace DirectX;
 
@@ -23,12 +24,12 @@ private:
     static float                    m_Duration;
     static XMFLOAT4                 m_FadeColor;
 
-    static ID3D11VertexShader*      m_VS;
-    static ID3D11PixelShader*       m_PS;
-    static ID3D11Buffer*            m_CBuffer;
-    static ID3D11BlendState*        m_BlendState;
-    static ID3D11DepthStencilState* m_DepthState;
-    static ID3D11RasterizerState*   m_RasterizerState; // カリング無効用ステート
+    static Microsoft::WRL::ComPtr<ID3D11VertexShader>      m_VS;
+    static Microsoft::WRL::ComPtr<ID3D11PixelShader>       m_PS;
+    static Microsoft::WRL::ComPtr<ID3D11Buffer>            m_CBuffer;
+    static Microsoft::WRL::ComPtr<ID3D11BlendState>        m_BlendState;
+    static Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_DepthState;
+    static Microsoft::WRL::ComPtr<ID3D11RasterizerState>   m_RasterizerState; // カリング無効用ステート
 
 public:
     static bool Init(ID3D11Device* device);

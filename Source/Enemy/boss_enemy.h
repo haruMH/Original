@@ -109,6 +109,10 @@ private:
     void PerformPhase2Attack();
     void PerformPhase3Attack();
     void DrawBarrierEffect();
+    void DrawPhaseBarrier();
+    void DrawPhase1LaserGuides();
+    void DrawPhase2JumpRopeBeams();
+    void DrawPhase3Lightnings();
     void ApplyBossDamage(int damage, const DirectX::XMFLOAT3& hitSourcePos);
 
 public:

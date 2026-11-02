@@ -19,6 +19,7 @@
 #include "wall.h"
 #include "main.h"
 #include <vector>
+#include <functional>
 
 using namespace DirectX;
 
@@ -114,18 +115,19 @@ void TutorialScene::Init() {
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     D3D11_SUBRESOURCE_DATA sd = {};
     sd.pSysMem = v;
-    device->CreateBuffer(&bd, &sd, &m_QuadVB);
+    device->CreateBuffer(&bd, &sd, m_QuadVB.ReleaseAndGetAddressOf());
 
     Renderer::CreateVertexShader(
-        &m_VS, &m_IL, Renderer::ResolveShaderPath("vertexShader.cso").c_str());
+        m_VS.ReleaseAndGetAddressOf(), m_IL.ReleaseAndGetAddressOf(),
+        Renderer::ResolveShaderPath("vertexShader.cso").c_str());
     Renderer::CreatePixelShader(
-        &m_PS, Renderer::ResolveShaderPath("ui_ps.cso").c_str());
+        m_PS.ReleaseAndGetAddressOf(), Renderer::ResolveShaderPath("ui_ps.cso").c_str());
 
     D3D11_DEPTH_STENCIL_DESC dsd = {};
     dsd.DepthEnable = FALSE;
     dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
     dsd.DepthFunc = D3D11_COMPARISON_ALWAYS;
-    device->CreateDepthStencilState(&dsd, &m_DepthState);
+    device->CreateDepthStencilState(&dsd, m_DepthState.ReleaseAndGetAddressOf());
   }
 
   CreateSkipTexture();
@@ -140,34 +142,13 @@ void TutorialScene::Init() {
 void TutorialScene::Uninit() {
   EventSystem::Clear();
 
-  if (m_GuideTexture) {
-    m_GuideTexture->Release();
-    m_GuideTexture = nullptr;
-  }
-  if (m_SkipTexture) {
-    m_SkipTexture->Release();
-    m_SkipTexture = nullptr;
-  }
-  if (m_DepthState) {
-    m_DepthState->Release();
-    m_DepthState = nullptr;
-  }
-  if (m_IL) {
-    m_IL->Release();
-    m_IL = nullptr;
-  }
-  if (m_PS) {
-    m_PS->Release();
-    m_PS = nullptr;
-  }
-  if (m_VS) {
-    m_VS->Release();
-    m_VS = nullptr;
-  }
-  if (m_QuadVB) {
-    m_QuadVB->Release();
-    m_QuadVB = nullptr;
-  }
+  m_GuideTexture.Reset();
+  m_SkipTexture.Reset();
+  m_DepthState.Reset();
+  m_IL.Reset();
+  m_PS.Reset();
+  m_VS.Reset();
+  m_QuadVB.Reset();
 }
 
 // =================================================================
@@ -599,7 +580,7 @@ void TutorialScene::Draw() {
     XMFLOAT4 emission = m_StepCleared
         ? XMFLOAT4(0.25f + 0.35f * pulse, 1.8f + 0.6f * pulse, 0.45f + 0.2f * pulse, 0.0f)
         : XMFLOAT4(0.1f * pulse, 0.7f + 0.4f * pulse, 1.2f + 0.5f * pulse, 0.0f);
-    DrawUIQuad(m_GuideTexture, posX, posY, w, h, emission);
+    DrawUIQuad(m_GuideTexture.Get(), posX, posY, w, h, emission);
   }
 
   // 2. 画面右下にスキップ案内を描画
@@ -609,7 +590,7 @@ void TutorialScene::Draw() {
     float w = 280.0f;
     float h = 44.0f;
     float pulse = 0.5f + 0.5f * sinf(m_PulseTimer * 0.8f);
-    DrawUIQuad(m_SkipTexture, posX, posY, w, h,
+    DrawUIQuad(m_SkipTexture.Get(), posX, posY, w, h,
                XMFLOAT4(0.6f + 0.3f * pulse, 0.8f + 0.4f * pulse, 1.1f + 0.5f * pulse, 0.0f));
   }
 }
@@ -632,15 +613,16 @@ void TutorialScene::DrawUIQuad(ID3D11ShaderResourceView *srv, float posX,
   XMMATRIX proj2D = XMMatrixOrthographicOffCenterLH(
       0.0f, (float)Renderer::GetScreenWidth(), (float)Renderer::GetScreenHeight(), 0.0f, 0.0f, 1.0f);
 
-  ctx->OMSetDepthStencilState(m_DepthState, 0);
-  ctx->VSSetShader(m_VS, nullptr, 0);
-  ctx->PSSetShader(m_PS, nullptr, 0);
-  ctx->IASetInputLayout(m_IL);
+  ctx->OMSetDepthStencilState(m_DepthState.Get(), 0);
+  ctx->VSSetShader(m_VS.Get(), nullptr, 0);
+  ctx->PSSetShader(m_PS.Get(), nullptr, 0);
+  ctx->IASetInputLayout(m_IL.Get());
   ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
   UINT stride = 60u;
   UINT offset = 0;
-  ctx->IASetVertexBuffers(0, 1, &m_QuadVB, &stride, &offset);
+  ID3D11Buffer *vb = m_QuadVB.Get();
+  ctx->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
 
   Renderer::SetViewMatrix(view2D);
   Renderer::SetProjectionMatrix(proj2D);
@@ -663,6 +645,81 @@ void TutorialScene::DrawUIQuad(ID3D11ShaderResourceView *srv, float posX,
   ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
+namespace {
+// ポリゴンリージョン付きのGDI DIBからD3D11 SRVを生成する共通ヘルパー
+Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> CreateRegionGdiTexture(
+    int W, int H, const POINT *pts, int ptCount, int lumThreshold, BYTE baseAlpha,
+    const std::function<void(HDC, HRGN)> &drawCallback) {
+  BITMAPINFO bmi = {};
+  bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  bmi.bmiHeader.biWidth = W;
+  bmi.bmiHeader.biHeight = -H;
+  bmi.bmiHeader.biPlanes = 1;
+  bmi.bmiHeader.biBitCount = 32;
+  bmi.bmiHeader.biCompression = BI_RGB;
+
+  BYTE *bits = nullptr;
+  HDC hdc = CreateCompatibleDC(nullptr);
+  HBITMAP hBmp =
+      CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, (void **)&bits, nullptr, 0);
+  HGDIOBJ oldBmp = SelectObject(hdc, hBmp);
+
+  HRGN hRgn = CreatePolygonRgn(pts, ptCount, WINDING);
+  if (drawCallback) {
+    drawCallback(hdc, hRgn);
+  }
+  GdiFlush();
+
+  std::vector<BYTE> rgba(W * H * 4);
+  for (int y = 0; y < H; ++y) {
+    for (int x = 0; x < W; ++x) {
+      int idx = (y * W + x) * 4;
+      BYTE b = bits[idx + 0];
+      BYTE g = bits[idx + 1];
+      BYTE r = bits[idx + 2];
+      BYTE a = 0;
+      if (PtInRegion(hRgn, x, y)) {
+        a = (r > lumThreshold || g > lumThreshold || b > lumThreshold) ? 255 : baseAlpha;
+      }
+      rgba[idx + 0] = r;
+      rgba[idx + 1] = g;
+      rgba[idx + 2] = b;
+      rgba[idx + 3] = a;
+    }
+  }
+
+  SelectObject(hdc, oldBmp);
+  DeleteObject(hRgn);
+  DeleteObject(hBmp);
+  DeleteDC(hdc);
+
+  ID3D11Device *device = Renderer::GetDevice();
+  if (!device)
+    return nullptr;
+
+  D3D11_TEXTURE2D_DESC td = {};
+  td.Width = W;
+  td.Height = H;
+  td.MipLevels = 1;
+  td.ArraySize = 1;
+  td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+  td.SampleDesc.Count = 1;
+  td.Usage = D3D11_USAGE_IMMUTABLE;
+  td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+  D3D11_SUBRESOURCE_DATA initData = {};
+  initData.pSysMem = rgba.data();
+  initData.SysMemPitch = W * 4;
+
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> tex;
+  Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
+  if (SUCCEEDED(device->CreateTexture2D(&td, &initData, tex.GetAddressOf())) && tex) {
+    device->CreateShaderResourceView(tex.Get(), nullptr, srv.GetAddressOf());
+  }
+  return srv;
+}
+} // namespace
+
 // =================================================================
 // ガイドUIテクスチャ生成
 // =================================================================
@@ -673,333 +730,194 @@ void TutorialScene::CreateGuideTexture(int stepNumber, int totalSteps,
   m_LastMainText = mainText;
   m_LastSubText  = subText;
 
-  if (m_GuideTexture) {
-    m_GuideTexture->Release();
-    m_GuideTexture = nullptr;
-  }
-
   const int W = 780;
   const int H = 135;
   const int C = 16; // 四隅のサイバー斜めカット幅
-
-  BITMAPINFO bmi = {};
-  bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-  bmi.bmiHeader.biWidth = W;
-  bmi.bmiHeader.biHeight = -H;
-  bmi.bmiHeader.biPlanes = 1;
-  bmi.bmiHeader.biBitCount = 32;
-  bmi.bmiHeader.biCompression = BI_RGB;
-
-  BYTE *bits = nullptr;
-  HDC hdc = CreateCompatibleDC(nullptr);
-  HBITMAP hBmp =
-      CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, (void **)&bits, nullptr, 0);
-  HGDIOBJ oldBmp = SelectObject(hdc, hBmp);
-
-  // 1. 八角形（Chamfered Hexagon）リージョンの構築
   POINT pts[8] = {
       { C, 0 }, { W - C, 0 }, { W, C }, { W, H - C },
       { W - C, H }, { C, H }, { 0, H - C }, { 0, C }
   };
-  HRGN hRgn = CreatePolygonRgn(pts, 8, WINDING);
-  SelectClipRgn(hdc, hRgn);
 
-  // 2. 背景グラデーション（上部: インディゴスレート、下部: 漆黒）
-  for (int y = 0; y < H; ++y) {
-    float t = (float)y / (float)H;
-    BYTE r = (BYTE)(16.0f * (1.0f - t) + 8.0f * t);
-    BYTE g = (BYTE)(24.0f * (1.0f - t) + 12.0f * t);
-    BYTE b = (BYTE)(42.0f * (1.0f - t) + 20.0f * t);
-    HBRUSH lineBrush = CreateSolidBrush(RGB(r, g, b));
-    RECT lineRect = { 0, y, W, y + 1 };
-    FillRect(hdc, &lineRect, lineBrush);
-    DeleteObject(lineBrush);
-  }
+  m_GuideTexture = CreateRegionGdiTexture(W, H, pts, 8, 45, 215, [&](HDC hdc, HRGN hRgn) {
+    SelectClipRgn(hdc, hRgn);
 
-  // クリップ解除して枠線や装飾を描画
-  SelectClipRgn(hdc, nullptr);
+    // 背景グラデーション（上部: インディゴスレート、下部: 漆黒）
+    for (int y = 0; y < H; ++y) {
+      float t = (float)y / (float)H;
+      BYTE r = (BYTE)(16.0f * (1.0f - t) + 8.0f * t);
+      BYTE g = (BYTE)(24.0f * (1.0f - t) + 12.0f * t);
+      BYTE b = (BYTE)(42.0f * (1.0f - t) + 20.0f * t);
+      HBRUSH lineBrush = CreateSolidBrush(RGB(r, g, b));
+      RECT lineRect = { 0, y, W, y + 1 };
+      FillRect(hdc, &lineRect, lineBrush);
+      DeleteObject(lineBrush);
+    }
 
-  // 3. サイバー外枠（通常: ネオンシアン、クリア時: ネオングリーン）
-  COLORREF neonColor = isCleared ? RGB(50, 255, 120) : RGB(0, 220, 255);
-  HPEN borderPen = CreatePen(PS_SOLID, 2, neonColor);
-  HGDIOBJ oldPen = SelectObject(hdc, borderPen);
-  HGDIOBJ oldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
-  Polygon(hdc, pts, 8);
+    SelectClipRgn(hdc, nullptr);
 
-  // 内側デュアルアクセントライン（オフセット 3px）
-  const int C2 = C - 2;
-  POINT ptsInner[8] = {
-      { C2 + 3, 3 }, { W - C2 - 3, 3 }, { W - 3, C2 + 3 }, { W - 3, H - C2 - 3 },
-      { W - C2 - 3, H - 3 }, { C2 + 3, H - 3 }, { 3, H - C2 - 3 }, { 3, C2 + 3 }
-  };
-  HPEN innerPen = CreatePen(PS_SOLID, 1, isCleared ? RGB(30, 180, 80) : RGB(0, 140, 200));
-  SelectObject(hdc, innerPen);
-  Polygon(hdc, ptsInner, 8);
-  DeleteObject(innerPen);
+    // サイバー外枠（通常: ネオンシアン、クリア時: ネオングリーン）
+    COLORREF neonColor = isCleared ? RGB(50, 255, 120) : RGB(0, 220, 255);
+    HPEN borderPen = CreatePen(PS_SOLID, 2, neonColor);
+    HGDIOBJ oldPen = SelectObject(hdc, borderPen);
+    HGDIOBJ oldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+    Polygon(hdc, pts, 8);
 
-  SetBkMode(hdc, TRANSPARENT);
+    // 内側デュアルアクセントライン（オフセット 3px）
+    const int C2 = C - 2;
+    POINT ptsInner[8] = {
+        { C2 + 3, 3 }, { W - C2 - 3, 3 }, { W - 3, C2 + 3 }, { W - 3, H - C2 - 3 },
+        { W - C2 - 3, H - 3 }, { C2 + 3, H - 3 }, { 3, H - C2 - 3 }, { 3, C2 + 3 }
+    };
+    HPEN innerPen = CreatePen(PS_SOLID, 1, isCleared ? RGB(30, 180, 80) : RGB(0, 140, 200));
+    SelectObject(hdc, innerPen);
+    Polygon(hdc, ptsInner, 8);
+    DeleteObject(innerPen);
 
-  // 4. ステッププログレスインジケーター（上部 Y = 8〜32）
-  // 中央バッジボックス
-  const int badgeW = 230;
-  const int badgeH = 22;
-  const int badgeX = (W - badgeW) / 2;
-  const int badgeY = 8;
-  RECT rcBadge = { badgeX, badgeY, badgeX + badgeW, badgeY + badgeH };
-  HBRUSH badgeBrush = CreateSolidBrush(isCleared ? RGB(20, 80, 45) : RGB(20, 45, 75));
-  HPEN badgePen = CreatePen(PS_SOLID, 1, neonColor);
-  SelectObject(hdc, badgeBrush);
-  SelectObject(hdc, badgePen);
-  RoundRect(hdc, badgeX, badgeY, badgeX + badgeW, badgeY + badgeH, 6, 6);
-  DeleteObject(badgeBrush);
-  DeleteObject(badgePen);
+    SetBkMode(hdc, TRANSPARENT);
 
-  HFONT hFontBadge = CreateFontW(14, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+    // ステッププログレスインジケーター（上部 Y = 8〜32）
+    const int badgeW = 230;
+    const int badgeH = 22;
+    const int badgeX = (W - badgeW) / 2;
+    const int badgeY = 8;
+    RECT rcBadge = { badgeX, badgeY, badgeX + badgeW, badgeY + badgeH };
+    HBRUSH badgeBrush = CreateSolidBrush(isCleared ? RGB(20, 80, 45) : RGB(20, 45, 75));
+    HPEN badgePen = CreatePen(PS_SOLID, 1, neonColor);
+    SelectObject(hdc, badgeBrush);
+    SelectObject(hdc, badgePen);
+    RoundRect(hdc, badgeX, badgeY, badgeX + badgeW, badgeY + badgeH, 6, 6);
+    DeleteObject(badgeBrush);
+    DeleteObject(badgePen);
+
+    HFONT hFontBadge = CreateFontW(14, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                                   OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
+                                   DEFAULT_PITCH | FF_DONTCARE, L"Meiryo UI");
+    HGDIOBJ oldFont = SelectObject(hdc, hFontBadge);
+    SetTextColor(hdc, isCleared ? RGB(80, 255, 140) : RGB(255, 220, 75));
+    std::wstring badgeText = isCleared ? L"★ STEP CLEARED! ★"
+                                       : (L"◆ STEP " + std::to_wstring(stepNumber) + L" / " + std::to_wstring(totalSteps) + L" ◆");
+    DrawTextW(hdc, badgeText.c_str(), -1, &rcBadge, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+    // プログレスノード（5つのドットノードを左右に配置）
+    const int dotY = badgeY + badgeH / 2;
+    for (int i = 1; i <= totalSteps; ++i) {
+      int dotX = (i <= 2) ? (badgeX - 70 + (i - 1) * 32) : (badgeX + badgeW + 20 + (i - 3) * 32);
+      COLORREF nodeColor;
+      if (i < stepNumber || (i == stepNumber && isCleared)) {
+        nodeColor = RGB(50, 255, 120); // 達成済み: ネオングリーン
+      } else if (i == stepNumber) {
+        nodeColor = RGB(255, 220, 70);  // 現在ステップ: エナジーゴールド
+      } else {
+        nodeColor = RGB(65, 80, 100);   // 未到達: ダークグレー
+      }
+      HBRUSH dotBrush = CreateSolidBrush(nodeColor);
+      HPEN dotPen = CreatePen(PS_SOLID, 1, nodeColor);
+      SelectObject(hdc, dotBrush);
+      SelectObject(hdc, dotPen);
+      Ellipse(hdc, dotX - 5, dotY - 5, dotX + 5, dotY + 5);
+      DeleteObject(dotBrush);
+      DeleteObject(dotPen);
+    }
+
+    // メインタイトル（Y = 36〜76）
+    HFONT hFontMain = CreateFontW(28, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                                  OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
+                                  DEFAULT_PITCH | FF_DONTCARE, L"Meiryo UI");
+    SelectObject(hdc, hFontMain);
+    RECT rcMainShadow = { 22, 38, W - 18, 76 };
+    SetTextColor(hdc, RGB(0, 0, 0));
+    DrawTextW(hdc, mainText.c_str(), -1, &rcMainShadow, DT_CENTER | DT_SINGLELINE);
+
+    RECT rcMain = { 20, 36, W - 20, 74 };
+    SetTextColor(hdc, isCleared ? RGB(100, 255, 160) : RGB(255, 235, 130));
+    DrawTextW(hdc, mainText.c_str(), -1, &rcMain, DT_CENTER | DT_SINGLELINE);
+
+    // サブ説明文（Y = 78〜126）
+    HFONT hFontSub = CreateFontW(19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                                  OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
                                  DEFAULT_PITCH | FF_DONTCARE, L"Meiryo UI");
-  HGDIOBJ oldFont = SelectObject(hdc, hFontBadge);
-  SetTextColor(hdc, isCleared ? RGB(80, 255, 140) : RGB(255, 220, 75));
-  std::wstring badgeText = isCleared ? L"★ STEP CLEARED! ★"
-                                     : (L"◆ STEP " + std::to_wstring(stepNumber) + L" / " + std::to_wstring(totalSteps) + L" ◆");
-  DrawTextW(hdc, badgeText.c_str(), -1, &rcBadge, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    SelectObject(hdc, hFontSub);
+    RECT rcSubShadow = { 26, 80, W - 24, H - 6 };
+    SetTextColor(hdc, RGB(0, 0, 0));
+    DrawTextW(hdc, subText.c_str(), -1, &rcSubShadow, DT_CENTER | DT_WORDBREAK);
 
-  // プログレスノード（5つのドットノードを左右に配置）
-  const int dotY = badgeY + badgeH / 2;
-  for (int i = 1; i <= totalSteps; ++i) {
-    int dotX = (i <= 2) ? (badgeX - 70 + (i - 1) * 32) : (badgeX + badgeW + 20 + (i - 3) * 32);
-    COLORREF nodeColor;
-    if (i < stepNumber || (i == stepNumber && isCleared)) {
-      nodeColor = RGB(50, 255, 120); // 達成済み: ネオングリーン
-    } else if (i == stepNumber) {
-      nodeColor = RGB(255, 220, 70);  // 現在ステップ: エナジーゴールド
-    } else {
-      nodeColor = RGB(65, 80, 100);   // 未到達: ダークグレー
-    }
-    HBRUSH dotBrush = CreateSolidBrush(nodeColor);
-    HPEN dotPen = CreatePen(PS_SOLID, 1, nodeColor);
-    SelectObject(hdc, dotBrush);
-    SelectObject(hdc, dotPen);
-    Ellipse(hdc, dotX - 5, dotY - 5, dotX + 5, dotY + 5);
-    DeleteObject(dotBrush);
-    DeleteObject(dotPen);
-  }
+    RECT rcSub = { 25, 78, W - 25, H - 8 };
+    SetTextColor(hdc, RGB(225, 240, 255));
+    DrawTextW(hdc, subText.c_str(), -1, &rcSub, DT_CENTER | DT_WORDBREAK);
 
-  // 5. メインタイトル（Y = 36〜76）
-  HFONT hFontMain = CreateFontW(28, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
-                                DEFAULT_PITCH | FF_DONTCARE, L"Meiryo UI");
-  SelectObject(hdc, hFontMain);
-  RECT rcMainShadow = { 22, 38, W - 18, 76 };
-  SetTextColor(hdc, RGB(0, 0, 0));
-  DrawTextW(hdc, mainText.c_str(), -1, &rcMainShadow, DT_CENTER | DT_SINGLELINE);
-
-  RECT rcMain = { 20, 36, W - 20, 74 };
-  SetTextColor(hdc, isCleared ? RGB(100, 255, 160) : RGB(255, 235, 130));
-  DrawTextW(hdc, mainText.c_str(), -1, &rcMain, DT_CENTER | DT_SINGLELINE);
-
-  // 6. サブ説明文（Y = 78〜126）
-  HFONT hFontSub = CreateFontW(19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                               OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
-                               DEFAULT_PITCH | FF_DONTCARE, L"Meiryo UI");
-  SelectObject(hdc, hFontSub);
-  RECT rcSubShadow = { 26, 80, W - 24, H - 6 };
-  SetTextColor(hdc, RGB(0, 0, 0));
-  DrawTextW(hdc, subText.c_str(), -1, &rcSubShadow, DT_CENTER | DT_WORDBREAK);
-
-  RECT rcSub = { 25, 78, W - 25, H - 8 };
-  SetTextColor(hdc, RGB(225, 240, 255));
-  DrawTextW(hdc, subText.c_str(), -1, &rcSub, DT_CENTER | DT_WORDBREAK);
-
-  GdiFlush();
-
-  // 7. アルファ透過処理（八角形の外側は0、内部背景は215、テキスト・枠線・ノードは255）
-  std::vector<BYTE> rgba(W * H * 4);
-  for (int y = 0; y < H; ++y) {
-    for (int x = 0; x < W; ++x) {
-      int idx = (y * W + x) * 4;
-      BYTE b = bits[idx + 0];
-      BYTE g = bits[idx + 1];
-      BYTE r = bits[idx + 2];
-      BYTE a = 0;
-
-      if (PtInRegion(hRgn, x, y)) {
-        a = (r > 45 || g > 45 || b > 45) ? 255 : 215;
-      }
-      rgba[idx + 0] = r;
-      rgba[idx + 1] = g;
-      rgba[idx + 2] = b;
-      rgba[idx + 3] = a;
-    }
-  }
-
-  SelectObject(hdc, oldFont);
-  SelectObject(hdc, oldPen);
-  SelectObject(hdc, oldBrush);
-  SelectObject(hdc, oldBmp);
-  DeleteObject(hRgn);
-  DeleteObject(borderPen);
-  DeleteObject(hFontBadge);
-  DeleteObject(hFontMain);
-  DeleteObject(hFontSub);
-  DeleteObject(hBmp);
-  DeleteDC(hdc);
-
-  ID3D11Device *device = Renderer::GetDevice();
-  if (!device)
-    return;
-
-  D3D11_TEXTURE2D_DESC td = {};
-  td.Width = W;
-  td.Height = H;
-  td.MipLevels = 1;
-  td.ArraySize = 1;
-  td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-  td.SampleDesc.Count = 1;
-  td.Usage = D3D11_USAGE_IMMUTABLE;
-  td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-
-  D3D11_SUBRESOURCE_DATA initData = {};
-  initData.pSysMem = rgba.data();
-  initData.SysMemPitch = W * 4;
-
-  ID3D11Texture2D *tex = nullptr;
-  if (SUCCEEDED(device->CreateTexture2D(&td, &initData, &tex))) {
-    device->CreateShaderResourceView(tex, nullptr, &m_GuideTexture);
-    tex->Release();
-  }
+    SelectObject(hdc, oldFont);
+    SelectObject(hdc, oldPen);
+    SelectObject(hdc, oldBrush);
+    DeleteObject(borderPen);
+    DeleteObject(hFontBadge);
+    DeleteObject(hFontMain);
+    DeleteObject(hFontSub);
+  });
 }
 
 // =================================================================
 // スキップ案内テクスチャ生成
 // =================================================================
 void TutorialScene::CreateSkipTexture() {
-  if (m_SkipTexture) {
-    m_SkipTexture->Release();
-    m_SkipTexture = nullptr;
-  }
-
   const int W = 280;
   const int H = 44;
   const int S = 12; // 平行四辺形のスラッシュ傾斜
-
-  BITMAPINFO bmi = {};
-  bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-  bmi.bmiHeader.biWidth = W;
-  bmi.bmiHeader.biHeight = -H;
-  bmi.bmiHeader.biPlanes = 1;
-  bmi.bmiHeader.biBitCount = 32;
-  bmi.bmiHeader.biCompression = BI_RGB;
-
-  BYTE *bits = nullptr;
-  HDC hdc = CreateCompatibleDC(nullptr);
-  HBITMAP hBmp =
-      CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, (void **)&bits, nullptr, 0);
-  HGDIOBJ oldBmp = SelectObject(hdc, hBmp);
-
-  // 1. スラッシュ平行四辺形（Parallelogram）リージョン
   POINT pts[4] = { { S, 0 }, { W, 0 }, { W - S, H }, { 0, H } };
-  HRGN hRgn = CreatePolygonRgn(pts, 4, WINDING);
-  SelectClipRgn(hdc, hRgn);
 
-  // 背景（ダークスレートグラデーション）
-  HBRUSH bgBrush = CreateSolidBrush(RGB(14, 18, 30));
-  RECT bgRect = { 0, 0, W, H };
-  FillRect(hdc, &bgRect, bgBrush);
-  DeleteObject(bgBrush);
+  m_SkipTexture = CreateRegionGdiTexture(W, H, pts, 4, 40, 210, [&](HDC hdc, HRGN hRgn) {
+    SelectClipRgn(hdc, hRgn);
 
-  SelectClipRgn(hdc, nullptr);
+    // 背景（ダークスレートグラデーション）
+    HBRUSH bgBrush = CreateSolidBrush(RGB(14, 18, 30));
+    RECT bgRect = { 0, 0, W, H };
+    FillRect(hdc, &bgRect, bgBrush);
+    DeleteObject(bgBrush);
 
-  // 2. 外枠ネオンライン
-  HPEN borderPen = CreatePen(PS_SOLID, 2, RGB(0, 210, 255));
-  HGDIOBJ oldPen = SelectObject(hdc, borderPen);
-  HGDIOBJ oldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
-  Polygon(hdc, pts, 4);
+    SelectClipRgn(hdc, nullptr);
 
-  SetBkMode(hdc, TRANSPARENT);
+    // 外枠ネオンライン
+    HPEN borderPen = CreatePen(PS_SOLID, 2, RGB(0, 210, 255));
+    HGDIOBJ oldPen = SelectObject(hdc, borderPen);
+    HGDIOBJ oldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+    Polygon(hdc, pts, 4);
 
-  // 3. キーキャップ [ ESC ]
-  const int keyX = 18;
-  const int keyY = 8;
-  const int keyW = 68;
-  const int keyH = 28;
-  HBRUSH keyBrush = CreateSolidBrush(RGB(32, 42, 60));
-  HPEN keyPen = CreatePen(PS_SOLID, 1, RGB(180, 215, 255));
-  SelectObject(hdc, keyBrush);
-  SelectObject(hdc, keyPen);
-  RoundRect(hdc, keyX, keyY, keyX + keyW, keyY + keyH, 6, 6);
-  DeleteObject(keyBrush);
-  DeleteObject(keyPen);
+    SetBkMode(hdc, TRANSPARENT);
 
-  HFONT hFontEsc = CreateFontW(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                               OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
-                               DEFAULT_PITCH | FF_DONTCARE, L"Arial");
-  HGDIOBJ oldFont = SelectObject(hdc, hFontEsc);
-  SetTextColor(hdc, RGB(255, 255, 255));
-  RECT rcEsc = { keyX, keyY, keyX + keyW, keyY + keyH };
-  DrawTextW(hdc, L"ESC", -1, &rcEsc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    // キーキャップ [ ESC ]
+    const int keyX = 18;
+    const int keyY = 8;
+    const int keyW = 68;
+    const int keyH = 28;
+    HBRUSH keyBrush = CreateSolidBrush(RGB(32, 42, 60));
+    HPEN keyPen = CreatePen(PS_SOLID, 1, RGB(180, 215, 255));
+    SelectObject(hdc, keyBrush);
+    SelectObject(hdc, keyPen);
+    RoundRect(hdc, keyX, keyY, keyX + keyW, keyY + keyH, 6, 6);
+    DeleteObject(keyBrush);
+    DeleteObject(keyPen);
 
-  // 4. スキップ案内テキスト
-  HFONT hFontText = CreateFontW(17, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
-                                DEFAULT_PITCH | FF_DONTCARE, L"Meiryo UI");
-  SelectObject(hdc, hFontText);
-  SetTextColor(hdc, RGB(200, 235, 255));
-  RECT rcText = { keyX + keyW + 12, 10, W - 16, H - 8 };
-  DrawTextW(hdc, L"SKIP TUTORIAL ▶", -1, &rcText, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    HFONT hFontEsc = CreateFontW(15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                                 OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
+                                 DEFAULT_PITCH | FF_DONTCARE, L"Arial");
+    HGDIOBJ oldFont = SelectObject(hdc, hFontEsc);
+    SetTextColor(hdc, RGB(255, 255, 255));
+    RECT rcEsc = { keyX, keyY, keyX + keyW, keyY + keyH };
+    DrawTextW(hdc, L"ESC", -1, &rcEsc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-  GdiFlush();
+    // スキップ案内テキスト
+    HFONT hFontText = CreateFontW(17, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                                  OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
+                                  DEFAULT_PITCH | FF_DONTCARE, L"Meiryo UI");
+    SelectObject(hdc, hFontText);
+    SetTextColor(hdc, RGB(200, 235, 255));
+    RECT rcText = { keyX + keyW + 12, 10, W - 16, H - 8 };
+    DrawTextW(hdc, L"SKIP TUTORIAL ▶", -1, &rcText, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
-  // 透過処理
-  std::vector<BYTE> rgba(W * H * 4);
-  for (int y = 0; y < H; ++y) {
-    for (int x = 0; x < W; ++x) {
-      int idx = (y * W + x) * 4;
-      BYTE b = bits[idx + 0];
-      BYTE g = bits[idx + 1];
-      BYTE r = bits[idx + 2];
-      BYTE a = 0;
-      if (PtInRegion(hRgn, x, y)) {
-        a = (r > 40 || g > 40 || b > 40) ? 255 : 210;
-      }
-      rgba[idx + 0] = r;
-      rgba[idx + 1] = g;
-      rgba[idx + 2] = b;
-      rgba[idx + 3] = a;
-    }
-  }
-
-  SelectObject(hdc, oldFont);
-  SelectObject(hdc, oldPen);
-  SelectObject(hdc, oldBrush);
-  SelectObject(hdc, oldBmp);
-  DeleteObject(hRgn);
-  DeleteObject(borderPen);
-  DeleteObject(hFontEsc);
-  DeleteObject(hFontText);
-  DeleteObject(hBmp);
-  DeleteDC(hdc);
-
-  ID3D11Device *device = Renderer::GetDevice();
-  if (!device)
-    return;
-
-  D3D11_TEXTURE2D_DESC td = {};
-  td.Width = W;
-  td.Height = H;
-  td.MipLevels = 1;
-  td.ArraySize = 1;
-  td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-  td.SampleDesc.Count = 1;
-  td.Usage = D3D11_USAGE_IMMUTABLE;
-  td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-
-  D3D11_SUBRESOURCE_DATA initData = {};
-  initData.pSysMem = rgba.data();
-  initData.SysMemPitch = W * 4;
-
-  ID3D11Texture2D *tex = nullptr;
-  if (SUCCEEDED(device->CreateTexture2D(&td, &initData, &tex))) {
-    device->CreateShaderResourceView(tex, nullptr, &m_SkipTexture);
-    tex->Release();
-  }
+    SelectObject(hdc, oldFont);
+    SelectObject(hdc, oldPen);
+    SelectObject(hdc, oldBrush);
+    DeleteObject(borderPen);
+    DeleteObject(hFontEsc);
+    DeleteObject(hFontText);
+  });
 }

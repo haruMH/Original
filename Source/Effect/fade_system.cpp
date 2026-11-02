@@ -15,12 +15,14 @@ float                    FadeSystem::m_Timer = 0.0f;
 float                    FadeSystem::m_Duration = 0.5f;
 XMFLOAT4                 FadeSystem::m_FadeColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 
-ID3D11VertexShader*      FadeSystem::m_VS = nullptr;
-ID3D11PixelShader*       FadeSystem::m_PS = nullptr;
-ID3D11Buffer*            FadeSystem::m_CBuffer = nullptr;
-ID3D11BlendState*        FadeSystem::m_BlendState = nullptr;
-ID3D11DepthStencilState* FadeSystem::m_DepthState = nullptr;
-ID3D11RasterizerState*   FadeSystem::m_RasterizerState = nullptr;
+using Microsoft::WRL::ComPtr;
+
+ComPtr<ID3D11VertexShader>      FadeSystem::m_VS;
+ComPtr<ID3D11PixelShader>       FadeSystem::m_PS;
+ComPtr<ID3D11Buffer>            FadeSystem::m_CBuffer;
+ComPtr<ID3D11BlendState>        FadeSystem::m_BlendState;
+ComPtr<ID3D11DepthStencilState> FadeSystem::m_DepthState;
+ComPtr<ID3D11RasterizerState>   FadeSystem::m_RasterizerState;
 
 // 汎用 Clamp ヘルパー関数
 static float ClampVal(float val, float minVal, float maxVal)
@@ -54,22 +56,19 @@ static bool LoadVS(ID3D11Device* device, const char* csoName, const char* hlslNa
     }
 
     // CSOからの読み込み失敗時、HLSLから動的にコンパイル
-    ID3DBlob* shaderBlob = nullptr;
-    ID3DBlob* errorBlob = nullptr;
+    ComPtr<ID3DBlob> shaderBlob;
+    ComPtr<ID3DBlob> errorBlob;
     WCHAR wHlslPath[512];
     MultiByteToWideChar(CP_ACP, 0, hlslName, -1, wHlslPath, 512);
 
-    HRESULT hr = D3DCompileFromFile(wHlslPath, nullptr, nullptr, "main", "vs_5_0", 0, 0, &shaderBlob, &errorBlob);
+    HRESULT hr = D3DCompileFromFile(wHlslPath, nullptr, nullptr, "main", "vs_5_0", 0, 0, shaderBlob.GetAddressOf(), errorBlob.GetAddressOf());
     if (FAILED(hr)) {
         if (errorBlob) {
-            OutputDebugStringA("[FadeSystem] VS Compile Error:\n");
-            OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-            errorBlob->Release();
+            LOG_INFO("[FadeSystem] VS Compile Error:\n%s", (char*)errorBlob->GetBufferPointer());
         }
         return false;
     }
     hr = device->CreateVertexShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), NULL, vsOut);
-    shaderBlob->Release();
     return SUCCEEDED(hr);
 }
 
@@ -96,22 +95,19 @@ static bool LoadPS(ID3D11Device* device, const char* csoName, const char* hlslNa
         if (SUCCEEDED(hr)) return true;
     }
 
-    ID3DBlob* shaderBlob = nullptr;
-    ID3DBlob* errorBlob = nullptr;
+    ComPtr<ID3DBlob> shaderBlob;
+    ComPtr<ID3DBlob> errorBlob;
     WCHAR wHlslPath[512];
     MultiByteToWideChar(CP_ACP, 0, hlslName, -1, wHlslPath, 512);
 
-    HRESULT hr = D3DCompileFromFile(wHlslPath, nullptr, nullptr, "main", "ps_5_0", 0, 0, &shaderBlob, &errorBlob);
+    HRESULT hr = D3DCompileFromFile(wHlslPath, nullptr, nullptr, "main", "ps_5_0", 0, 0, shaderBlob.GetAddressOf(), errorBlob.GetAddressOf());
     if (FAILED(hr)) {
         if (errorBlob) {
-            OutputDebugStringA("[FadeSystem] PS Compile Error:\n");
-            OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-            errorBlob->Release();
+            LOG_INFO("[FadeSystem] PS Compile Error:\n%s", (char*)errorBlob->GetBufferPointer());
         }
         return false;
     }
     hr = device->CreatePixelShader(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), NULL, psOut);
-    shaderBlob->Release();
     return SUCCEEDED(hr);
 }
 
@@ -120,14 +116,14 @@ bool FadeSystem::Init(ID3D11Device* device)
     if (!device) return false;
 
     // 1. 頂点シェーダー読み込み (postEffect_vs)
-    if (!LoadVS(device, "postEffect_vs.cso", "postEffect_vs.hlsl", &m_VS)) {
-        OutputDebugStringA("[FadeSystem] Failed to load VS (postEffect_vs)\n");
+    if (!LoadVS(device, "postEffect_vs.cso", "postEffect_vs.hlsl", m_VS.ReleaseAndGetAddressOf())) {
+        LOG_INFO("[FadeSystem] Failed to load VS (postEffect_vs)\n");
         return false;
     }
 
     // 2. ピクセルシェーダー読み込み (fade_ps)
-    if (!LoadPS(device, "fade_ps.cso", "fade_ps.hlsl", &m_PS)) {
-        OutputDebugStringA("[FadeSystem] Failed to load PS (fade_ps)\n");
+    if (!LoadPS(device, "fade_ps.cso", "fade_ps.hlsl", m_PS.ReleaseAndGetAddressOf())) {
+        LOG_INFO("[FadeSystem] Failed to load PS (fade_ps)\n");
         return false;
     }
 
@@ -138,7 +134,7 @@ bool FadeSystem::Init(ID3D11Device* device)
     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     bd.CPUAccessFlags = 0;
 
-    HRESULT hr = device->CreateBuffer(&bd, NULL, &m_CBuffer);
+    HRESULT hr = device->CreateBuffer(&bd, NULL, m_CBuffer.ReleaseAndGetAddressOf());
     if (FAILED(hr)) return false;
 
     // 4. アルファブレンディングステート作成
@@ -152,7 +148,7 @@ bool FadeSystem::Init(ID3D11Device* device)
     bdDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
     bdDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
-    hr = device->CreateBlendState(&bdDesc, &m_BlendState);
+    hr = device->CreateBlendState(&bdDesc, m_BlendState.ReleaseAndGetAddressOf());
     if (FAILED(hr)) return false;
 
     // 5. 深度無効ステート作成 (全画面フェード用)
@@ -161,7 +157,7 @@ bool FadeSystem::Init(ID3D11Device* device)
     dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
     dsd.DepthFunc = D3D11_COMPARISON_ALWAYS;
 
-    hr = device->CreateDepthStencilState(&dsd, &m_DepthState);
+    hr = device->CreateDepthStencilState(&dsd, m_DepthState.ReleaseAndGetAddressOf());
     if (FAILED(hr)) return false;
 
     // 6. カリング無効ラスタライザーステート作成
@@ -170,7 +166,7 @@ bool FadeSystem::Init(ID3D11Device* device)
     rd.CullMode = D3D11_CULL_NONE; // 全画面ポリゴンが裏面で消えないようカリング無効
     rd.DepthClipEnable = FALSE;
 
-    hr = device->CreateRasterizerState(&rd, &m_RasterizerState);
+    hr = device->CreateRasterizerState(&rd, m_RasterizerState.ReleaseAndGetAddressOf());
     if (FAILED(hr)) return false;
 
     m_State = FadeState::None;
@@ -178,18 +174,18 @@ bool FadeSystem::Init(ID3D11Device* device)
     m_Timer = 0.0f;
     m_Duration = 0.5f;
 
-    OutputDebugStringA("[FadeSystem] Successfully Initialized!\n");
+    LOG_INFO("[FadeSystem] Successfully Initialized!\n");
     return true;
 }
 
 void FadeSystem::Uninit()
 {
-    if (m_VS) { m_VS->Release(); m_VS = nullptr; }
-    if (m_PS) { m_PS->Release(); m_PS = nullptr; }
-    if (m_CBuffer) { m_CBuffer->Release(); m_CBuffer = nullptr; }
-    if (m_BlendState) { m_BlendState->Release(); m_BlendState = nullptr; }
-    if (m_DepthState) { m_DepthState->Release(); m_DepthState = nullptr; }
-    if (m_RasterizerState) { m_RasterizerState->Release(); m_RasterizerState = nullptr; }
+    m_VS.Reset();
+    m_PS.Reset();
+    m_CBuffer.Reset();
+    m_BlendState.Reset();
+    m_DepthState.Reset();
+    m_RasterizerState.Reset();
 
     m_State = FadeState::None;
 }
@@ -201,7 +197,7 @@ void FadeSystem::StartFadeOut(float duration, XMFLOAT4 color)
     m_Timer = 0.0f;
     m_CurrentAlpha = 0.0f;
     m_FadeColor = color;
-    OutputDebugStringA("[FadeSystem] StartFadeOut Started\n");
+    LOG_INFO("[FadeSystem] StartFadeOut Started\n");
 }
 
 void FadeSystem::StartFadeIn(float duration, XMFLOAT4 color)
@@ -211,7 +207,7 @@ void FadeSystem::StartFadeIn(float duration, XMFLOAT4 color)
     m_Timer = 0.0f;
     m_CurrentAlpha = 1.0f;
     m_FadeColor = color;
-    OutputDebugStringA("[FadeSystem] StartFadeIn Started\n");
+    LOG_INFO("[FadeSystem] StartFadeIn Started\n");
 }
 
 void FadeSystem::Update(float deltaTime)
@@ -234,7 +230,7 @@ void FadeSystem::Update(float deltaTime)
         if (progress >= 1.0f) {
             m_CurrentAlpha = 1.0f;
             m_State = FadeState::FadeHold; // 完全暗転保持状態へ移行 (裏でのロードと初描画待機)
-            OutputDebugStringA("[FadeSystem] FadeOut Complete -> FadeHold\n");
+            LOG_INFO("[FadeSystem] FadeOut Complete -> FadeHold\n");
         }
     }
     else if (m_State == FadeState::FadeIn) {
@@ -242,7 +238,7 @@ void FadeSystem::Update(float deltaTime)
         if (progress >= 1.0f) {
             m_CurrentAlpha = 0.0f;
             m_State = FadeState::None;
-            OutputDebugStringA("[FadeSystem] FadeIn Complete -> None\n");
+            LOG_INFO("[FadeSystem] FadeIn Complete -> None\n");
         }
     }
 }
@@ -264,23 +260,24 @@ void FadeSystem::Draw(ID3D11DeviceContext* context)
 
     // ラスタライザーステート設定 (カリング無効)
     if (m_RasterizerState) {
-        context->RSSetState(m_RasterizerState);
+        context->RSSetState(m_RasterizerState.Get());
     }
 
     // 定数バッファの更新
     XMFLOAT4 currentColor = m_FadeColor;
     currentColor.w = m_CurrentAlpha;
-    context->UpdateSubresource(m_CBuffer, 0, NULL, &currentColor, 0, 0);
+    context->UpdateSubresource(m_CBuffer.Get(), 0, NULL, &currentColor, 0, 0);
 
     // パイプラインの設定
-    context->VSSetShader(m_VS, NULL, 0);
-    context->PSSetShader(m_PS, NULL, 0);
-    context->PSSetConstantBuffers(0, 1, &m_CBuffer);
+    context->VSSetShader(m_VS.Get(), NULL, 0);
+    context->PSSetShader(m_PS.Get(), NULL, 0);
+    ID3D11Buffer* cb = m_CBuffer.Get();
+    context->PSSetConstantBuffers(0, 1, &cb);
 
     // ブレンドステートと深度ステートの適用
     float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    context->OMSetBlendState(m_BlendState, blendFactor, 0xffffffff);
-    context->OMSetDepthStencilState(m_DepthState, 0);
+    context->OMSetBlendState(m_BlendState.Get(), blendFactor, 0xffffffff);
+    context->OMSetDepthStencilState(m_DepthState.Get(), 0);
 
     // 全画面描画
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

@@ -183,6 +183,7 @@
     <ClCompile Include="Source\Enemy\enemy_affix.cpp" />
     <ClCompile Include="Source\Enemy\attacking_enemy.cpp" />
     <ClCompile Include="Source\Enemy\boss_enemy.cpp" />
+    <ClCompile Include="Source\Enemy\boss_phase_attack.cpp" />
     <ClCompile Include="Source\Enemy\enemy_bullet.cpp" />
     <ClCompile Include="Source\Enemy\magnetic_bullet.cpp" />
     <!-- Stage -->
@@ -209,6 +210,7 @@
     <ClCompile Include="Source\UI\item_notification_hud.cpp" />
     <!-- Effect -->
     <ClCompile Include="Source\Effect\shockwave.cpp" />
+    <ClCompile Include="Source\Effect\aura_effect.cpp" />
     <ClCompile Include="Source\Effect\explosion_system.cpp" />
     <ClCompile Include="Source\Effect\fade_system.cpp" />
     <ClCompile Include="Source\Effect\dust_system.cpp" />
@@ -284,6 +286,7 @@
     <ClInclude Include="Source\UI\item_notification_hud.h" />
     <!-- Effect -->
     <ClInclude Include="Source\Effect\shockwave.h" />
+    <ClInclude Include="Source\Effect\aura_effect.h" />
     <ClInclude Include="Source\Effect\explosion_system.h" />
     <ClInclude Include="Source\Effect\fade_system.h" />
     <ClInclude Include="Source\Effect\dust_system.h" />

@@ -41,8 +41,27 @@ void PlayerCombat::Init()
 // =================================================================
 // Update Frame
 // =================================================================
+int PlayerCombat::CalcChargeStage(float spinSpeed)
+{
+    float ratio = spinSpeed / Constants::Player::MAX_SPIN_SPEED;
+    int stage = 0;
+    for (int i = 0; i < 4; ++i) {
+        if (ratio >= Constants::Player::SPIN_STAGE_THRESHOLD[i]) stage = i + 1;
+    }
+    return stage;
+}
+
+int PlayerCombat::GetChargeStage() const
+{
+    if (m_Owner->GetState() != PlayerState::SPINNING) return 0;
+    return CalcChargeStage(m_Owner->GetCurrentSpinSpeed());
+}
+
 void PlayerCombat::Update()
 {
+    if (m_NonSpinThrowCooldown > 0) m_NonSpinThrowCooldown--;
+    if (m_Owner->GetState() != PlayerState::SPINNING) m_LastChargeStage = 0;
+
     // Update guard status
     if (m_Owner->GetDamageTimer() <= 0 && m_Owner->GetState() == PlayerState::IDLE && !m_Owner->GetGrabbedEnemy()) {
         if (PlayerController::IsGuardAction()) {
@@ -358,6 +377,14 @@ void PlayerCombat::UpdateSpinning()
     currentSpeed += (targetSpinSpeed - currentSpeed) * accel;
     m_Owner->SetCurrentSpinSpeed(currentSpeed);
 
+    // チャージ段階到達の瞬間にSEと軽いヒットストップ
+    int chargeStage = CalcChargeStage(currentSpeed);
+    if (chargeStage > m_LastChargeStage) {
+        SoundManager::PlaySE(SoundID::SE_PARRY);
+        Manager::AddHitStop(3);
+    }
+    m_LastChargeStage = chargeStage;
+
     XMFLOAT3 rot = m_Owner->GetRotation();
     rot.y += currentSpeed;
     if (rot.y > XM_2PI) rot.y -= XM_2PI;
@@ -431,29 +458,58 @@ void PlayerCombat::UpdateSpinning()
 void PlayerCombat::Throw()
 {
     if (m_Owner->GetGrabbedEnemy()) {
+        // 威力の根拠はSPINNING中のスピン値のみ（回転角差分による抜け道を防ぐ）
+        float spinSpeed = (m_Owner->GetState() == PlayerState::SPINNING) ? m_Owner->GetCurrentSpinSpeed() : 0.0f;
+        bool  isNonSpinThrow = (spinSpeed < Constants::Player::SPIN_THROW_MIN_SPEED);
+
+        // 非回転投げはクールダウン中は不可
+        if (isNonSpinThrow && m_NonSpinThrowCooldown > 0) return;
+
         float camYaw = g_Camera ? g_Camera->GetAngleY() : 0.0f;
-        
+
         XMFLOAT3 rot = m_Owner->GetRotation();
         rot.y = camYaw;
         m_Owner->SetRotation(rot);
 
         XMFLOAT3 fwdF = XMFLOAT3(sinf(rot.y), 0.0f, cosf(rot.y));
 
+        // 非回転投げ: ダメージ無しのノックバックのみ（距離を稼ぐ脱出手段）
+        if (isNonSpinThrow) {
+            Enemy* grabbed = m_Owner->GetGrabbedEnemy();
+            grabbed->SetVelocity(fwdF * Constants::Player::NONSPIN_THROW_SPEED);
+            grabbed->SetEnemyState(EnemyState::FLYING);
+            grabbed->SetThrownByPlayer(false);
+            grabbed->SetThrowSpinRatio(0.0f);
+
+            SoundManager::PlaySE(SoundID::SE_HIT_ENEMY);
+            m_NonSpinThrowCooldown = Constants::Player::NONSPIN_THROW_COOLDOWN;
+
+            m_Owner->SetGrabbedEnemy(nullptr);
+            m_Owner->SetState(PlayerState::IDLE);
+            m_Owner->SetAutoSpinning(false);
+            m_Owner->SetCurrentSpinSpeed(Constants::Player::MIN_SPIN_SPEED);
+            m_Owner->SetScale(XMFLOAT3(1.6f, 0.5f, 1.6f));
+            if (g_Camera) g_Camera->Shake(0.05f, 6);
+            return;
+        }
+
         float baseThrowSpeed = Constants::Player::THROW_FORCE;
         if (ProgressionManager::HasHeavyThrow()) baseThrowSpeed *= 1.25f;
-        float speedBoost = abs(m_Owner->GetAngularVelocity()) * 6.0f; 
+        float speedBoost = spinSpeed * 6.0f;
         float totalSpeed = baseThrowSpeed + speedBoost;
 
         // スピン回転速度比率（0.0f〜1.0f）を算出
-        float currentSpin = m_Owner->GetCurrentSpinSpeed();
-        float angVel = abs(m_Owner->GetAngularVelocity());
-        float spinSpeed = (currentSpin > angVel) ? currentSpin : angVel;
         float spinRatio = 0.0f;
         if (Constants::Player::MAX_SPIN_SPEED > 0.0f) {
             spinRatio = spinSpeed / Constants::Player::MAX_SPIN_SPEED;
             if (spinRatio < 0.0f) spinRatio = 0.0f;
             if (spinRatio > 1.0f) spinRatio = 1.0f;
         }
+
+        // 段階に応じた威力保証（実際の比率が保証値を上回ればそちらを採用）
+        int chargeStage = CalcChargeStage(spinSpeed);
+        float guarantee = Constants::Player::SPIN_STAGE_GUARANTEE[chargeStage];
+        if (spinRatio < guarantee) spinRatio = guarantee;
 
         XMFLOAT3 throwVelocity = fwdF * totalSpeed;
 
@@ -465,6 +521,11 @@ void PlayerCombat::Throw()
         m_Owner->GetGrabbedEnemy()->SetEnemyState(EnemyState::FLYING);
         m_Owner->GetGrabbedEnemy()->SetThrownByPlayer(true);
         m_Owner->GetGrabbedEnemy()->SetThrowSpinRatio(spinRatio);
+
+        // 最大チャージ(4段階)のボーナス: 着弾時に爆発
+        if (chargeStage >= 4) {
+            m_Owner->GetGrabbedEnemy()->SetExplosive(true);
+        }
 
         SoundManager::PlaySE(SoundID::SE_THROW);
 
@@ -499,10 +560,11 @@ void PlayerCombat::Throw()
         m_Owner->SetGrabbedEnemy(nullptr);
         m_Owner->SetState(PlayerState::IDLE);
         m_Owner->SetAutoSpinning(false);
+        m_Owner->SetCurrentSpinSpeed(Constants::Player::MIN_SPIN_SPEED);
 
         m_Owner->SetScale(XMFLOAT3(1.6f, 0.5f, 1.6f));
 
-        float throwShake = 0.08f + abs(m_Owner->GetAngularVelocity()) * 1.8f;
+        float throwShake = 0.08f + spinSpeed * 1.8f;
         if (throwShake > 0.40f) throwShake = 0.40f;
         g_Camera->Shake(throwShake, 12);
 

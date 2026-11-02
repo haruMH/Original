@@ -112,6 +112,9 @@
     <ClCompile Include="Source\Enemy\boss_enemy.cpp">
       <Filter>Source\Enemy</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Enemy\boss_phase_attack.cpp">
+      <Filter>Source\Enemy</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Enemy\enemy_bullet.cpp">
       <Filter>Source\Enemy</Filter>
     </ClCompile>
@@ -179,6 +182,12 @@
       <Filter>Source\UI</Filter>
     </ClCompile>
     <!-- Effect -->
+    <ClCompile Include="Source\Effect\aura_effect.cpp">
+      <Filter>Source\Effect</Filter>
+    </ClCompile>
+    <ClInclude Include="Source\Effect\aura_effect.h">
+      <Filter>Source\Effect</Filter>
+    </ClInclude>
     <ClCompile Include="Source\Effect\shockwave.cpp">
       <Filter>Source\Effect</Filter>
     </ClCompile>

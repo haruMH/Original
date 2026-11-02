@@ -44,7 +44,7 @@ bool RenderSystem::Init(ID3D11Device* device)
     bufferDesc.MiscFlags = 0;
     bufferDesc.StructureByteStride = 0;
 
-    HRESULT hr = device->CreateBuffer(&bufferDesc, nullptr, &m_InstanceBuffer);
+    HRESULT hr = device->CreateBuffer(&bufferDesc, nullptr, m_InstanceBuffer.ReleaseAndGetAddressOf());
     if (FAILED(hr))
     {
         log << "[RenderSystem::Init] CreateBuffer failed, hr=" << std::hex << hr << std::endl;
@@ -86,41 +86,13 @@ bool RenderSystem::Init(ID3D11Device* device)
 // =================================================================
 void RenderSystem::Uninit()
 {
-    if (m_InstanceBuffer)
-    {
-        m_InstanceBuffer->Release();
-        m_InstanceBuffer = nullptr;
-    }
-    if (m_InstancedInputLayout)
-    {
-        m_InstancedInputLayout->Release();
-        m_InstancedInputLayout = nullptr;
-    }
-    if (m_InstancedVertexShader)
-    {
-        m_InstancedVertexShader->Release();
-        m_InstancedVertexShader = nullptr;
-    }
-    if (m_InstancedPixelShader)
-    {
-        m_InstancedPixelShader->Release();
-        m_InstancedPixelShader = nullptr;
-    }
-    if (m_InstancedOutlineInputLayout)
-    {
-        m_InstancedOutlineInputLayout->Release();
-        m_InstancedOutlineInputLayout = nullptr;
-    }
-    if (m_InstancedOutlineVertexShader)
-    {
-        m_InstancedOutlineVertexShader->Release();
-        m_InstancedOutlineVertexShader = nullptr;
-    }
-    if (m_TextureArraySRV)
-    {
-        m_TextureArraySRV->Release();
-        m_TextureArraySRV = nullptr;
-    }
+    m_InstanceBuffer.Reset();
+    m_InstancedInputLayout.Reset();
+    m_InstancedVertexShader.Reset();
+    m_InstancedPixelShader.Reset();
+    m_InstancedOutlineInputLayout.Reset();
+    m_InstancedOutlineVertexShader.Reset();
+    m_TextureArraySRV.Reset();
 }
 
 // =================================================================
@@ -156,7 +128,7 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
     std::vector<unsigned char> vsBuffer;
     if (!ReadShaderBytecode("instanced_vs.cso", vsBuffer)) return false;
 
-    HRESULT hr = device->CreateVertexShader(vsBuffer.data(), vsBuffer.size(), nullptr, &m_InstancedVertexShader);
+    HRESULT hr = device->CreateVertexShader(vsBuffer.data(), vsBuffer.size(), nullptr, m_InstancedVertexShader.ReleaseAndGetAddressOf());
     if (FAILED(hr))
     {
         log << "[RenderSystem::CreateResources] CreateVertexShader failed, hr=" << std::hex << hr << std::endl;
@@ -182,7 +154,7 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
         { "EMISSIVE", 0, DXGI_FORMAT_R32G32B32_FLOAT,    1, 68, D3D11_INPUT_PER_INSTANCE_DATA, 1 }  // インスタンスごとのエミッシブ（自発光）を追加
     };
 
-    hr = device->CreateInputLayout(inputLayoutDesc, _countof(inputLayoutDesc), vsBuffer.data(), vsBuffer.size(), &m_InstancedInputLayout);
+    hr = device->CreateInputLayout(inputLayoutDesc, _countof(inputLayoutDesc), vsBuffer.data(), vsBuffer.size(), m_InstancedInputLayout.ReleaseAndGetAddressOf());
     if (FAILED(hr))
     {
         log << "[RenderSystem::CreateResources] CreateInputLayout failed, hr=" << std::hex << hr << std::endl;
@@ -197,7 +169,7 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
     std::vector<unsigned char> psBuffer;
     if (!ReadShaderBytecode("instanced_ps.cso", psBuffer)) return false;
 
-    hr = device->CreatePixelShader(psBuffer.data(), psBuffer.size(), nullptr, &m_InstancedPixelShader);
+    hr = device->CreatePixelShader(psBuffer.data(), psBuffer.size(), nullptr, m_InstancedPixelShader.ReleaseAndGetAddressOf());
     if (FAILED(hr))
     {
         log << "[RenderSystem::CreateResources] CreatePixelShader failed, hr=" << std::hex << hr << std::endl;
@@ -212,7 +184,7 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
     std::vector<unsigned char> ovsBuffer;
     if (!ReadShaderBytecode("outline_instanced_vs.cso", ovsBuffer)) return false;
 
-    hr = device->CreateVertexShader(ovsBuffer.data(), ovsBuffer.size(), nullptr, &m_InstancedOutlineVertexShader);
+    hr = device->CreateVertexShader(ovsBuffer.data(), ovsBuffer.size(), nullptr, m_InstancedOutlineVertexShader.ReleaseAndGetAddressOf());
     if (FAILED(hr))
     {
         log << "[RenderSystem::CreateResources] CreateVertexShader for outline failed, hr=" << std::hex << hr << std::endl;
@@ -221,7 +193,7 @@ bool RenderSystem::CreateResources(ID3D11Device* device)
     log << "[RenderSystem::CreateResources] Created Instanced Outline Vertex Shader successfully" << std::endl;
 
     // インプットレイアウトの作成（通常インスタンス用と同じレイアウト定義を流用）
-    hr = device->CreateInputLayout(inputLayoutDesc, _countof(inputLayoutDesc), ovsBuffer.data(), ovsBuffer.size(), &m_InstancedOutlineInputLayout);
+    hr = device->CreateInputLayout(inputLayoutDesc, _countof(inputLayoutDesc), ovsBuffer.data(), ovsBuffer.size(), m_InstancedOutlineInputLayout.ReleaseAndGetAddressOf());
     if (FAILED(hr))
     {
         log << "[RenderSystem::CreateResources] CreateInputLayout for outline failed, hr=" << std::hex << hr << std::endl;
@@ -312,23 +284,23 @@ void RenderSystem::SetupPassState(ID3D11DeviceContext* context, RenderPass pass)
 {
     if (pass == RenderPass::Outline)
     {
-        context->IASetInputLayout(m_InstancedOutlineInputLayout);
-        context->VSSetShader(m_InstancedOutlineVertexShader, nullptr, 0);
+        context->IASetInputLayout(m_InstancedOutlineInputLayout.Get());
+        context->VSSetShader(m_InstancedOutlineVertexShader.Get(), nullptr, 0);
         context->PSSetShader(Renderer::GetOutlinePixelShader(), nullptr, 0);
         context->RSSetState(Renderer::GetRasterizerStateCullFront()); // アウトラインは裏面を描画
         context->OMSetDepthStencilState(Renderer::GetDepthStateOutline(), 0);
     }
     else // 通常パスまたはシャドウマップパス
     {
-        context->IASetInputLayout(m_InstancedInputLayout);
-        context->VSSetShader(m_InstancedVertexShader, nullptr, 0);
+        context->IASetInputLayout(m_InstancedInputLayout.Get());
+        context->VSSetShader(m_InstancedVertexShader.Get(), nullptr, 0);
         if (pass == RenderPass::Shadow)
         {
             context->PSSetShader(nullptr, nullptr, 0);
         }
         else
         {
-            context->PSSetShader(m_InstancedPixelShader, nullptr, 0);
+            context->PSSetShader(m_InstancedPixelShader.Get(), nullptr, 0);
             context->RSSetState(Renderer::GetRasterizerStateCullBack()); // 通常描画は表面を描画
             context->OMSetDepthStencilState(Renderer::GetDepthStateEnable(), 0);
         }
@@ -360,7 +332,7 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
     // スロット0（頂点）とスロット1（インスタンス）の入力ストライドとオフセットを設定
     UINT strides[2] = { sizeof(VERTEX_3D), sizeof(InstanceData) };
     UINT offsets[2] = { 0, 0 };
-    ID3D11Buffer* buffers[2] = { cubeVertexBuffer, m_InstanceBuffer };
+    ID3D11Buffer* buffers[2] = { cubeVertexBuffer, m_InstanceBuffer.Get() };
 
     // 頂点バッファとインスタンスバッファを同時にパイプラインにバインド
     context->IASetVertexBuffers(0, 2, buffers, strides, offsets);
@@ -378,7 +350,7 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
     // 通常描画のときは、テクスチャ配列をスロット0にセット
     if (pass == RenderPass::Normal)
     {
-        Renderer::SetTexture(m_TextureArraySRV);
+        Renderer::SetTexture(m_TextureArraySRV.Get());
     }
 
     // バッチ処理
@@ -393,7 +365,7 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
 
         // インスタンスバッファをマップして、CPU側からワールド行列とテクスチャインデックスを書き込み
         D3D11_MAPPED_SUBRESOURCE mappedResource;
-        HRESULT hr = context->Map(m_InstanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+        HRESULT hr = context->Map(m_InstanceBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
         if (SUCCEEDED(hr))
         {
             InstanceData* dataPtr = reinterpret_cast<InstanceData*>(mappedResource.pData);
@@ -450,7 +422,7 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
                 }
             }
 
-            context->Unmap(m_InstanceBuffer, 0);
+            context->Unmap(m_InstanceBuffer.Get(), 0);
 
             // インスタンス描画を実行
             context->DrawInstanced(36, static_cast<UINT>(batchSize), 0, 0);
@@ -494,16 +466,8 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
         "wall_comic_crimson.png"
     };
 
-    std::vector<ID3D11Texture2D*> textures;
-    std::vector<ID3D11Resource*> resources;
-
-    // 一時取得したCOMリソースの一括解放ラムダ（正常系・異常系で共通使用）
-    auto ReleaseTempResources = [&resources, &textures]() {
-        for (auto* r : resources) { if (r) r->Release(); }
-        for (auto* t : textures)  { if (t) t->Release(); }
-        resources.clear();
-        textures.clear();
-    };
+    using Microsoft::WRL::ComPtr;
+    std::vector<ComPtr<ID3D11Texture2D>> textures;
 
     // 1. 各テクスチャリソースの取得と検証
     for (const auto& key : textureKeys)
@@ -512,26 +476,22 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
         if (!srv)
         {
             log << "[RenderSystem::CreateTextureArray] Failed to get texture SRV for: " << key << std::endl;
-            ReleaseTempResources();
             return false;
         }
 
-        ID3D11Resource* res = nullptr;
-        srv->GetResource(&res);
+        ComPtr<ID3D11Resource> res;
+        srv->GetResource(res.GetAddressOf());
         if (!res)
         {
             log << "[RenderSystem::CreateTextureArray] GetResource failed for: " << key << std::endl;
-            ReleaseTempResources();
             return false;
         }
-        resources.push_back(res);
 
-        ID3D11Texture2D* tex2D = nullptr;
-        HRESULT hr = res->QueryInterface(__uuidof(ID3D11Texture2D), (void**)&tex2D);
+        ComPtr<ID3D11Texture2D> tex2D;
+        HRESULT hr = res.As(&tex2D);
         if (FAILED(hr) || !tex2D)
         {
             log << "[RenderSystem::CreateTextureArray] QueryInterface failed for ID3D11Texture2D: " << key << std::endl;
-            ReleaseTempResources();
             return false;
         }
         textures.push_back(tex2D);
@@ -553,23 +513,20 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
     arrayDesc.CPUAccessFlags = 0;
     arrayDesc.MiscFlags = 0;
 
-    ID3D11Texture2D* textureArray = nullptr;
-    HRESULT hr = device->CreateTexture2D(&arrayDesc, nullptr, &textureArray);
+    ComPtr<ID3D11Texture2D> textureArray;
+    HRESULT hr = device->CreateTexture2D(&arrayDesc, nullptr, textureArray.GetAddressOf());
     if (FAILED(hr) || !textureArray)
     {
         log << "[RenderSystem::CreateTextureArray] CreateTexture2D for array failed, hr=" << std::hex << hr << std::endl;
-        ReleaseTempResources();
         return false;
     }
 
     // 4. デバイスコンテキストの取得
-    ID3D11DeviceContext* context = nullptr;
-    device->GetImmediateContext(&context);
+    ComPtr<ID3D11DeviceContext> context;
+    device->GetImmediateContext(context.GetAddressOf());
     if (!context)
     {
         log << "[RenderSystem::CreateTextureArray] GetImmediateContext failed!" << std::endl;
-        textureArray->Release();
-        ReleaseTempResources();
         return false;
     }
 
@@ -580,7 +537,7 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
         {
             UINT srcSubresource = D3D11CalcSubresource(mip, 0, desc.MipLevels);
             UINT dstSubresource = D3D11CalcSubresource(mip, static_cast<UINT>(i), desc.MipLevels);
-            context->CopySubresourceRegion(textureArray, dstSubresource, 0, 0, 0, textures[i], srcSubresource, nullptr);
+            context->CopySubresourceRegion(textureArray.Get(), dstSubresource, 0, 0, 0, textures[i].Get(), srcSubresource, nullptr);
         }
     }
 
@@ -593,20 +550,13 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
     srvDesc.Texture2DArray.FirstArraySlice = 0;
     srvDesc.Texture2DArray.ArraySize = arrayDesc.ArraySize;
 
-    hr = device->CreateShaderResourceView(textureArray, &srvDesc, &m_TextureArraySRV);
+    hr = device->CreateShaderResourceView(textureArray.Get(), &srvDesc, m_TextureArraySRV.ReleaseAndGetAddressOf());
     if (FAILED(hr))
     {
         log << "[RenderSystem::CreateTextureArray] CreateShaderResourceView failed, hr=" << std::hex << hr << std::endl;
-        textureArray->Release();
-        context->Release();
-        ReleaseTempResources();
         return false;
     }
 
-    // 7. リソースの解放
-    textureArray->Release();
-    context->Release();
-    ReleaseTempResources();
     log << "[RenderSystem::CreateTextureArray] Successfully created Texture Array SRV." << std::endl;
     return true;
 }

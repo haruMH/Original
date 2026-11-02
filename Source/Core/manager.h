@@ -90,6 +90,9 @@ private:
     // シャドウマップ／アウトラインパス共通のオブジェクト描画ヘルパー
     static void DrawShadowAndOutlineObjects();
 
+    // ボス登場カットシーンのタイムライン更新ヘルパー
+    static void UpdateBossCutscene();
+
 public:
     // 初期化と終了処理
     static void Init();

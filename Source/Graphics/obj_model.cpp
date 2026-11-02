@@ -64,9 +64,7 @@ void ObjModel::LoadMtl(const std::string& mtlPath, std::unordered_map<std::strin
             float r = 1.0f, g = 1.0f, b = 1.0f;
             iss >> r >> g >> b;
             materials[currentMatName] = XMFLOAT4(r, g, b, 1.0f);
-            char mbuf[128];
-            sprintf_s(mbuf, "[ObjModel] Mat: %s -> Kd(%.2f, %.2f, %.2f)\n", currentMatName.c_str(), r, g, b);
-            OutputDebugStringA(mbuf);
+            LOG_INFO("[ObjModel] Mat: %s -> Kd(%.2f, %.2f, %.2f)\n", currentMatName.c_str(), r, g, b);
         } else if (tag == "map_Kd") {
             iss >> outTexture;
         }
@@ -217,7 +215,7 @@ bool ObjModel::Load(const std::string& objPath, const std::string& mtlPath)
 
     HRESULT hr = Renderer::GetDevice()->CreateBuffer(&bd, &sd, &m_VertexBuffer);
     if (FAILED(hr)) {
-        OutputDebugStringA("[ObjModel] CreateBuffer failed!\n");
+        LOG_INFO("[ObjModel] CreateBuffer failed!\n");
         return false;
     }
 
@@ -238,10 +236,8 @@ bool ObjModel::Load(const std::string& objPath, const std::string& mtlPath)
         Renderer::CreateTexture(texPath.c_str(), &m_TextureSRV);
     }
 
-    char buf[256];
-    sprintf_s(buf, "[ObjModel] Successfully loaded: %s (Vertices: %d, Tex: %s)\n",
+    LOG_INFO("[ObjModel] Successfully loaded: %s (Vertices: %d, Tex: %s)\n",
         objPath.c_str(), m_VertexCount, m_TextureSRV ? "Yes" : "No");
-    OutputDebugStringA(buf);
 
     return true;
 }

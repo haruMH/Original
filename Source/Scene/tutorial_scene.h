@@ -3,6 +3,7 @@
 #include <d3d11.h>
 #include <directxmath.h>
 #include <string>
+#include <wrl/client.h>
 
 class Player;
 class Enemy;
@@ -33,13 +34,13 @@ private:
     DirectX::XMFLOAT3 m_StartPlayerPos = { 0.0f, 0.0f, 0.0f };
 
     // ガイドテクスチャ関連 (GDIで作成)
-    ID3D11ShaderResourceView* m_GuideTexture = nullptr;
-    ID3D11ShaderResourceView* m_SkipTexture  = nullptr;
-    ID3D11Buffer*            m_QuadVB       = nullptr;
-    ID3D11VertexShader*      m_VS           = nullptr;
-    ID3D11PixelShader*       m_PS           = nullptr;
-    ID3D11InputLayout*       m_IL           = nullptr;
-    ID3D11DepthStencilState* m_DepthState   = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_GuideTexture;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_SkipTexture;
+    Microsoft::WRL::ComPtr<ID3D11Buffer>             m_QuadVB;
+    Microsoft::WRL::ComPtr<ID3D11VertexShader>       m_VS;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader>        m_PS;
+    Microsoft::WRL::ComPtr<ID3D11InputLayout>        m_IL;
+    Microsoft::WRL::ComPtr<ID3D11DepthStencilState>  m_DepthState;
 
     std::wstring m_LastMainText;
     std::wstring m_LastSubText;

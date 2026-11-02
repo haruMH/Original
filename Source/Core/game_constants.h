@@ -99,6 +99,12 @@ namespace Constants
         const float MAX_SPIN_SPEED          = 0.32f;    // スピンの最大旋回速度
         const float SPIN_ACCELERATION       = 0.008f;   // スピンの回転加速速度
         const float THROW_FORCE             = 1.5f;     // 敵を投げ飛ばす時の初期速度
+        const float SPIN_THROW_MIN_SPEED    = 0.05f;    // スピン投げとして扱う最低スピン速度（未満は非回転投げ）
+        const float NONSPIN_THROW_SPEED     = 1.0f;     // 非回転投げ（ノックバックのみ）の初速
+        const float SPIN_STAGE_THRESHOLD[4] = { 0.16f, 0.40f, 0.60f, 0.80f }; // 各チャージ段階に到達するスピン比率(MAX_SPIN_SPEED比)
+        const float SPIN_STAGE_GUARANTEE[5] = { 0.0f, 0.30f, 0.60f, 0.90f, 1.00f }; // 段階別の威力保証比率（添字=段階0〜4）
+        const float SPIN_MOVE_SPEED_MULT    = 0.6f;     // スピン中の移動速度倍率（回している間は動きにくいリスク）
+        const int   NONSPIN_THROW_COOLDOWN  = 120;     // 非回転投げの再使用までのフレーム数（約2秒）
         const int   TACKLE_ACTIVE_DURATION  = 90;       // ボス弾回避後のタックル有効時間（フレーム）
         const int   TACKLE_DAMAGE           = 3;        // タックル攻撃がボスに与えるダメージ
         const int   WARP_SLASH_DAMAGE       = 4;        // 雷電テレポートスラッシュがボスに与えるダメージ
@@ -334,6 +340,24 @@ namespace Constants
         const float TITLE_WALL_HEIGHT       = 4.5f;     // 壁の高さ（Scale Y）
         const float TITLE_WALL_WIDTH        = 8.0f;     // 壁の横幅
         const float TITLE_WALL_THICKNESS    = 1.0f;     // 壁の厚み
+    }
+
+    // タイムアタック・コンボ・アビリティ強化に関するパラメータ
+    namespace TimeAttack
+    {
+        constexpr int   COMBO_DURATION_FRAMES        = 120;   // コンボ維持フレーム数 (2秒)
+        constexpr int   COMBO_BONUS_MIN_COUNT        = 3;     // コンボボーナス発生の最小コンボ数
+        constexpr float COMBO_SCORE_STEP             = 0.1f;  // 1コンボあたりのスコア倍率加算
+        constexpr float ENEMY_DEFEAT_TIME_REDUCE     = 1.0f;  // 雑魚敵撃破時のタイム短縮秒数
+        constexpr float PARRY_TIME_REDUCE            = 2.0f;  // パリィ成功時のタイム短縮秒数
+        constexpr int   PARRY_SLOW_NORMAL_FRAMES     = 90;    // 通常時のパリィスロー持続フレーム数
+        constexpr int   PARRY_SLOW_EXTENDED_FRAMES   = 135;   // 強化時のパリィスロー持続フレーム数
+        constexpr float COUNTER_SHOCK_RADIUS         = 6.5f;  // カウンターショックの有効半径
+        constexpr int   MAGNETIC_BULLET_COUNT        = 8;     // ボス登場時の磁力旋回弾の生成数
+        constexpr float MAGNETIC_BULLET_INIT_RADIUS  = 16.0f; // 磁力旋回弾の初期半径
+        constexpr float MAGNETIC_BULLET_ORBIT_RADIUS = 6.5f;  // 磁力旋回弾の目標周回半径
+        constexpr float MAGNETIC_BULLET_ROT_SPEED    = 0.05f; // 磁力旋回弾の回転速度
+        constexpr float MAGNETIC_BULLET_ATTRACT      = 0.02f; // 磁力旋回弾の吸引力
     }
 
     // デバッグ・テスト用パラメータ

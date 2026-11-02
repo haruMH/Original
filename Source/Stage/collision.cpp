@@ -141,15 +141,11 @@ bool Collision::CheckAABBCollision(const GameObject* self, const DirectX::XMFLOA
                 }
             }
 
-#ifdef _DEBUG
             if (self->GetObjectType() == ObjectType::Player) {
-                char dbg[256];
-                sprintf_s(dbg, "[CollisionBlocked] Player blocked by ObjType=%d Pos=(%.2f, %.2f, %.2f) Scale=(%.2f, %.2f, %.2f)\n",
+                LOG_INFO("[CollisionBlocked] Player blocked by ObjType=%d Pos=(%.2f, %.2f, %.2f) Scale=(%.2f, %.2f, %.2f)\n",
                     (int)objType, obj->GetPosition().x, obj->GetPosition().y, obj->GetPosition().z,
                     obj->GetScale().x, obj->GetScale().y, obj->GetScale().z);
-                OutputDebugStringA(dbg);
             }
-#endif
             return true;
         }
     }
