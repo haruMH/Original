@@ -1,6 +1,7 @@
-﻿#include "hub_scene.h"
+#include "hub_scene.h"
 #include "localization.h"
 #include "fire_effect.h"
+#include "ui_theme.h"
 #include "manager.h"
 #include "player.h"
 #include "enemy.h"
@@ -295,14 +296,43 @@ void HubScene::DrawFacilityHUD()
 
     // 画面上部：所持素材サマリーバー
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, 15.0f), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
-    ImGui::SetNextWindowBgAlpha(0.75f);
+    ImGui::SetNextWindowBgAlpha(0.78f);
     ImGuiWindowFlags hudFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
 
-    if (ImGui::Begin("##HubMaterialBar", nullptr, hudFlags)) {
-        ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.2f, 1.0f), Loc::Tr("[ BASE CAMP ]", "[ ベースキャンプ ]"));
-        ImGui::SameLine();
-        ImGui::TextDisabled("|");
-        ImGui::SameLine();
+    // 上部バーは丸いピル形にして、拠点名タグと素材チップを並べる
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 24.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
+    const bool hudOpen = ImGui::Begin("##HubMaterialBar", nullptr, hudFlags);
+    ImGui::PopStyleVar(2);
+    if (hudOpen) {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+
+        // 拠点名タグ（橙の塗りつぶし）
+        {
+            const char* tag = Loc::Tr("BASE CAMP", "ベースキャンプ");
+            ImVec2 ts = ImGui::CalcTextSize(tag);
+            ImVec2 p = ImGui::GetCursorScreenPos();
+            float h = ts.y + 10.0f, w = ts.x + 26.0f;
+            dl->AddRectFilled(p, ImVec2(p.x + w, p.y + h), IM_COL32(255, 143, 46, 255), h * 0.5f);
+            dl->AddText(ImVec2(p.x + 13.0f, p.y + 5.0f), IM_COL32(36, 20, 8, 255), tag);
+            ImGui::Dummy(ImVec2(w, h));
+            ImGui::SameLine(0.0f, 10.0f);
+        }
+
+        // 素材チップ（色の点＋名前＋数）
+        auto Chip = [&](const char* label, const char* value, ImU32 dotCol) {
+            ImVec2 ls = ImGui::CalcTextSize(label);
+            ImVec2 vs = ImGui::CalcTextSize(value);
+            ImVec2 p = ImGui::GetCursorScreenPos();
+            float h = ls.y + 10.0f;
+            float w = 14.0f + 12.0f + ls.x + 8.0f + vs.x + 14.0f;
+            dl->AddRectFilled(p, ImVec2(p.x + w, p.y + h), IM_COL32(12, 20, 48, 215), h * 0.5f);
+            dl->AddRect(p, ImVec2(p.x + w, p.y + h), IM_COL32(230, 140, 66, 70), h * 0.5f, 0, 1.0f);
+            dl->AddCircleFilled(ImVec2(p.x + 17.0f, p.y + h * 0.5f), 5.0f, dotCol);
+            dl->AddText(ImVec2(p.x + 30.0f, p.y + 5.0f), IM_COL32(150, 165, 200, 255), label);
+            dl->AddText(ImVec2(p.x + 30.0f + ls.x + 8.0f, p.y + 5.0f), IM_COL32(240, 244, 255, 255), value);
+            ImGui::Dummy(ImVec2(w, h));
+        };
 
         for (int i = 0; i < static_cast<int>(MaterialType::COUNT); ++i) {
             MaterialType mType = static_cast<MaterialType>(i);
@@ -314,16 +344,20 @@ void HubScene::DrawFacilityHUD()
             const char* namesJa[] = { "スクラップ", "セル", "火薬", "プラグ", "装甲", "コア" };
             const char* name = (i < 6) ? Loc::Tr(namesEn[i], namesJa[i]) : "Mat";
 
-            ImGui::TextColored(ImVec4(col.x, col.y, col.z, 1.0f), "%s: %d", name, count);
-            if (i < static_cast<int>(MaterialType::COUNT) - 1) {
-                ImGui::SameLine();
-            }
+            char valueBuf[16];
+            snprintf(valueBuf, sizeof(valueBuf), "%d", count);
+            Chip(name, valueBuf, IM_COL32((int)(col.x * 255), (int)(col.y * 255), (int)(col.z * 255), 255));
+            ImGui::SameLine(0.0f, 6.0f);
         }
 
-        ImGui::SameLine();
-        ImGui::TextDisabled("|");
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.85f, 0.9f, 1.0f, 1.0f), Loc::Tr("[Tab] Menu / Save / Quit", "[Tab] メニュー / セーブ / 終了"));
+        // 操作ヒント（目立たない小さな表示）
+        {
+            const char* hint = Loc::Tr("Tab: Menu", "Tab: メニュー");
+            ImVec2 p = ImGui::GetCursorScreenPos();
+            ImVec2 hs = ImGui::CalcTextSize(hint);
+            dl->AddText(ImVec2(p.x + 6.0f, p.y + 5.0f), IM_COL32(150, 165, 200, 255), hint);
+            ImGui::Dummy(ImVec2(hs.x + 12.0f, hs.y + 10.0f));
+        }
 
         ImGui::End();
     }
@@ -451,7 +485,10 @@ void HubScene::DrawWorkshopUI()
             ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "STATUS: UNLOCKED & ACTIVE");
         } else {
             if (canUnlock) {
-                if (ImGui::Button("UNLOCK ABILITY", ImVec2(200.0f, 40.0f))) {
+                UITheme::PushPrimaryButton();
+                const bool unlockClicked = ImGui::Button("UNLOCK ABILITY", ImVec2(200.0f, 40.0f));
+                UITheme::PopButton();
+                if (unlockClicked) {
                     if (ProgressionManager::TryUnlockAbility(curType)) {
                         SoundManager::PlaySE(SoundID::SE_DECIDE);
                     }
@@ -500,7 +537,10 @@ void HubScene::DrawQuestUI()
         ImGui::Spacing();
         ImGui::Separator();
 
-        if (ImGui::Button("DEPART ON QUEST", ImVec2(200.0f, 42.0f))) {
+        UITheme::PushPrimaryButton();
+        const bool departClicked = ImGui::Button("DEPART ON QUEST", ImVec2(200.0f, 42.0f));
+        UITheme::PopButton();
+        if (departClicked) {
             SoundManager::PlaySE(SoundID::SE_DECIDE);
             m_IsQuestMenuOpen = false;
 

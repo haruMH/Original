@@ -168,7 +168,10 @@
     <!-- Scene -->
     <ClCompile Include="Source\Scene\title_scene.cpp" />
     <ClCompile Include="Source\Scene\tutorial_scene.cpp" />
-    <ClCompile Include="Source\Scene\hub_scene.cpp" />
+    <ClCompile Include="Source\Scene\hub_scene.cpp">
+      <!-- VSがBOMを外して保存しても UTF-8 として読む（BOM依存の解消） -->
+      <AdditionalOptions>/source-charset:utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
     <ClCompile Include="Source\Scene\gameplay_scene.cpp" />
     <ClCompile Include="Source\Scene\clear_scene.cpp" />
     <ClCompile Include="Source\Scene\gameover_scene.cpp" />
@@ -217,6 +220,7 @@
     <ClCompile Include="Source\Effect\fade_system.cpp" />
     <ClCompile Include="Source\Effect\dust_system.cpp" />
     <ClCompile Include="Source\Effect\fire_effect.cpp" />
+    <ClCompile Include="Source\UI\ui_theme.cpp" />
     <!-- Audio -->
     <ClCompile Include="Source\Audio\sound_manager.cpp" />
     <!-- ImGui -->
@@ -296,6 +300,7 @@
     <ClInclude Include="Source\Effect\fade_system.h" />
     <ClInclude Include="Source\Effect\dust_system.h" />
     <ClInclude Include="Source\Effect\fire_effect.h" />
+    <ClInclude Include="Source\UI\ui_theme.h" />
     <!-- Audio -->
     <ClInclude Include="Source\Audio\sound_manager.h" />
     <!-- ImGui -->

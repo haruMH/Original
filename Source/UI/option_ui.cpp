@@ -1,5 +1,6 @@
 ﻿#include "option_ui.h"
 #include "imgui/imgui.h"
+#include "ui_theme.h"
 #include "input.h"
 #include "sound_manager.h"
 #include "camera.h"
@@ -68,11 +69,7 @@ void OptionUI::Draw()
     // ウィンドウの装飾スタイル設定
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
 
-    // 半透明の背景スタイル
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.12f, 0.92f));
-    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.18f, 0.22f, 0.35f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.30f, 0.50f, 0.8f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.45f, 0.70f, 1.0f));
+    // 配色・丸みは UITheme（ui_theme.cpp）で一括設定
 
     if (ImGui::Begin(Loc::Tr("OPTIONS (SETTINGS)", "オプション設定 (OPTIONS)"), &m_IsOpen, windowFlags))
     {
@@ -83,13 +80,13 @@ void OptionUI::Draw()
 
         // ─── 言語切り替えトグル（Language: EN / JP） ───
         Language curLang = Loc::GetLanguage();
-        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 170.0f);
+        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 240.0f);
         ImGui::Text(Loc::Tr("Language:", "言語:"));
         ImGui::SameLine();
         if (curLang == Language::English) {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.55f, 0.85f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.00f, 0.56f, 0.18f, 1.0f));
         }
-        if (ImGui::Button("EN", ImVec2(32, 20))) {
+        if (ImGui::Button("EN", ImVec2(44, 28))) {
             Loc::SetLanguage(Language::English);
         }
         if (curLang == Language::English) {
@@ -97,9 +94,9 @@ void OptionUI::Draw()
         }
         ImGui::SameLine();
         if (curLang == Language::Japanese) {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.55f, 0.85f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.00f, 0.56f, 0.18f, 1.0f));
         }
-        if (ImGui::Button(Loc::ToUTF8("日本語"), ImVec2(48, 20))) {
+        if (ImGui::Button(Loc::ToUTF8("日本語"), ImVec2(72, 28))) {
             Loc::SetLanguage(Language::Japanese);
         }
         if (curLang == Language::Japanese) {
@@ -413,7 +410,10 @@ void OptionUI::Draw()
 
         // ─── 4. セーブ＆システム操作 ───
         // 手動セーブボタン
-        if (ImGui::Button(Loc::Tr("Save Game", "セーブする"), ImVec2(140, 28))) {
+        UITheme::PushPrimaryButton();
+        const bool saveClicked = ImGui::Button(Loc::Tr("Save Game", "セーブする"), ImVec2(140, 28));
+        UITheme::PopButton();
+        if (saveClicked) {
             SaveSystem::Save();
             SoundManager::PlaySE(SoundID::SE_DECIDE);
             m_SaveFeedbackTimer = 2.5f;
@@ -462,15 +462,13 @@ void OptionUI::Draw()
 
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 160.0f);
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.65f, 0.15f, 0.15f, 0.85f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.85f, 0.25f, 0.25f, 1.0f));
-        if (ImGui::Button(Loc::Tr("Quit Game", "ゲーム終了"), ImVec2(140, 32))) {
+        UITheme::PushDangerButton();
+        const bool quitClicked = ImGui::Button(Loc::Tr("Quit Game", "ゲーム終了"), ImVec2(140, 32));
+        UITheme::PopButton();
+        if (quitClicked) {
             SaveSystem::Save(); // 終了前に確実にセーブ
             PostQuitMessage(0);
         }
-        ImGui::PopStyleColor(2);
     }
     ImGui::End();
-
-    ImGui::PopStyleColor(4);
 }

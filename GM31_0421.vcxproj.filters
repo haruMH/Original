@@ -172,6 +172,9 @@
       <Filter>Source\Graphics</Filter>
     </ClCompile>
     <!-- UI -->
+    <ClCompile Include="Source\UI\ui_theme.cpp">
+      <Filter>Source\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Source\UI\score_hud.cpp">
       <Filter>Source\UI</Filter>
     </ClCompile>

@@ -8,6 +8,7 @@
 #include "fade_system.h"
 #include "render_constants.h"
 #include "game_constants.h"
+#include "ui_theme.h"
 #include "graphics_config.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
@@ -512,9 +513,12 @@ void Renderer::Init() {
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui::StyleColorsDark();
+    UITheme::Apply();   // ゲームの絵柄に合わせた配色・丸み
 
-    // 日本語フォント（Windows標準 Meiryo / MS Gothic）の読み込み
-    if (std::filesystem::exists("C:\\Windows\\Fonts\\meiryo.ttc")) {
+    // 日本語フォント（Windows標準 游ゴシック Medium → Meiryo → MS Gothic の順）の読み込み
+    if (std::filesystem::exists("C:\\Windows\\Fonts\\YuGothM.ttc")) {
+        io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\YuGothM.ttc", 19.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
+    } else if (std::filesystem::exists("C:\\Windows\\Fonts\\meiryo.ttc")) {
         io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\meiryo.ttc", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
     } else if (std::filesystem::exists("C:\\Windows\\Fonts\\msgothic.ttc")) {
         io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\msgothic.ttc", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
@@ -659,6 +663,7 @@ void Renderer::Begin() {
 
 void Renderer::BeginNewFrame() {
     // ImGui のフレーム開始
+    UITheme::Update();   // UI の配色を空の時間に連動させる
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
