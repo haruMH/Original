@@ -7,6 +7,7 @@
 #include "math_helper.h"
 #include "score_popup.h"
 #include "shockwave.h"
+#include "hit_impact_effect.h"
 #include "game_constants.h"
 
 // ������������������������������������������������������������������������������������������
@@ -16,7 +17,7 @@
 // 
 // 𔭐͂̓G𐁂΂
 // 
-void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
+void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center, float power)
 {
     float explosionRadius = Constants::Explosion::RADIUS; // ̗La
     float baseForce       = Constants::Explosion::BASE_FORCE;  // ̊{З
@@ -29,13 +30,8 @@ void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
     // 爆発音の再生
     SoundManager::PlaySE(SoundID::SE_EXPLOSION);
 
-    // dgirWAGtFNĝ݁AYWnʂɔ킹Aԍ3{̐Ԃg䂪Lj
-    XMFLOAT3 shockPos = center;
-    shockPos.y = -0.95f; // nʂ̍ɊSNv
-
-    ShockwaveSystem::AddShockwave(shockPos, explosionRadius,        2.5f, 0.3f, 0.0f, 30, 0.0f, 0);
-    ShockwaveSystem::AddShockwave(shockPos, explosionRadius * 0.75f, 2.5f, 0.3f, 0.0f, 24, 0.0f, 6);
-    ShockwaveSystem::AddShockwave(shockPos, explosionRadius * 0.50f, 2.5f, 0.3f, 0.0f, 18, 0.0f, 12);
+    // Same hit effect as normal impacts (flash / ring / sparks), scaled by throw power.
+    HitImpactEffect::Spawn(center, XMFLOAT3(0.0f, 0.0f, 0.0f), power);
 
     // マネージャーから敵キャッシュリストを取得して走査
     // The boss lives in its own category (ObjectType::Boss), so the enemy loop below never reaches it.

@@ -24,6 +24,7 @@
 #include "score_hud.h"
 #include "shockwave.h"
 #include "aura_effect.h"
+#include "hit_impact_effect.h"
 #include "dust_system.h"
 #include "shadow_system.h"
 #include "event_system.h"
@@ -131,6 +132,7 @@ void Manager::Init()
     // 衝撃波システムの初期化
     ShockwaveSystem::Init(Renderer::GetDevice());
     AuraEffect::Init(Renderer::GetDevice());
+    HitImpactEffect::Init(Renderer::GetDevice());
 
     // 砂埃パーティクルシステムの初期化
     DustSystem::Init();
@@ -187,6 +189,7 @@ void Manager::Uninit()
 
     // 衝撃波システムの終了処理
     ShockwaveSystem::Uninit();
+    HitImpactEffect::Uninit();
     AuraEffect::Uninit();
 
     // 砂埃パーティクルシステムの終了処理

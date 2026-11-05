@@ -35,7 +35,7 @@ bool ExplosiveAffix::OnImpact(Enemy* flying, GameObject* target, Player* player,
         if (te->IsExplosive()) return false;
     }
 
-    ExplosionSystem::TriggerExplosion(flying->GetPosition());
+    ExplosionSystem::TriggerExplosion(flying->GetPosition(), flying->GetThrowSpinRatio());
     flying->SetEnemyState(EnemyState::DEFEATED);
     flying->SetVelocity(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
     explosionThisFrame = true;

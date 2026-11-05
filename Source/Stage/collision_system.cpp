@@ -15,6 +15,7 @@
 #include "score_popup.h"
 #include "spatial_grid.h"
 #include "boss_enemy.h"
+#include "hit_impact_effect.h"
 #include "sound_manager.h"
 #include "score_hud.h"
 #include "item_notification_hud.h"
@@ -178,17 +179,19 @@ bool CollisionSystem::ResolveFlyingEnemyImpact(
         hitInfo.damage = finalDmg;
         hitInfo.hitSourcePos = flying->GetPosition();
 
-        // 高速回転投げでの直撃時はクリティカル演出（オレンジ発光、重厚なヒットストップ・シェイク）
+        // 威力(スピン比)に連動したヒットストップ・シェイクと命中エフェクト
+        Manager::AddHitStop(6 + static_cast<int>(spinRatio * 12.0f));
+        if (g_Camera) g_Camera->Shake(0.25f + 0.45f * spinRatio, 12 + static_cast<int>(spinRatio * 8.0f));
+        ScoreHUD::Shake(8.0f + 12.0f * spinRatio, 8 + static_cast<int>(spinRatio * 8.0f));
+        // 高速回転投げでの直撃時はクリティカル演出（オレンジ発光・パリィ音）
         if (spinRatio >= 0.7f) {
             hitInfo.popupColor = { 2.5f, 1.2f, 0.0f }; // クリティカルオレンジ
-            Manager::AddHitStop(14);
-            if (g_Camera) g_Camera->Shake(0.5f, 18);
-            ScoreHUD::Shake(16.0f, 14);
             SoundManager::PlaySE(SoundID::SE_PARRY);
-        } else {
-            Manager::AddHitStop(10);
-            if (g_Camera) g_Camera->Shake(0.4f, 15);
-            ScoreHUD::Shake(12.0f, 10);
+        }
+        {
+            XMFLOAT3 vel = flying->GetVelocity();
+            XMFLOAT3 hitDir = MathHelper::Normalize(vel);
+            HitImpactEffect::Spawn(flying->GetPosition(), hitDir, spinRatio);
         }
 
         target->OnHit(hitInfo);
@@ -224,10 +227,13 @@ bool CollisionSystem::ResolveFlyingEnemyImpact(
             vel.y = 0.35f;
             hitInfo.knockbackVel = vel;
             target->OnHit(hitInfo);
-            Manager::AddHitStop(8);
-            if (g_Camera) g_Camera->Shake(0.3f, 12);
-            ScoreHUD::Shake(9.0f, 8);
+            // 威力に応じて少しだけ強める（ベースは従来値）
+            float pw = flying->GetThrowSpinRatio();
+            Manager::AddHitStop(8 + static_cast<int>(pw * 4.0f));
+            if (g_Camera) g_Camera->Shake(0.3f + 0.2f * pw, 12);
+            ScoreHUD::Shake(9.0f + 5.0f * pw, 8);
         }
+        HitImpactEffect::Spawn(flying->GetPosition(), dir, flying->GetThrowSpinRatio());
 
         SoundManager::PlaySE(SoundID::SE_HIT_ENEMY);
 
@@ -534,7 +540,7 @@ void CollisionSystem::Update()
             XMFLOAT3 curVel = flying->GetVelocity();
             float speedSq = curVel.x * curVel.x + curVel.z * curVel.z;
             if (speedSq < 0.04f) {
-                ExplosionSystem::TriggerExplosion(fPos);
+                ExplosionSystem::TriggerExplosion(fPos, flying->GetThrowSpinRatio());
                 flying->SetEnemyState(EnemyState::DEFEATED);
                 flying->SetVelocity(XMFLOAT3(0.0f, 0.0f, 0.0f));
                 explosionThisFrame = true;

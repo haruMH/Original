@@ -185,7 +185,13 @@
     <ClCompile Include="Source\Effect\aura_effect.cpp">
       <Filter>Source\Effect</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Effect\hit_impact_effect.cpp">
+      <Filter>Source\Effect</Filter>
+    </ClCompile>
     <ClInclude Include="Source\Effect\aura_effect.h">
+      <Filter>Source\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Effect\hit_impact_effect.h">
       <Filter>Source\Effect</Filter>
     </ClInclude>
     <ClCompile Include="Source\Effect\shockwave.cpp">
@@ -463,6 +469,9 @@
       <Filter>Shaders</Filter>
     </FXCompile>
     <FXCompile Include="vertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FXCompile>
+    <FXCompile Include="hit_impact_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
     <FXCompile Include="aura_ring_ps.hlsl">

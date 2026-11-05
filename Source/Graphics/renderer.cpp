@@ -1,5 +1,6 @@
 ﻿#include "renderer.h"
 #include "aura_effect.h"
+#include "hit_impact_effect.h"
 #include "manager.h"
 #include "main.h"
 #include "wall.h"
@@ -723,6 +724,7 @@ void Renderer::End() {
     m_DeviceContext->OMSetRenderTargets(1, m_RenderTargetView.GetAddressOf(), m_DepthStencilView.Get());
     m_DeviceContext->RSSetState(m_RasterizerStateCullBack.Get());
     AuraEffect::Draw();
+    HitImpactEffect::Draw();
     // フェード描画のためポストプロセス直後と同じパイプライン状態へ戻す
     m_DeviceContext->OMSetRenderTargets(1, m_RenderTargetView.GetAddressOf(), NULL);
     m_DeviceContext->IASetInputLayout(NULL);
