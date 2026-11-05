@@ -112,7 +112,9 @@ float4 main(PS_INPUT input) : SV_TARGET
 
         // 半球ライティング（天空光＋地面照り返し擬似GI）
         float hemiFactor = N.y * 0.5f + 0.5f; // 0.0(真下) 〜 1.0(真上)
-        float3 skyLight    = LightAmbient.rgb * float3(0.95f, 1.05f, 1.30f); // 澄んだ青白い天空光
+        // 天空光の色味を空(フォグ)の色相へ少し寄せ、空色が物体にかかるようにする
+        float3 fogHue = FogColor.rgb / max(max(FogColor.r, max(FogColor.g, FogColor.b)), 0.001f);
+        float3 skyLight    = LightAmbient.rgb * lerp(float3(0.95f, 1.05f, 1.30f), 0.55f + 0.9f * fogHue, 0.30f);
         float3 groundLight = LightAmbient.rgb * float3(1.20f, 1.05f, 0.85f); // 暖かみのある地面バウンス光
         float3 hemiAmbient = lerp(groundLight, skyLight, hemiFactor);
 
@@ -160,6 +162,12 @@ float4 main(PS_INPUT input) : SV_TARGET
         }
 
         color = (color * lighting) + (specC * shadow);
+
+        // 暗所の脱色＋青寄せ（光量が少ないほど素材の彩度が落ちる）
+        float lightLum = dot(LightAmbient.rgb + LightDiffuse.rgb, float3(0.299f, 0.587f, 0.114f));
+        float nightAmt = 1.0f - smoothstep(0.30f, 0.90f, lightLum);
+        float colLum = dot(color.rgb, float3(0.299f, 0.587f, 0.114f));
+        color.rgb = lerp(color.rgb, colLum * float3(0.80f, 0.92f, 1.25f), nightAmt * 0.55f);
         color.rgb += (rimC * shadow).rgb;
 
         // ── 5. ボリュメトリック調ハイトフォグ & 大気散乱 ──

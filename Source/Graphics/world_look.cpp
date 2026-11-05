@@ -45,7 +45,7 @@ namespace {
         dawn.Direction  = XMFLOAT4(-0.75f, -0.45f, 0.35f, 0.0f);
         dawn.Diffuse    = XMFLOAT4(1.00f, 0.72f, 0.50f, 1.0f);
         dawn.Ambient    = XMFLOAT4(0.50f, 0.48f, 0.62f, 1.0f);
-        dawn.FogColor   = XMFLOAT4(0.95f, 0.70f, 0.62f, 1.0f);
+        dawn.FogColor   = XMFLOAT4(0.97f, 0.68f, 0.54f, 1.0f);   // 空の地平線色に寄せる
         dawn.FogStart   = 25.0f;  dawn.FogEnd = 65.0f;
         dawn.Saturation = 1.10f;  dawn.Contrast = 1.02f;
         dawn.ShadowTint[0] = 0.94f; dawn.ShadowTint[1] = 0.94f; dawn.ShadowTint[2] = 1.08f;
@@ -76,7 +76,7 @@ namespace {
         sun.Direction  = XMFLOAT4(0.75f, -0.45f, 0.35f, 0.0f);
         sun.Diffuse    = XMFLOAT4(1.00f, 0.66f, 0.38f, 1.0f);
         sun.Ambient    = XMFLOAT4(0.55f, 0.42f, 0.52f, 1.0f);
-        sun.FogColor   = XMFLOAT4(0.95f, 0.62f, 0.45f, 1.0f);
+        sun.FogColor   = XMFLOAT4(0.95f, 0.50f, 0.32f, 1.0f);   // 空の地平線色に寄せる
         sun.FogStart   = 25.0f;  sun.FogEnd = 70.0f;
         sun.Saturation = 1.15f;  sun.Contrast = 1.05f;
         sun.ShadowTint[0] = 0.92f; sun.ShadowTint[1] = 0.90f; sun.ShadowTint[2] = 1.10f;
@@ -89,10 +89,10 @@ namespace {
         // 夜: 青白い月光、暗い青の環境光
         Preset& night = g_Presets[3];
         night.Direction  = XMFLOAT4(-0.35f, -0.80f, -0.45f, 0.0f);
-        night.Diffuse    = XMFLOAT4(0.45f, 0.55f, 0.85f, 1.0f);
-        night.Ambient    = XMFLOAT4(0.18f, 0.22f, 0.40f, 1.0f);
-        night.FogColor   = XMFLOAT4(0.06f, 0.09f, 0.20f, 1.0f);
-        night.FogStart   = 18.0f;  night.FogEnd = 55.0f;
+        night.Diffuse    = XMFLOAT4(0.22f, 0.28f, 0.48f, 1.0f);
+        night.Ambient    = XMFLOAT4(0.15f, 0.19f, 0.36f, 1.0f);
+        night.FogColor   = XMFLOAT4(0.05f, 0.085f, 0.20f, 1.0f);   // 空の地平線色と一致
+        night.FogStart   = 14.0f;  night.FogEnd = 48.0f;
         night.Saturation = 0.95f;  night.Contrast = 1.10f;
         night.ShadowTint[0] = 0.85f; night.ShadowTint[1] = 0.92f; night.ShadowTint[2] = 1.18f;
         night.HighlightTint[0] = 0.95f; night.HighlightTint[1] = 1.00f; night.HighlightTint[2] = 1.08f;
