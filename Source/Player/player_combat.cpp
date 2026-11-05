@@ -16,6 +16,7 @@
 #include "sound_manager.h"
 #include "progression_manager.h"
 #include "main.h"
+#include <algorithm>
 
 using namespace DirectX;
 
@@ -60,7 +61,7 @@ int PlayerCombat::GetChargeStage() const
 void PlayerCombat::Update()
 {
     if (m_NonSpinThrowCooldown > 0) m_NonSpinThrowCooldown--;
-    if (m_Owner->GetState() != PlayerState::SPINNING) m_LastChargeStage = 0;
+    if (m_Owner->GetState() != PlayerState::SPINNING) { m_LastChargeStage = 0; DisarmRelease(); }
 
     // Update guard status
     if (m_Owner->GetDamageTimer() <= 0 && m_Owner->GetState() == PlayerState::IDLE && !m_Owner->GetGrabbedEnemy()) {
@@ -365,6 +366,59 @@ void PlayerCombat::UpdateGrabbed()
 }
 
 // =================================================================
+namespace {
+    // 角度を -π〜π に正規化する
+    float WrapPi(float a)
+    {
+        while (a > XM_PI)  a -= XM_2PI;
+        while (a < -XM_PI) a += XM_2PI;
+        return a;
+    }
+}
+
+// 狙いの向き: カメラ正面を基準に、近くの敵・ボスがいれば角度を吸い付かせる
+float PlayerCombat::ComputeAimYaw() const
+{
+    float camYaw = g_Camera ? g_Camera->GetAngleY() : m_Owner->GetRotation().y;
+    XMFLOAT3 pPos = m_Owner->GetPosition();
+
+    float bestDiff = 0.0f;
+    float bestAbs  = Constants::Player::AIM_ASSIST_ANGLE;   // 有効角内で最も正面に近い対象を選ぶ
+    bool  found    = false;
+
+    auto consider = [&](GameObject* obj) {
+        if (!obj || obj->IsDestroy() || obj == m_Owner || obj == m_Owner->GetGrabbedEnemy()) return;
+        XMFLOAT3 p = obj->GetPosition();
+        float dx = p.x - pPos.x;
+        float dz = p.z - pPos.z;
+        float distSq = dx * dx + dz * dz;
+        float range = Constants::Player::AIM_ASSIST_RANGE;
+        if (distSq < 0.25f || distSq > range * range) return;
+        float diff = WrapPi(atan2f(dx, dz) - camYaw);
+        float ad = fabsf(diff);
+        if (ad < bestAbs) { bestAbs = ad; bestDiff = diff; found = true; }
+    };
+
+    for (GameObject* obj : Manager::GetCategoryList(ObjectType::Enemy)) {
+        Enemy* e = static_cast<Enemy*>(obj);
+        if (!e) continue;
+        EnemyState st = e->GetEnemyState();
+        if (st == EnemyState::DEFEATED || st == EnemyState::BLOWN_AWAY || st == EnemyState::FLYING) continue;
+        consider(obj);
+    }
+    BossEnemy* boss = Manager::GetGameObject<BossEnemy>();
+    if (boss && boss->GetEnemyState() != EnemyState::DEFEATED) consider(boss);
+
+    if (!found) return camYaw;
+    return camYaw + bestDiff * Constants::Player::AIM_ASSIST_STRENGTH;
+}
+
+void PlayerCombat::DisarmRelease()
+{
+    m_ReleaseArmed = false;
+    m_ReleaseTimer = 0;
+}
+
 void PlayerCombat::UpdateSpinning()
 {
     float targetSpinSpeed = Constants::Player::MAX_SPIN_SPEED;
@@ -436,12 +490,46 @@ void PlayerCombat::UpdateSpinning()
         }
     }
 
+    // --- リリース予約: ボタンを押すと、敵が狙いの方向を通過する瞬間に放つ ---
+    // 回転が遅くて回転と呼べない間(非回転投げ扱い)は従来どおり即座に投げる
     if (PlayerController::IsGrabOrThrowAction()) {
-        Throw();
-        return;
+        if (currentSpeed < Constants::Player::SPIN_THROW_MIN_SPEED || m_ReleaseArmed) {
+            // 非回転投げ、または予約中の再押し: 今の狙いで即座に放つ
+            m_ThrowYaw = ComputeAimYaw();
+            m_UseThrowYaw = true;
+            DisarmRelease();
+            Throw();
+            m_UseThrowYaw = false;
+            return;
+        }
+        m_ReleaseArmed = true;
+        m_ReleaseTimer = 0;
+        SoundManager::PlaySE(SoundID::SE_GRAB);
+    }
+
+    if (m_ReleaseArmed) {
+        m_ReleaseTimer++;
+        float aimYaw = ComputeAimYaw();
+        float cur  = WrapPi(m_Owner->GetRotation().y - aimYaw);   // 敵の向き - 狙い（0を負から正へ跨ぐ瞬間に放つ）
+        float prev = WrapPi(cur - currentSpeed);
+        bool crossed = (prev <= 0.0f && cur >= 0.0f && (cur - prev) < XM_PI);
+
+        float revFrames = (currentSpeed > 0.001f) ? (XM_2PI / currentSpeed) + 3.0f : (float)Constants::Player::RELEASE_MAX_WAIT_FRAMES;
+        float maxWait = (std::min)(revFrames, (float)Constants::Player::RELEASE_MAX_WAIT_FRAMES);
+        bool timedOut = ((float)m_ReleaseTimer > maxWait);
+
+        if (crossed || timedOut) {
+            m_ThrowYaw = crossed ? aimYaw : m_Owner->GetRotation().y;
+            m_UseThrowYaw = true;
+            DisarmRelease();
+            Throw();
+            m_UseThrowYaw = false;
+            return;
+        }
     }
 
     if (PlayerController::IsSpinToggleAction()) {
+        DisarmRelease();
         m_Owner->SetState(PlayerState::GRABBED);
         m_Owner->SetCurrentSpinSpeed(Constants::Player::MIN_SPIN_SPEED);
     }
@@ -465,7 +553,7 @@ void PlayerCombat::Throw()
         // 非回転投げはクールダウン中は不可
         if (isNonSpinThrow && m_NonSpinThrowCooldown > 0) return;
 
-        float camYaw = g_Camera ? g_Camera->GetAngleY() : 0.0f;
+        float camYaw = m_UseThrowYaw ? m_ThrowYaw : (g_Camera ? g_Camera->GetAngleY() : 0.0f);
 
         XMFLOAT3 rot = m_Owner->GetRotation();
         rot.y = camYaw;

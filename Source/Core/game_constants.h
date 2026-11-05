@@ -105,6 +105,10 @@ namespace Constants
         const float SPIN_STAGE_GUARANTEE[5] = { 0.0f, 0.15f, 0.30f, 0.60f, 0.90f }; // 段階別の威力比率（添字=段階0〜4。各段階内は次段階の値へ補間、段階4は一定）
         const float SPIN_MOVE_SPEED_MULT    = 0.6f;     // スピン中の移動速度倍率（回している間は動きにくいリスク）
         const int   NONSPIN_THROW_COOLDOWN  = 120;     // 非回転投げの再使用までのフレーム数（約2秒）
+        const int   RELEASE_MAX_WAIT_FRAMES = 90;      // リリース予約が狙いの方向を待つ最大フレーム数（超えたらその時点で放つ）
+        const float AIM_ASSIST_ANGLE        = 0.35f;   // エイム吸い付きの有効角(ラジアン、約20度。カメラ正面からの差)
+        const float AIM_ASSIST_STRENGTH     = 0.75f;   // 吸い付き強度(0=補正なし / 1=対象へ完全に向く)
+        const float AIM_ASSIST_RANGE        = 45.0f;   // 吸い付き対象の探索距離
         const int   TACKLE_ACTIVE_DURATION  = 90;       // ボス弾回避後のタックル有効時間（フレーム）
         const int   TACKLE_DAMAGE           = 3;        // タックル攻撃がボスに与えるダメージ
         const int   WARP_SLASH_DAMAGE       = 4;        // 雷電テレポートスラッシュがボスに与えるダメージ
