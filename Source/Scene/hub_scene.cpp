@@ -1,4 +1,5 @@
 ﻿#include "hub_scene.h"
+#include "localization.h"
 #include "manager.h"
 #include "player.h"
 #include "enemy.h"
@@ -298,7 +299,7 @@ void HubScene::DrawFacilityHUD()
     ImGuiWindowFlags hudFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
 
     if (ImGui::Begin("##HubMaterialBar", nullptr, hudFlags)) {
-        ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.2f, 1.0f), "[ BASE CAMP ]");
+        ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.2f, 1.0f), Loc::Tr("[ BASE CAMP ]", "[ ベースキャンプ ]"));
         ImGui::SameLine();
         ImGui::TextDisabled("|");
         ImGui::SameLine();
@@ -309,8 +310,9 @@ void HubScene::DrawFacilityHUD()
             XMFLOAT3 col = ProgressionData::GetMaterialColor(mType);
 
             // ワイド文字列から簡易UTF-8名取得
-            const char* asciiNames[] = { "Scrap", "Cell", "Powder", "Plug", "Armor", "Core" };
-            const char* name = (i < 6) ? asciiNames[i] : "Mat";
+            const char* namesEn[] = { "Scrap", "Cell", "Powder", "Plug", "Armor", "Core" };
+            const char* namesJa[] = { "スクラップ", "セル", "火薬", "プラグ", "装甲", "コア" };
+            const char* name = (i < 6) ? Loc::Tr(namesEn[i], namesJa[i]) : "Mat";
 
             ImGui::TextColored(ImVec4(col.x, col.y, col.z, 1.0f), "%s: %d", name, count);
             if (i < static_cast<int>(MaterialType::COUNT) - 1) {
@@ -321,7 +323,7 @@ void HubScene::DrawFacilityHUD()
         ImGui::SameLine();
         ImGui::TextDisabled("|");
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.85f, 0.9f, 1.0f, 1.0f), "[Tab] Menu / Save / Quit");
+        ImGui::TextColored(ImVec4(0.85f, 0.9f, 1.0f, 1.0f), Loc::Tr("[Tab] Menu / Save / Quit", "[Tab] メニュー / セーブ / 終了"));
 
         ImGui::End();
     }
