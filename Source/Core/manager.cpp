@@ -415,7 +415,7 @@ void Manager::Draw(float alpha)
 
     ScorePopupSystem::Draw();
     ShockwaveSystem::Draw();
-    AuraEffect::Draw();
+    // AuraEffect は Renderer::End のポスト合成後(ブラーの後)に描画する
     DustSystem::Draw();
     ScoreHUD::Draw();
 

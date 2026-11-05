@@ -465,6 +465,9 @@
     <FXCompile Include="vertexShader.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
+    <FXCompile Include="aura_ring_ps.hlsl">
+      <Filter>Shaders</Filter>
+    </FXCompile>
     <FXCompile Include="ui_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>

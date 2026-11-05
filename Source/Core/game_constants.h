@@ -102,7 +102,7 @@ namespace Constants
         const float SPIN_THROW_MIN_SPEED    = 0.05f;    // スピン投げとして扱う最低スピン速度（未満は非回転投げ）
         const float NONSPIN_THROW_SPEED     = 1.0f;     // 非回転投げ（ノックバックのみ）の初速
         const float SPIN_STAGE_THRESHOLD[4] = { 0.16f, 0.40f, 0.60f, 0.80f }; // 各チャージ段階に到達するスピン比率(MAX_SPIN_SPEED比)
-        const float SPIN_STAGE_GUARANTEE[5] = { 0.0f, 0.30f, 0.60f, 0.90f, 1.00f }; // 段階別の威力保証比率（添字=段階0〜4）
+        const float SPIN_STAGE_GUARANTEE[5] = { 0.0f, 0.15f, 0.30f, 0.60f, 0.90f }; // 段階別の威力比率（添字=段階0〜4。各段階内は次段階の値へ補間、段階4は一定）
         const float SPIN_MOVE_SPEED_MULT    = 0.6f;     // スピン中の移動速度倍率（回している間は動きにくいリスク）
         const int   NONSPIN_THROW_COOLDOWN  = 120;     // 非回転投げの再使用までのフレーム数（約2秒）
         const int   TACKLE_ACTIVE_DURATION  = 90;       // ボス弾回避後のタックル有効時間（フレーム）

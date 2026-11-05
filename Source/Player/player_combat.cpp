@@ -506,10 +506,19 @@ void PlayerCombat::Throw()
             if (spinRatio > 1.0f) spinRatio = 1.0f;
         }
 
-        // 段階に応じた威力保証（実際の比率が保証値を上回ればそちらを採用）
+        // 段階に応じた威力: 各段階の値から次段階の値へ、段階内の到達度で補間する（段階4は一定）
         int chargeStage = CalcChargeStage(spinSpeed);
-        float guarantee = Constants::Player::SPIN_STAGE_GUARANTEE[chargeStage];
-        if (spinRatio < guarantee) spinRatio = guarantee;
+        if (chargeStage > 0) {
+            const float* g = Constants::Player::SPIN_STAGE_GUARANTEE;
+            const float* th = Constants::Player::SPIN_STAGE_THRESHOLD;
+            float lo = th[chargeStage - 1];
+            float hi = (chargeStage < 4) ? th[chargeStage] : 1.0f;
+            float p = (hi > lo) ? (spinRatio - lo) / (hi - lo) : 0.0f;
+            if (p < 0.0f) p = 0.0f;
+            if (p > 1.0f) p = 1.0f;
+            float next = (chargeStage < 4) ? g[chargeStage + 1] : g[4];
+            spinRatio = g[chargeStage] + (next - g[chargeStage]) * p;
+        }
 
         XMFLOAT3 throwVelocity = fwdF * totalSpeed;
 

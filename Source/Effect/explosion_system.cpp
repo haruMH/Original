@@ -38,6 +38,25 @@ void ExplosionSystem::TriggerExplosion(const DirectX::XMFLOAT3& center)
     ShockwaveSystem::AddShockwave(shockPos, explosionRadius * 0.50f, 2.5f, 0.3f, 0.0f, 18, 0.0f, 12);
 
     // マネージャーから敵キャッシュリストを取得して走査
+    // The boss lives in its own category (ObjectType::Boss), so the enemy loop below never reaches it.
+    // Apply the blast damage to it explicitly (distance is measured to its surface).
+    BossEnemy* boss = Manager::GetGameObject<BossEnemy>();
+    if (boss && !boss->IsDestroy()
+        && boss->GetEnemyState() != EnemyState::DEFEATED
+        && boss->GetEnemyState() != EnemyState::BLOWN_AWAY) {
+        XMFLOAT3 bp = boss->GetPosition();
+        float bx = bp.x - center.x;
+        float by = bp.y - center.y;
+        float bz = bp.z - center.z;
+        float surfaceDist = sqrtf(bx * bx + by * by + bz * bz) - boss->GetRadius();
+        if (surfaceDist < explosionRadius) {
+            HitInfo bossHit;
+            bossHit.hitSourcePos = center;
+            bossHit.damage = Constants::Explosion::BOSS_DAMAGE;
+            boss->OnHit(bossHit);
+        }
+    }
+
     for (GameObject* obj : Manager::GetCategoryList(ObjectType::Enemy)) {
         Enemy* enemy = static_cast<Enemy*>(obj);
         if (!enemy || enemy->IsDestroy()) continue;

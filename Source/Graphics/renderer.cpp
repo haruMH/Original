@@ -1,4 +1,5 @@
 ﻿#include "renderer.h"
+#include "aura_effect.h"
 #include "manager.h"
 #include "main.h"
 #include "wall.h"
@@ -717,6 +718,17 @@ void Renderer::End() {
     // SRV バインド解除（次フレームへの干渉を防ぐ）
     m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
     m_DeviceContext->OMSetDepthStencilState(m_DepthStateEnable.Get(), 0);
+
+    // チャージオーラはポスト合成(ラジアルブラー)の後にバックバッファへ直接描く（深度はシーンのものを利用）
+    m_DeviceContext->OMSetRenderTargets(1, m_RenderTargetView.GetAddressOf(), m_DepthStencilView.Get());
+    m_DeviceContext->RSSetState(m_RasterizerStateCullBack.Get());
+    AuraEffect::Draw();
+    // フェード描画のためポストプロセス直後と同じパイプライン状態へ戻す
+    m_DeviceContext->OMSetRenderTargets(1, m_RenderTargetView.GetAddressOf(), NULL);
+    m_DeviceContext->IASetInputLayout(NULL);
+    m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    m_DeviceContext->VSSetShader(m_PostVS.Get(), NULL, 0);
+    m_DeviceContext->PSSetShader(m_PostPS.Get(), NULL, 0);
 
     // バックバッファ最前面にフェードオーバーレイを描画
     FadeSystem::Draw(m_DeviceContext.Get());
