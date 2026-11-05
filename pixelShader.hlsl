@@ -63,6 +63,21 @@ float4 main(PS_INPUT input) : SV_TARGET
 
     bool LightEnable = (LightEnablePacked.x != 0);
 
+    // 床面のタイル反復を目立たなくする（ワールド座標の低周波ノイズで明るさ・色味をばらつかせる）
+    if (LightEnable && input.Normal.y > 0.9f)
+    {
+        float2 wp = input.WorldPos.xz;
+        float2 i0 = floor(wp * 0.11f);
+        float2 f0 = frac(wp * 0.11f);
+        f0 = f0 * f0 * (3.0f - 2.0f * f0);
+        float n00 = frac(sin(dot(i0,                  float2(127.1f, 311.7f))) * 43758.5453f);
+        float n10 = frac(sin(dot(i0 + float2(1, 0),   float2(127.1f, 311.7f))) * 43758.5453f);
+        float n01 = frac(sin(dot(i0 + float2(0, 1),   float2(127.1f, 311.7f))) * 43758.5453f);
+        float n11 = frac(sin(dot(i0 + float2(1, 1),   float2(127.1f, 311.7f))) * 43758.5453f);
+        float n = lerp(lerp(n00, n10, f0.x), lerp(n01, n11, f0.x), f0.y);
+        color.rgb *= lerp(float3(0.84f, 0.88f, 0.84f), float3(1.10f, 1.08f, 1.02f), n);
+    }
+
     if (LightEnable)
     {
         // ── 1. Poisson Disk 高品質ソフトシャドウ ──

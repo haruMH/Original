@@ -12,11 +12,52 @@ cbuffer PostEffectBuffer : register(b0) {
     float4   GradeParams;          // x: 彩度, y: コントラスト (空ごとのカラーグレード)
     float4   ShadowTint;           // 暗部の色味 RGB
     float4   HighlightTint;        // 明部の色味 RGB
+    float4   AoParams;             // x: SSAO強度(0で無効), y: ニア, z: ファー, w: 半径(ワールド単位)
 }
 
 Texture2D    g_Texture1 : register(t0);
 Texture2D    g_Texture2 : register(t1);
+Texture2D<float> g_Depth : register(t2);
 SamplerState g_Sampler  : register(s0);
+
+// 深度バッファ値 → ビュー空間の線形距離
+float LinearDepth(float d)
+{
+    return AoParams.y * AoParams.z / (AoParams.z - d * (AoParams.z - AoParams.y));
+}
+
+// 簡易SSAO: 周囲のより手前にある面が多いほど暗くする（隙間・足元・角が締まる）
+float ComputeAO(float2 uv)
+{
+    uint w, h;
+    g_Depth.GetDimensions(w, h);
+    float zc = LinearDepth(g_Depth.Load(int3(uv * float2(w, h), 0)));
+    if (zc > 120.0f) return 1.0f;   // 遠景・空は対象外
+
+    // 画素ごとに回転させて縞を散らす
+    float2 px = uv * float2(w, h);
+    float rot = frac(52.9829189f * frac(dot(px, float2(0.06711056f, 0.00583715f)))) * 6.2831853f;
+    float2 aspect = float2((float)h / (float)w, 1.0f);
+    float rUV = AoParams.w / zc * 0.87f;           // 半径のスクリーン上の大きさ(縦UV基準)
+    rUV = min(rUV, 0.12f);
+
+    float occ = 0.0f;
+    [unroll]
+    for (int i = 0; i < 12; ++i)
+    {
+        float a = rot + (float)i * 2.39996f;       // 黄金角で螺旋状に配置
+        float r = sqrt(((float)i + 0.5f) / 12.0f);
+        float2 off = float2(cos(a), sin(a)) * r * rUV * aspect;
+        float2 suv = saturate(uv + off);
+        float zs = LinearDepth(g_Depth.Load(int3(suv * float2(w, h), 0)));
+        float diff = zc - zs;                       // 正: サンプルの方が手前
+        float rangeCheck = saturate(1.0f - diff / (AoParams.w * 2.5f));
+        occ += (diff > 0.04f * zc * 0.25f + 0.02f ? 1.0f : 0.0f) * rangeCheck;
+    }
+    float ao = 1.0f - (occ / 12.0f) * AoParams.x;
+    // 遠いほど弱く
+    return lerp(ao, 1.0f, smoothstep(40.0f, 110.0f, zc));
+}
 
 // ACES Filmic トーンマッピング近似式 (Narkowicz 2015)
 // Unreal Engine や映画業界の標準カーブで、白飛びを防ぎ豊かなハイライト・シャドウ階調を実現
@@ -106,6 +147,12 @@ float4 main(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD) : SV_TARG
                 blurAccum += g_Texture1.Sample(g_Sampler, TexCoord - blurVec * (float)s).rgb;
             }
             finalBase = blurAccum / 6.0f;
+        }
+
+        // (d) SSAO（隙間・接地部を暗く。空は対象外）
+        if (AoParams.x > 0.001f)
+        {
+            finalBase *= ComputeAO(TexCoord);
         }
 
         float4 bloomColor = g_Texture2.Sample(g_Sampler, TexCoord);

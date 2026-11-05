@@ -1,5 +1,6 @@
 ﻿#include "hub_scene.h"
 #include "localization.h"
+#include "fire_effect.h"
 #include "manager.h"
 #include "player.h"
 #include "enemy.h"
@@ -62,7 +63,7 @@ void HubScene::Init()
     if (g_Camera) {
         g_Camera->SetAngles(0.28f, 0.0f);
     }
-
+    
     // 3. 拠点の外周壁 (44m x 44m) - プレイヤーの落下防止境界（広大な開放感）
     Wall::CreateBoundaryWalls(22.0f, 4.0f, 1.5f, 1.0f);
 
@@ -87,6 +88,8 @@ void HubScene::Init()
             XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT3(4.5f, 4.5f, 4.5f), 0.0f, XMFLOAT3(0.24f, 0.15f, 0.24f));
     AddProp("Assets/model/campfire/campfire-stand.obj", "Assets/model/campfire/campfire-stand.mtl",
             XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT3(4.5f, 4.5f, 4.5f), 0.0f, XMFLOAT3(0.0f, 0.0f, 0.0f));
+    // 中央の焚き火に常時炎をともす
+    FireEffect::SetEmitter(XMFLOAT3(0.0f, -0.55f, 0.0f));
     // 焚き火脇の休憩用木箱・丸太
     AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
             XMFLOAT3(2.2f, -1.0f, 0.5f), XMFLOAT3(3.2f, 3.2f, 3.2f), 0.3f, XMFLOAT3(0.24f, 0.25f, 0.24f));
@@ -134,15 +137,15 @@ void HubScene::Init()
 
     // 出撃ゲート（Quest Gate）柱オブジェクト
     Wall* gateL = Manager::AddGameObject<Wall>();
-    gateL->SetPosition(XMFLOAT3(GATE_POS.x - 1.5f, 1.6f, GATE_POS.z));
+    gateL->SetPosition(XMFLOAT3(GATE_POS.x - 1.5f, 0.5f, GATE_POS.z));
     gateL->SetScale(XMFLOAT3(0.7f, 3.5f, 0.7f));
 
     Wall* gateR = Manager::AddGameObject<Wall>();
-    gateR->SetPosition(XMFLOAT3(GATE_POS.x + 1.5f, 1.6f, GATE_POS.z));
+    gateR->SetPosition(XMFLOAT3(GATE_POS.x + 1.5f, 0.5f, GATE_POS.z));
     gateR->SetScale(XMFLOAT3(0.7f, 3.5f, 0.7f));
 
     Wall* gateTop = Manager::AddGameObject<Wall>();
-    gateTop->SetPosition(XMFLOAT3(GATE_POS.x, 3.4f, GATE_POS.z));
+    gateTop->SetPosition(XMFLOAT3(GATE_POS.x, 2.3f, GATE_POS.z));
     gateTop->SetScale(XMFLOAT3(3.8f, 0.6f, 0.8f));
 
     // --- (E) 北中央：修練エリア（試し振りサンドバッグ） ---

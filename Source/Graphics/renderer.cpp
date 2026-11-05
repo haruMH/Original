@@ -33,6 +33,7 @@ Microsoft::WRL::ComPtr<ID3D11DeviceContext>      Renderer::m_DeviceContext;
 Microsoft::WRL::ComPtr<IDXGISwapChain>           Renderer::m_SwapChain;
 Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   Renderer::m_RenderTargetView;
 Microsoft::WRL::ComPtr<ID3D11DepthStencilView>   Renderer::m_DepthStencilView;
+Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Renderer::m_DepthSRV;
 Microsoft::WRL::ComPtr<ID3D11Buffer>             Renderer::m_WorldBuffer;
 Microsoft::WRL::ComPtr<ID3D11Buffer>             Renderer::m_ViewBuffer;
 Microsoft::WRL::ComPtr<ID3D11Buffer>             Renderer::m_ProjectionBuffer;
@@ -113,15 +114,24 @@ void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
     td.Height = height;
     td.MipLevels = 1;
     td.ArraySize = 1;
-    td.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    td.Format = DXGI_FORMAT_R24G8_TYPELESS;   // SSAO用にシェーダーからも読めるようにする
     td.SampleDesc.Count = 1;
     td.Usage = D3D11_USAGE_DEFAULT;
-    td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+    td.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
 
     Microsoft::WRL::ComPtr<ID3D11Texture2D> pd;
     m_Device->CreateTexture2D(&td, NULL, pd.GetAddressOf());
     if (pd) {
-        m_Device->CreateDepthStencilView(pd.Get(), NULL, m_DepthStencilView.ReleaseAndGetAddressOf());
+        D3D11_DEPTH_STENCIL_VIEW_DESC dsvd = {};
+        dsvd.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        dsvd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+        m_Device->CreateDepthStencilView(pd.Get(), &dsvd, m_DepthStencilView.ReleaseAndGetAddressOf());
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvd = {};
+        srvd.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+        srvd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvd.Texture2D.MipLevels = 1;
+        m_Device->CreateShaderResourceView(pd.Get(), &srvd, m_DepthSRV.ReleaseAndGetAddressOf());
     }
 
     // 3. ブルーム用レンダーターゲット
@@ -186,6 +196,7 @@ void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
 void Renderer::ReleaseScreenSizeResources() {
     m_RenderTargetView.Reset();
     m_DepthStencilView.Reset();
+    m_DepthSRV.Reset();
     m_SceneRTV.Reset();
     m_SceneSRV.Reset();
     m_LumRTV.Reset();
@@ -705,7 +716,11 @@ void Renderer::End() {
     m_DeviceContext->OMSetRenderTargets(1, m_RenderTargetView.GetAddressOf(), NULL);
     m_DeviceContext->PSSetShaderResources(0, 1, m_SceneSRV.GetAddressOf());
     m_DeviceContext->PSSetShaderResources(1, 1, enableBloom ? m_LumSRV.GetAddressOf() : m_SceneSRV.GetAddressOf());
+    m_DeviceContext->PSSetShaderResources(2, 1, m_DepthSRV.GetAddressOf());
     pe.Mode = 3;
+    // SSAO（品質Low では無効）
+    pe.AoParams = XMFLOAT4((m_DepthSRV && gs.postProcess != PostProcessQuality::Post_Low) ? 0.85f : 0.0f,
+                           Constants::Camera::NEAR_CLIP, Constants::Camera::FAR_CLIP, 0.9f);
     pe.SlowMotionIntensity = Manager::GetSlowMotionIntensity();
     pe.FlashColor = Manager::GetFlashColor();
     pe.RadialBlurIntensity = gs.radialBlur ? Manager::GetRadialBlurIntensity() : 0.0f;
@@ -723,8 +738,9 @@ void Renderer::End() {
     m_DeviceContext->PSSetConstantBuffers(0, 1, m_PostBuffer.GetAddressOf());
     m_DeviceContext->Draw(3, 0);
 
-    // SRV バインド解除（次フレームへの干渉を防ぐ）
-    m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
+    // SRV バインド解除（次フレームへの干渉を防ぐ。深度SRVはDSVと同時に使えないため必須）
+    ID3D11ShaderResourceView* nullSRV3[] = { NULL, NULL, NULL };
+    m_DeviceContext->PSSetShaderResources(0, 3, nullSRV3);
     m_DeviceContext->OMSetDepthStencilState(m_DepthStateEnable.Get(), 0);
 
     // チャージオーラはポスト合成(ラジアルブラー)の後にバックバッファへ直接描く（深度はシーンのものを利用）

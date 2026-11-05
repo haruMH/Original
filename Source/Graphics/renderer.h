@@ -49,6 +49,7 @@ struct POSTEFFECT {
     XMFLOAT4 GradeParams;          // x: 彩度, y: コントラスト
     XMFLOAT4 ShadowTint;           // 暗部の色味 RGB
     XMFLOAT4 HighlightTint;        // 明部の色味 RGB
+    XMFLOAT4 AoParams;             // x: SSAO強度(0で無効), y: ニア, z: ファー, w: 半径(ワールド単位)
 };
 
 // 水面シェーダー用定数バッファ構造体 (VS)
@@ -128,6 +129,7 @@ private:
     // ポストプロセス（ブルーム）用リソース
     static Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   m_SceneRTV;
     static Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_SceneSRV;
+    static Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_DepthSRV;   // SSAO用の深度読み取り
     static Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   m_LumRTV;
     static Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_LumSRV;
     static Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   m_BlurRTV;
