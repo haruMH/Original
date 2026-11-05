@@ -147,6 +147,12 @@
       <Filter>Source\Stage</Filter>
     </ClCompile>
     <!-- Graphics -->
+    <ClCompile Include="Source\Graphics\world_look.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClInclude Include="Source\Graphics\world_look.h">
+      <Filter>Source\Graphics</Filter>
+    </ClInclude>
     <ClCompile Include="Source\Graphics\renderer.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
@@ -472,6 +478,9 @@
       <Filter>Shaders</Filter>
     </FXCompile>
     <FXCompile Include="hit_impact_ps.hlsl">
+      <Filter>Shaders</Filter>
+    </FXCompile>
+    <FXCompile Include="sky_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
     <FXCompile Include="aura_ring_ps.hlsl">

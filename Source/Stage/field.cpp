@@ -1,5 +1,6 @@
 ﻿#include "field.h"
 #include "renderer.h"
+#include "world_look.h"
 #include "resource_manager.h"
 #include "wall.h"
 #include "manager.h"
@@ -216,11 +217,7 @@ void Skybox::Init()
     m_RotationAngle = 0.0f;
     m_RotationSpeed = 0.006f; // ゆっくり自転 (約100秒で1周)
 
-    // 3種類のテクスチャをロード
-    m_Textures[(int)SkyType::Day]    = ResourceManager::GetTexture("skydome_day.jpg");
-    m_Textures[(int)SkyType::Sunset] = ResourceManager::GetTexture("skydome_sunset.jpg");
-    m_Textures[(int)SkyType::Night]  = ResourceManager::GetTexture("skydome_night.png");
-
+    // sky is procedural (sky_ps): no textures, no seam. time of day comes from WorldLook
     m_CurrentType = SkyType::Day;
 
     // ドームメッシュ生成 (slices=48, stacks=24, radius=1.0f)
@@ -228,16 +225,29 @@ void Skybox::Init()
 
     // シェーダーの読み込み
     Renderer::CreateVertexShader(&m_VertexShader, &m_VertexLayout, Renderer::ResolveShaderPath("vertexShader.cso").c_str());
-    Renderer::CreatePixelShader(&m_PixelShader, Renderer::ResolveShaderPath("pixelShader.cso").c_str());
+    Renderer::CreatePixelShader(&m_PixelShader, Renderer::ResolveShaderPath("sky_ps.cso").c_str());
+
+    D3D11_BUFFER_DESC cbd{};
+    cbd.ByteWidth = sizeof(float) * 4 * 5;
+    cbd.Usage = D3D11_USAGE_DEFAULT;
+    cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    Renderer::GetDevice()->CreateBuffer(&cbd, nullptr, &m_SkyBuffer);
 }
 
 void Skybox::Uninit()
 {
+    if (m_SkyBuffer)    { m_SkyBuffer->Release();    m_SkyBuffer = nullptr; }
     if (m_VertexLayout) { m_VertexLayout->Release(); m_VertexLayout = nullptr; }
     if (m_PixelShader)  { m_PixelShader->Release();  m_PixelShader = nullptr; }
     if (m_VertexShader) { m_VertexShader->Release(); m_VertexShader = nullptr; }
     if (m_IndexBuffer)  { m_IndexBuffer->Release();  m_IndexBuffer = nullptr; }
     if (m_VertexBuffer) { m_VertexBuffer->Release(); m_VertexBuffer = nullptr; }
+}
+
+void Skybox::SetSkyType(SkyType type)
+{
+    m_CurrentType = type;
+    WorldLook::SetTarget((int)type, true);
 }
 
 void Skybox::Update()
@@ -254,15 +264,24 @@ void Skybox::Update()
     m_Rotation.y = m_RotationAngle;
 
     // キー入力による空の切り替え ([7]:青空, [8]:夕暮れ, [9]:夜空)
-    if (Input::GetKeyTrigger('7') || Input::GetKeyTrigger(VK_NUMPAD7)) {
+    if (Input::GetKeyTrigger('6') || Input::GetKeyTrigger(VK_NUMPAD6)) {
+        WorldLook::GoToDawn();
+    }
+    else if (Input::GetKeyTrigger('7') || Input::GetKeyTrigger(VK_NUMPAD7)) {
         m_CurrentType = SkyType::Day;
+        WorldLook::SetTarget(0, false);
     }
     else if (Input::GetKeyTrigger('8') || Input::GetKeyTrigger(VK_NUMPAD8)) {
         m_CurrentType = SkyType::Sunset;
+        WorldLook::SetTarget(1, false);
     }
     else if (Input::GetKeyTrigger('9') || Input::GetKeyTrigger(VK_NUMPAD9)) {
         m_CurrentType = SkyType::Night;
+        WorldLook::SetTarget(2, false);
     }
+
+    // light/fog follow the sky smoothly
+    WorldLook::Update();
 }
 
 void Skybox::Draw()
@@ -302,8 +321,23 @@ void Skybox::Draw()
     dc->VSSetShader(m_VertexShader, NULL, 0);
     dc->PSSetShader(m_PixelShader, NULL, 0);
 
-    ID3D11ShaderResourceView* tex = m_Textures[(int)m_CurrentType];
-    Renderer::SetTexture(tex);
+    // sky constants (b6)
+    if (m_SkyBuffer) {
+        float cb[20] = {};
+        const float* z = WorldLook::GetZenithColor();
+        const float* hz = WorldLook::GetHorizonColor();
+        const float* sc = WorldLook::GetSunColor();
+        float sun[3];
+        WorldLook::GetSunDirection(sun);
+        cb[0] = z[0];  cb[1] = z[1];  cb[2] = z[2];  cb[3] = WorldLook::GetStarAmount();
+        cb[4] = hz[0]; cb[5] = hz[1]; cb[6] = hz[2]; cb[7] = WorldLook::GetCloudBrightness();
+        cb[8] = sun[0]; cb[9] = sun[1]; cb[10] = sun[2]; cb[11] = WorldLook::GetElapsedSeconds();
+        cb[12] = sc[0]; cb[13] = sc[1]; cb[14] = sc[2];
+        XMFLOAT3 cam = g_Camera->GetPosition();
+        cb[16] = cam.x; cb[17] = cam.y; cb[18] = cam.z;
+        dc->UpdateSubresource(m_SkyBuffer, 0, nullptr, cb, 0, 0);
+        dc->PSSetConstantBuffers(6, 1, &m_SkyBuffer);
+    }
 
     dc->DrawIndexed(m_IndexCount, 0, 0);
 

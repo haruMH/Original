@@ -395,9 +395,11 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
                     size_t idx = indexOffset + i;
                     GameObject* obj = drawList[idx];
 
-                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(obj->GetScale().x, obj->GetScale().y, obj->GetScale().z);
+                    const DirectX::XMFLOAT3 vs = obj->GetVisualScale();
+                    const DirectX::XMFLOAT3 vo = obj->GetVisualOffset();
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(vs.x, vs.y, vs.z);
                     DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(obj->GetRotation().x, obj->GetRotation().y, obj->GetRotation().z);
-                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(obj->GetPosition().x, obj->GetPosition().y, obj->GetPosition().z);
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(obj->GetPosition().x + vo.x, obj->GetPosition().y + vo.y, obj->GetPosition().z + vo.z);
 
                     DirectX::XMMATRIX world = scale * rotation * translation;
                     if (pass == RenderPass::Shadow)

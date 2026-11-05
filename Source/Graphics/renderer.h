@@ -46,6 +46,9 @@ struct POSTEFFECT {
     XMFLOAT2 RadialBlurCenter;     // 放射ブラー中心UV (0.5, 0.5)
     XMFLOAT2 TexelSize;            // 画面テクセルサイズ (1/幅, 1/高さ)
     XMFLOAT2 Dummy;                // 16バイトアライメントパディング
+    XMFLOAT4 GradeParams;          // x: 彩度, y: コントラスト
+    XMFLOAT4 ShadowTint;           // 暗部の色味 RGB
+    XMFLOAT4 HighlightTint;        // 明部の色味 RGB
 };
 
 // 水面シェーダー用定数バッファ構造体 (VS)

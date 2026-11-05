@@ -127,6 +127,8 @@ public:
     
     DirectX::XMFLOAT3 GetForwardVector() const;
     DirectX::XMFLOAT3 GetEmissive() const override;
+    DirectX::XMFLOAT3 GetVisualScale() const override;
+    DirectX::XMFLOAT3 GetVisualOffset() const override;
     Enemy* GetLockOnTarget() const { return m_LockOnTarget; }
     int    GetLockOnFrame() const { return m_LockOnFrame; }
     

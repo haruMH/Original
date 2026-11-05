@@ -297,6 +297,16 @@ XMFLOAT3 Player::GetForwardVector() const
 // =================================================================
 // 自発光（Emissive）情報の取得（ガード/パリィ中のエフェクト発光）
 // =================================================================
+XMFLOAT3 Player::GetVisualScale() const
+{
+    return m_Visual ? m_Visual->GetDeformScale() : m_Scale;
+}
+
+XMFLOAT3 Player::GetVisualOffset() const
+{
+    return m_Visual ? m_Visual->GetDeformOffset() : XMFLOAT3(0.0f, 0.0f, 0.0f);
+}
+
 XMFLOAT3 Player::GetEmissive() const
 {
     if (IsParryActive()) {

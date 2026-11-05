@@ -1,5 +1,6 @@
 ﻿#include "renderer.h"
 #include "aura_effect.h"
+#include "world_look.h"
 #include "hit_impact_effect.h"
 #include "manager.h"
 #include "main.h"
@@ -712,6 +713,12 @@ void Renderer::End() {
     pe.RadialBlurCenter = Manager::GetRadialBlurCenter();
     pe.TexelSize = XMFLOAT2(1.0f / (float)m_ScreenWidth, 1.0f / (float)m_ScreenHeight);
     pe.Dummy.x = gs.casSharpness;
+    // 空に連動したカラーグレード
+    pe.GradeParams = XMFLOAT4(WorldLook::GetSaturation(), WorldLook::GetContrast(), 0.0f, 0.0f);
+    const float* st = WorldLook::GetShadowTint();
+    const float* ht = WorldLook::GetHighlightTint();
+    pe.ShadowTint    = XMFLOAT4(st[0], st[1], st[2], 0.0f);
+    pe.HighlightTint = XMFLOAT4(ht[0], ht[1], ht[2], 0.0f);
     m_DeviceContext->UpdateSubresource(m_PostBuffer.Get(), 0, NULL, &pe, 0, 0);
     m_DeviceContext->PSSetConstantBuffers(0, 1, m_PostBuffer.GetAddressOf());
     m_DeviceContext->Draw(3, 0);

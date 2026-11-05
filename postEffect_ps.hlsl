@@ -9,6 +9,9 @@ cbuffer PostEffectBuffer : register(b0) {
     float2   RadialBlurCenter;     // 放射ブラー中心UV
     float2   TexelSize;            // 実画面テクセルサイズ (1/width, 1/height)
     float2   PostDummy;            // 16バイト境界パディング
+    float4   GradeParams;          // x: 彩度, y: コントラスト (空ごとのカラーグレード)
+    float4   ShadowTint;           // 暗部の色味 RGB
+    float4   HighlightTint;        // 明部の色味 RGB
 }
 
 Texture2D    g_Texture1 : register(t0);
@@ -124,6 +127,12 @@ float4 main(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD) : SV_TARG
 
         // ACES Filmic トーンマッピング（シネマティックな明暗カーブ）
         color.rgb = ACESFilm(color.rgb);
+
+        // カラーグレード（彩度・コントラスト・暗部/明部の色味。空の種類に連動）
+        float gl = dot(color.rgb, float3(0.2126f, 0.7152f, 0.0722f));
+        color.rgb = lerp(float3(gl, gl, gl), color.rgb, GradeParams.x);
+        color.rgb = saturate((color.rgb - 0.5f) * GradeParams.y + 0.5f);
+        color.rgb *= lerp(ShadowTint.rgb, HighlightTint.rgb, saturate(gl * 1.5f));
 
         // シネマティック・ヴィネット（画面周辺のわずかな減光による重厚感と視線誘導）
         float distSq = dot(uvOffset, uvOffset);

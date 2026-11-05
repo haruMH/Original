@@ -52,10 +52,7 @@ void HubScene::Init()
 
     // 1. 地面と空
     Manager::AddGameObject<Field>();
-    Skybox* sky = Manager::AddGameObject<Skybox>();
-    if (sky) {
-        sky->SetSkyType(SkyType::Sunset); // 夕暮れの温かいキャラバンキャンプ
-    }
+    Manager::AddGameObject<Skybox>();   // 空は時間経過で変化する
 
     // 2. プレイヤー（広場南側からキャンプ全体を見渡せる位置にスポーン）
     Player* player = Manager::AddGameObject<Player>();

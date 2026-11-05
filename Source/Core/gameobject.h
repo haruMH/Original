@@ -86,6 +86,9 @@ public:
     void SetDestroy() { m_Destroy = true; }
     virtual float GetRadius() const { return m_Size.x * m_Scale.x; }
     virtual XMFLOAT3 GetEmissive() const { return XMFLOAT3(0.0f, 0.0f, 0.0f); }
+    // 描画専用のスケール/位置オフセット（伸縮などの演出用。当たり判定には使われない）
+    virtual XMFLOAT3 GetVisualScale() const { return m_Scale; }
+    virtual XMFLOAT3 GetVisualOffset() const { return XMFLOAT3(0.0f, 0.0f, 0.0f); }
     virtual ObjectType GetObjectType() const { return ObjectType::Unknown; }
     virtual bool IgnoreSlowMotion() const { return false; }
 };

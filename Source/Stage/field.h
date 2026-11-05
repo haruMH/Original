@@ -38,6 +38,7 @@ private:
     ID3D11VertexShader* m_VertexShader = nullptr;
     ID3D11PixelShader*  m_PixelShader  = nullptr;
     ID3D11InputLayout*  m_VertexLayout = nullptr;
+    ID3D11Buffer*       m_SkyBuffer    = nullptr;   // sky_ps 用定数バッファ
     int                 m_IndexCount   = 0;
 
     ID3D11ShaderResourceView* m_Textures[(int)SkyType::Max] = {};
@@ -53,7 +54,8 @@ public:
     void Update() override;
     void Draw() override;
 
-    void SetSkyType(SkyType type) { m_CurrentType = type; }
+    // 空を即座に切り替える（ライトも即時に切り替わる）
+    void SetSkyType(SkyType type);
     SkyType GetSkyType() const { return m_CurrentType; }
 
     static ObjectType GetStaticType() { return ObjectType::Skybox; }

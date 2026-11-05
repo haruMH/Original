@@ -14,7 +14,21 @@ class PlayerVisual
 private:
     Player* m_Owner = nullptr;  // 所有者であるPlayerへのポインタ
 
+    // --- 伸縮(スクワッシュ&ストレッチ)演出: ばねで目標へ追従させる ---
+    float   m_Stretch = 0.0f;       // 縦方向の伸び量(+で縦に伸び、-で潰れる)
+    float   m_StretchVel = 0.0f;    // 伸縮の速度
+    float   m_DeformTime = 0.0f;    // 呼吸・揺れ用の経過フレーム
+    int     m_LastState = -1;       // 前フレームのプレイヤー状態（切替の瞬間に弾みを付ける）
+    int     m_LastStage = 0;        // 前フレームのチャージ段階
+    DirectX::XMFLOAT3 m_PrevPos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    bool    m_HasPrevPos = false;
+    float   m_MoveSpeed = 0.0f;     // 水平移動速度(フレーム当たり)
+
 public:
+    // 描画専用の変形スケール/オフセット（当たり判定には影響しない）
+    DirectX::XMFLOAT3 GetDeformScale() const;
+    DirectX::XMFLOAT3 GetDeformOffset() const;
+
     PlayerVisual(Player* owner);
     ~PlayerVisual();
 

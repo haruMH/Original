@@ -211,6 +211,7 @@
     <!-- Effect -->
     <ClCompile Include="Source\Effect\shockwave.cpp" />
     <ClCompile Include="Source\Effect\aura_effect.cpp" />
+    <ClCompile Include="Source\Graphics\world_look.cpp" />
     <ClCompile Include="Source\Effect\hit_impact_effect.cpp" />
     <ClCompile Include="Source\Effect\explosion_system.cpp" />
     <ClCompile Include="Source\Effect\fade_system.cpp" />
@@ -288,6 +289,7 @@
     <!-- Effect -->
     <ClInclude Include="Source\Effect\shockwave.h" />
     <ClInclude Include="Source\Effect\aura_effect.h" />
+    <ClInclude Include="Source\Graphics\world_look.h" />
     <ClInclude Include="Source\Effect\hit_impact_effect.h" />
     <ClInclude Include="Source\Effect\explosion_system.h" />
     <ClInclude Include="Source\Effect\fade_system.h" />
@@ -356,6 +358,11 @@
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
     </FXCompile>
     <FXCompile Include="hit_impact_ps.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+    </FXCompile>
+    <FXCompile Include="sky_ps.hlsl">
       <ShaderType>Pixel</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>

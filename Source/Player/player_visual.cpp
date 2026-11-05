@@ -10,6 +10,7 @@
 #include "game_constants.h"
 #include "player_combat.h"
 #include "aura_effect.h"
+#include <algorithm>
 
 using namespace DirectX;
 
@@ -35,8 +36,67 @@ void PlayerVisual::Init()
 // =================================================================
 // Update Frame
 // =================================================================
+DirectX::XMFLOAT3 PlayerVisual::GetDeformScale() const
+{
+    XMFLOAT3 s = m_Owner->GetScale();
+    float h = 1.0f + m_Stretch;
+    float w = 1.0f / sqrtf(h);   // 体積をおおむね保つ
+    return XMFLOAT3(s.x * w, s.y * h, s.z * w);
+}
+
+DirectX::XMFLOAT3 PlayerVisual::GetDeformOffset() const
+{
+    // 足元が地面から浮かない/沈まないよう、伸縮した分だけ中心を上下にずらす
+    return XMFLOAT3(0.0f, m_Owner->GetScale().y * m_Stretch * 0.5f, 0.0f);
+}
+
 void PlayerVisual::Update()
 {
+    // --- 伸縮演出（見た目のみ。当たり判定・威力には影響しない） ---
+    {
+        XMFLOAT3 pos = m_Owner->GetPosition();
+        if (m_HasPrevPos) {
+            float dx = pos.x - m_PrevPos.x;
+            float dz = pos.z - m_PrevPos.z;
+            m_MoveSpeed = sqrtf(dx * dx + dz * dz);
+        }
+        m_PrevPos = pos;
+        m_HasPrevPos = true;
+        m_DeformTime += 1.0f;
+
+        int state = (int)m_Owner->GetState();
+        int stage = m_Owner->GetCombatModule() ? m_Owner->GetCombatModule()->GetChargeStage() : 0;
+
+        // 状態切替の瞬間: 掴み=ぐっと潰れる / 回転開始=縮む / 投げ・解除=反動で一気に伸びる
+        if (m_LastState != -1 && state != m_LastState) {
+            if (state == (int)PlayerState::GRABBED)       m_StretchVel -= 0.10f;
+            else if (state == (int)PlayerState::SPINNING) m_StretchVel -= 0.06f;
+            else if (m_LastState == (int)PlayerState::SPINNING || m_LastState == (int)PlayerState::GRABBED) {
+                m_Stretch = -0.22f;      // 溜めた分だけ潰してから
+                m_StretchVel = 0.05f;    // 反動で伸びる
+            }
+        }
+        // 段階が上がるたびに弾む
+        if (stage > m_LastStage && state == (int)PlayerState::SPINNING) m_StretchVel += 0.07f + 0.02f * stage;
+        m_LastState = state;
+        m_LastStage = stage;
+
+        // 目標値: 呼吸 + 走りの上下動 + 回転中は遠心力で潰れ気味に小刻みに揺れる
+        float speedF = (std::min)(m_MoveSpeed / 0.25f, 1.0f);
+        float target = sinf(m_DeformTime * 0.06f) * 0.025f
+                     + sinf(m_DeformTime * 0.45f) * 0.035f * speedF;
+        if (state == (int)PlayerState::SPINNING) {
+            float r = stage / 4.0f;
+            target += -0.10f * r + sinf(m_DeformTime * 1.1f) * 0.02f * r;
+        }
+
+        // ばね・ダンパー（フレーム単位）
+        m_StretchVel += (target - m_Stretch) * 0.20f;
+        m_StretchVel *= 0.78f;
+        m_Stretch += m_StretchVel;
+        m_Stretch = (std::max)(-0.40f, (std::min)(0.40f, m_Stretch));
+    }
+
     // Update lightning effects timers
     auto& effects = m_Owner->GetLightningEffects();
     for (auto it = effects.begin(); it != effects.end(); ) {
@@ -251,12 +311,13 @@ void PlayerVisual::DrawEyes()
 
     XMFLOAT3 pPos = m_Owner->GetPosition();
     XMFLOAT3 pRot = m_Owner->GetRotation();
-    XMFLOAT3 pScale = m_Owner->GetScale();
+    XMFLOAT3 pScale = GetDeformScale();         // 伸縮演出後のスケール（目・クレストも一緒に伸縮）
+    XMFLOAT3 pOff   = GetDeformOffset();
 
     // プレイヤーの本体姿勢マトリクス
     XMMATRIX parentMatrix = XMMatrixScaling(pScale.x, pScale.y, pScale.z) *
                             XMMatrixRotationRollPitchYaw(pRot.x, pRot.y, pRot.z) *
-                            XMMatrixTranslation(pPos.x, pPos.y, pPos.z);
+                            XMMatrixTranslation(pPos.x + pOff.x, pPos.y + pOff.y, pPos.z + pOff.z);
 
     Renderer::SetupCubeDraw();
 
