@@ -27,6 +27,7 @@
 #include "hit_impact_effect.h"
 #include "dust_system.h"
 #include "fire_effect.h"
+#include "ambient_effect.h"
 #include "shadow_system.h"
 #include "event_system.h"
 #include "event_types.h"
@@ -138,6 +139,7 @@ void Manager::Init()
     // 砂埃パーティクルシステムの初期化
     DustSystem::Init();
     FireEffect::Init();
+    AmbientEffect::Init();
 
     // 接地丸影（ドロップシャドウ）システムの初期化
     ShadowSystem::Init();
@@ -197,6 +199,7 @@ void Manager::Uninit()
     // 砂埃パーティクルシステムの終了処理
     DustSystem::Uninit();
     FireEffect::Uninit();
+    AmbientEffect::Uninit();
 
     // 接地丸影（ドロップシャドウ）システムの終了処理
     ShadowSystem::Uninit();
@@ -263,6 +266,7 @@ void Manager::Update()
     // 砂埃パーティクルシステムの更新
     DustSystem::Update();
     FireEffect::Update();
+    AmbientEffect::Update();
 
     // アイテム入手通知HUDのタイマー更新
     ItemNotificationHUD::Update(1.0f / 60.0f);
@@ -425,6 +429,7 @@ void Manager::Draw(float alpha)
     // AuraEffect は Renderer::End のポスト合成後(ブラーの後)に描画する
     DustSystem::Draw();
     FireEffect::Draw();
+    AmbientEffect::Draw();
     ScoreHUD::Draw();
 
     // シーン固有の3D描画（リザルト画面の巨石など）のため、深度ステートを確実に有効状態にセット
@@ -665,6 +670,7 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     ShockwaveSystem::Clear();
     DustSystem::Clear();
     FireEffect::Clear();
+    AmbientEffect::Clear();
     ScorePopupSystem::Clear();
     ItemNotificationHUD::Clear();
 

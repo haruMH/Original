@@ -220,6 +220,7 @@
     <ClCompile Include="Source\Effect\fade_system.cpp" />
     <ClCompile Include="Source\Effect\dust_system.cpp" />
     <ClCompile Include="Source\Effect\fire_effect.cpp" />
+    <ClCompile Include="Source\Effect\ambient_effect.cpp" />
     <ClCompile Include="Source\UI\ui_theme.cpp" />
     <ClCompile Include="Source\UI\title_logo.cpp" />
     <!-- Audio -->
@@ -301,6 +302,7 @@
     <ClInclude Include="Source\Effect\fade_system.h" />
     <ClInclude Include="Source\Effect\dust_system.h" />
     <ClInclude Include="Source\Effect\fire_effect.h" />
+    <ClInclude Include="Source\Effect\ambient_effect.h" />
     <ClInclude Include="Source\UI\ui_theme.h" />
     <ClInclude Include="Source\UI\title_logo.h" />
     <!-- Audio -->

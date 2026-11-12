@@ -1,6 +1,7 @@
 #include "hub_scene.h"
 #include "localization.h"
 #include "fire_effect.h"
+#include "ambient_effect.h"
 #include "ui_theme.h"
 #include "manager.h"
 #include "player.h"
@@ -91,6 +92,8 @@ void HubScene::Init()
             XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT3(4.5f, 4.5f, 4.5f), 0.0f, XMFLOAT3(0.0f, 0.0f, 0.0f));
     // 中央の焚き火に常時炎をともす
     FireEffect::SetEmitter(XMFLOAT3(0.0f, -0.55f, 0.0f));
+    // 拠点の空気感: 昼は舞う埃、夜は蛍
+    AmbientEffect::SetEnabled(true);
     // 焚き火脇の休憩用木箱・丸太
     AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
             XMFLOAT3(2.2f, -1.0f, 0.5f), XMFLOAT3(3.2f, 3.2f, 3.2f), 0.3f, XMFLOAT3(0.24f, 0.25f, 0.24f));
