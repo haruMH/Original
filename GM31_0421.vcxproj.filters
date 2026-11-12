@@ -224,6 +224,9 @@
     <ClCompile Include="Source\Effect\grass_system.cpp">
       <Filter>Source\Effect</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Stage\hill_terrain.cpp">
+      <Filter>Source\Stage</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Effect\dust_system.cpp">
       <Filter>Source\Effect</Filter>
     </ClCompile>
@@ -433,6 +436,9 @@
     </ClInclude>
     <ClInclude Include="Source\Effect\grass_system.h">
       <Filter>Source\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Stage\hill_terrain.h">
+      <Filter>Source\Stage</Filter>
     </ClInclude>
     <ClInclude Include="Source\Effect\dust_system.h">
       <Filter>Source\Effect</Filter>

@@ -3,6 +3,7 @@
 #include "fire_effect.h"
 #include "ambient_effect.h"
 #include "grass_system.h"
+#include "hill_terrain.h"
 #include "ui_theme.h"
 #include "manager.h"
 #include "player.h"
@@ -97,6 +98,8 @@ void HubScene::Init()
     AmbientEffect::SetEnabled(true);
     // キャンプの外側に風で揺れる草原を広げる
     GrassSystem::SetEnabled(true);
+    // 草原の向こうに丘と木の遠景を広げる
+    HillTerrain::SetEnabled(true);
     // 焚き火脇の休憩用木箱・丸太
     AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
             XMFLOAT3(2.2f, -1.0f, 0.5f), XMFLOAT3(3.2f, 3.2f, 3.2f), 0.3f, XMFLOAT3(0.24f, 0.25f, 0.24f));

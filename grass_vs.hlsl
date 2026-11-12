@@ -49,7 +49,7 @@ VS_OUT main(uint vid : SV_VertexID, uint iid : SV_InstanceID)
     }
 
     float rnd    = hash21(id2 + 3.7);
-    float bladeH = P0.w * (0.6 + 0.8 * rnd) * lerp(0.55, 1.0, fade);
+    float bladeH = P0.w * (0.45 + 1.05 * rnd * rnd + 0.25 * hash21(id2 + 21.1)) * lerp(0.55, 1.0, fade);
     float ang    = rnd * 6.2831853;
     float2 face  = float2(cos(ang), sin(ang));       // 刃の幅方向
 
@@ -64,13 +64,24 @@ VS_OUT main(uint vid : SV_VertexID, uint iid : SV_InstanceID)
     p.xz += face * side * width;
     p.xz += wd * bend * bladeH;
     p.xz += float2(-wd.y, wd.x) * sin(phase * 1.7 + rnd * 6.0) * 0.15 * P0.y * h * h * bladeH;
+    // 刃ごとの固定の傾き（まっすぐ揃って立たず、あちこちへ倒れる）
+    float lAng = hash21(id2 + 5.3) * 6.2831853;
+    float lean = 0.10 + 0.55 * hash21(id2 + 8.8);
+    p.xz += float2(cos(lAng), sin(lAng)) * lean * h * h * bladeH;
     p.y  += -1.0 + h * bladeH * (1.0 - 0.35 * saturate(bend));   // 地面は y=-1
 
     o.worldPos = p;
     o.pos = mul(mul(float4(p, 1.0), View), Proj);
 
     // 根元は暗く、先端は明るい黄緑。風で倒れた所は明るく見える
-    float3 baseC = float3(0.10, 0.30, 0.07), tipC = float3(0.58, 0.82, 0.26);
-    o.col = lerp(baseC, tipC, h) * (0.80 + 0.40 * rnd) * (0.90 + 0.25 * saturate(gust));
+    // 広い範囲の色むら（みずみずしい緑 ↔ 枯れかけの黄緑）
+    float2 pq = root.xz * 0.11;
+    float2 pf = frac(pq); pf = pf * pf * (3.0 - 2.0 * pf);
+    float2 pi = floor(pq);
+    float patch = lerp(lerp(hash21(pi), hash21(pi + float2(1, 0)), pf.x),
+                       lerp(hash21(pi + float2(0, 1)), hash21(pi + float2(1, 1)), pf.x), pf.y);
+    float3 baseC = lerp(float3(0.04, 0.16, 0.04), float3(0.12, 0.17, 0.04), patch);   // 根元は暗く
+    float3 tipC  = lerp(float3(0.42, 0.70, 0.20), float3(0.74, 0.74, 0.30), patch);
+    o.col = lerp(baseC, tipC, smoothstep(0.0, 0.85, h)) * (0.78 + 0.45 * rnd) * (0.90 + 0.25 * saturate(gust));
     return o;
 }

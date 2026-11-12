@@ -29,6 +29,7 @@
 #include "fire_effect.h"
 #include "ambient_effect.h"
 #include "grass_system.h"
+#include "hill_terrain.h"
 #include "shadow_system.h"
 #include "event_system.h"
 #include "event_types.h"
@@ -142,6 +143,7 @@ void Manager::Init()
     FireEffect::Init();
     AmbientEffect::Init();
     GrassSystem::Init();
+    HillTerrain::Init();
 
     // 接地丸影（ドロップシャドウ）システムの初期化
     ShadowSystem::Init();
@@ -203,6 +205,7 @@ void Manager::Uninit()
     FireEffect::Uninit();
     AmbientEffect::Uninit();
     GrassSystem::Uninit();
+    HillTerrain::Uninit();
 
     // 接地丸影（ドロップシャドウ）システムの終了処理
     ShadowSystem::Uninit();
@@ -432,6 +435,7 @@ void Manager::Draw(float alpha)
     ShockwaveSystem::Draw();
     // AuraEffect は Renderer::End のポスト合成後(ブラーの後)に描画する
     DustSystem::Draw();
+    HillTerrain::Draw();   // 遠景の丘と木（不透明）
     GrassSystem::Draw();   // 不透明物の後・半透明エフェクトの前
     FireEffect::Draw();
     AmbientEffect::Draw();
@@ -677,6 +681,7 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     FireEffect::Clear();
     AmbientEffect::Clear();
     GrassSystem::Clear();
+    HillTerrain::Clear();
     ScorePopupSystem::Clear();
     ItemNotificationHUD::Clear();
 

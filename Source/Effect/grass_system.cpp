@@ -13,10 +13,10 @@ namespace {
     };
 
     // 調整用の定数
-    const int   GRASS_SIDE   = 300;      // 1辺の本数（総数 = SIDE^2）
-    const float GRASS_RANGE  = 100.0f;   // 地面の範囲（±50m）
-    const float GRASS_HEIGHT = 0.55f;
-    const float GRASS_WIDTH  = 0.045f;
+    const int   GRASS_SIDE   = 330;      // 1辺の本数（総数 = SIDE^2）
+    const float GRASS_RANGE  = 140.0f;   // 草を生やす範囲（±70m。丘の手前の平地まで）
+    const float GRASS_HEIGHT = 0.62f;
+    const float GRASS_WIDTH  = 0.030f;
     const float WIND_POWER   = 0.55f;
     const float WIND_SPEED   = 1.5f;
     const float WIND_DIR     = 0.6f;
