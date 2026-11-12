@@ -33,6 +33,11 @@ cbuffer LightBuffer : register(b4) {
     float2 FogDummy;
 }
 
+cbuffer PointLightBuffer : register(b7) {
+    float4 PLPosRadius[4];   // xyz: 位置, w: 届く半径
+    float4 PLColor[4];       // rgb: 色, w: 強さ(0で無効)
+}
+
 struct PS_INPUT {
     float4 Position      : SV_POSITION;
     float3 Normal        : NORMAL;
@@ -140,6 +145,19 @@ float4 main(PS_INPUT input) : SV_TARGET
         // 影が落ちている部分にもアンビエント照り返しを反映
         float3 shadowFinal = lerp(shadowTint * 0.32f, float3(1.0f, 1.0f, 1.0f), shadow);
         float4 lighting = saturate(diffC * float4(shadowFinal, 1.0f) + ambC + float4(sssColor * shadow, 0.0f));
+
+        // ── 点光源（焚き火など）。saturate の後に足すのでHDRとしてブルームにも乗る ──
+        [unroll]
+        for (int pli = 0; pli < 4; ++pli)
+        {
+            if (PLColor[pli].w <= 0.001f) continue;
+            float3 toP = PLPosRadius[pli].xyz - input.WorldPos;
+            float pd = length(toP);
+            float att = saturate(1.0f - pd / PLPosRadius[pli].w);
+            att *= att;
+            float ndlP = saturate(dot(N, toP / max(pd, 0.001f))) * 0.75f + 0.25f;
+            lighting.rgb += PLColor[pli].rgb * PLColor[pli].w * att * ndlP;
+        }
 
         // ── 4. PBR調 GGX & フレネルハイライト & 床面光沢 ──
         float NdotV = saturate(dot(N, viewDir));

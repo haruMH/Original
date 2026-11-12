@@ -72,6 +72,14 @@ float Fbm2(float2 p)
     return v + 0.25f * ValueNoise(p);
 }
 
+// 遠景の山の稜線の高さ(方向のy成分)。円周上の座標でノイズを取るので継ぎ目が出ない
+float Ridge(float2 dirXZ, float freq, float seed, float baseH, float amp)
+{
+    float2 q = normalize(dirXZ) * freq + seed;
+    float n = 0.6f * ValueNoise(q) + 0.4f * ValueNoise(q * 2.3f + 7.7f);
+    return baseH + amp * n;
+}
+
 float4 main(PS_IN input) : SV_TARGET
 {
     float3 d = normalize(input.WorldPos - CamPos.xyz);
@@ -171,6 +179,22 @@ float4 main(PS_IN input) : SV_TARGET
     }
 
     sky = lerp(sky, cloudCol, cloudDensity * 0.92f);
+
+    // ---- 遠景の山（3層。遠いほど高く、空の色にかすむ＝大気遠近法） ----
+    if (h < 0.30f)
+    {
+        float3 nearMtn = HorizonColor.rgb * float3(0.50f, 0.64f, 0.48f);   // 時間帯の明るさに追従する緑がかった色
+        float3 warm = SunColor.rgb * pow(sd, 3.0f) * 0.18f * sunVis;       // 太陽側は暖色に染まる
+        float aa = 0.0035f;
+        float2 dxz = d.xz;
+        // 奥(高くてかすむ) → 手前(低くて濃い) の順に重ねる
+        float ridgeF = Ridge(dxz, 1.3f, 3.1f, 0.060f, 0.085f);
+        float ridgeM = Ridge(dxz, 2.0f, 9.4f, 0.040f, 0.060f);
+        float ridgeN = Ridge(dxz, 3.4f, 17.2f, 0.022f, 0.040f);
+        sky = lerp(sky, lerp(nearMtn, HorizonColor.rgb, 0.80f) + warm, smoothstep(ridgeF + aa, ridgeF - aa, h));
+        sky = lerp(sky, lerp(nearMtn, HorizonColor.rgb, 0.60f) + warm, smoothstep(ridgeM + aa, ridgeM - aa, h));
+        sky = lerp(sky, lerp(nearMtn, HorizonColor.rgb, 0.38f) + warm, smoothstep(ridgeN + aa, ridgeN - aa, h));
+    }
 
     // バンディング防止のディザリング
     sky += (Hash21(input.Position.xy) - 0.5f) / 255.0f;

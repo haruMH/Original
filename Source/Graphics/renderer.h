@@ -35,6 +35,13 @@ struct LIGHT {
     float    Dummy2[2];
 };
 
+// 点光源（焚き火・松明など最大4灯。ピクセルシェーダー b7）
+static const int MAX_POINT_LIGHTS = 4;
+struct POINTLIGHT {
+    XMFLOAT4 PosRadius[MAX_POINT_LIGHTS];   // xyz: 位置, w: 届く半径
+    XMFLOAT4 Color[MAX_POINT_LIGHTS];       // rgb: 色, w: 強さ(0で無効)
+};
+
 struct POSTEFFECT {
     int      Mode;
     float    Threshold;
@@ -106,6 +113,7 @@ private:
     static Microsoft::WRL::ComPtr<ID3D11Buffer>             m_ProjectionBuffer;
     static Microsoft::WRL::ComPtr<ID3D11Buffer>             m_MaterialBuffer;
     static Microsoft::WRL::ComPtr<ID3D11Buffer>             m_LightBuffer;
+    static Microsoft::WRL::ComPtr<ID3D11Buffer>             m_PointLightBuffer;
     static Microsoft::WRL::ComPtr<ID3D11Buffer>             m_ShadowVPBuffer;
     static LIGHT                                            m_Light;
     static bool                                             m_IsShadowMode;
@@ -197,6 +205,7 @@ public:
     static void SetShadowVPMatrix(XMMATRIX m);
     static void SetMaterial(MATERIAL m);
     static void SetLight(LIGHT l);
+    static void SetPointLight(int index, const XMFLOAT3& pos, float radius, const XMFLOAT3& color, float intensity); // intensity 0 で消灯
     static void SetCameraPosition(XMFLOAT3 p);
     static void SetShadowMode(bool e);
     static bool IsOutlineMode() { return m_IsOutlineMode; }

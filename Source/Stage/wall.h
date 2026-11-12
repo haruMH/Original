@@ -25,5 +25,6 @@ public:
     DirectX::XMFLOAT3 GetEmissive() const override { return m_Emissive; }
 
     // 四方（北・南・東・西）の外周境界壁を一括生成するヘルパー
-    static void CreateBoundaryWalls(float roomHalfSize, float wallHeight, float wallCenterY, float thickness);
+    // visible=false で見えない当たり判定だけの壁にできる（拠点: 遠景を見せるため）
+    static void CreateBoundaryWalls(float roomHalfSize, float wallHeight, float wallCenterY, float thickness, bool visible = true);
 };

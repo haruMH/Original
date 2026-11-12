@@ -2,6 +2,7 @@
 #include "localization.h"
 #include "fire_effect.h"
 #include "ambient_effect.h"
+#include "grass_system.h"
 #include "ui_theme.h"
 #include "manager.h"
 #include "player.h"
@@ -67,7 +68,7 @@ void HubScene::Init()
     }
     
     // 3. 拠点の外周壁 (44m x 44m) - プレイヤーの落下防止境界（広大な開放感）
-    Wall::CreateBoundaryWalls(22.0f, 4.0f, 1.5f, 1.0f);
+    Wall::CreateBoundaryWalls(22.0f, 4.0f, 1.5f, 1.0f, false);   // 当たり判定のみ（見た目は柵と遠景の山）
 
     // プロップ配置ヘルパー（collSizeが(0,0,0)の場合は当たり判定なし）
     auto AddProp = [](const std::string& obj, const std::string& mtl, const XMFLOAT3& pos, const XMFLOAT3& scale, float rotY = 0.0f, const XMFLOAT3& collSize = XMFLOAT3(0.0f, 0.0f, 0.0f)) -> PropModel* {
@@ -94,6 +95,8 @@ void HubScene::Init()
     FireEffect::SetEmitter(XMFLOAT3(0.0f, -0.55f, 0.0f));
     // 拠点の空気感: 昼は舞う埃、夜は蛍
     AmbientEffect::SetEnabled(true);
+    // キャンプの外側に風で揺れる草原を広げる
+    GrassSystem::SetEnabled(true);
     // 焚き火脇の休憩用木箱・丸太
     AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
             XMFLOAT3(2.2f, -1.0f, 0.5f), XMFLOAT3(3.2f, 3.2f, 3.2f), 0.3f, XMFLOAT3(0.24f, 0.25f, 0.24f));
@@ -152,6 +155,17 @@ void HubScene::Init()
     gateTop->SetPosition(XMFLOAT3(GATE_POS.x, 2.3f, GATE_POS.z));
     gateTop->SetScale(XMFLOAT3(3.8f, 0.6f, 0.8f));
 
+    // --- 松明（夜は橙色の点光源になる。ゲート両脇と工房の入口） ---
+    // 焚き火と同じモデル（石の火床）を小さくした「かがり火」にして、画風を揃える
+    auto AddTorch = [&](float x, float z) {
+        AddProp("Assets/model/campfire/campfire-pit.obj", "Assets/model/campfire/campfire-pit.mtl",
+                XMFLOAT3(x, -1.0f, z), XMFLOAT3(2.4f, 2.4f, 2.4f), 0.0f, XMFLOAT3(0.12f, 0.15f, 0.12f));
+        FireEffect::AddTorch(XMFLOAT3(x, -0.85f, z));
+    };
+    AddTorch(GATE_POS.x - 2.6f, GATE_POS.z - 1.0f);
+    AddTorch(GATE_POS.x + 2.6f, GATE_POS.z - 1.0f);
+    AddTorch(FORGE_POS.x + 3.0f, FORGE_POS.z - 2.5f);
+
     // --- (E) 北中央：修練エリア（試し振りサンドバッグ） ---
     Enemy* dummy = Manager::AddGameObject<Enemy>();
     dummy->SetPosition(XMFLOAT3(0.0f, -0.5f, 13.0f));
@@ -170,6 +184,18 @@ void HubScene::Init()
             XMFLOAT3(9.5f, -1.0f, -6.5f), XMFLOAT3(4.2f, 4.2f, 4.2f), 0.0f, XMFLOAT3(0.22f, 0.35f, 0.22f));
     AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
             XMFLOAT3(11.0f, -1.0f, -5.2f), XMFLOAT3(3.5f, 3.5f, 3.5f), 0.4f, XMFLOAT3(0.24f, 0.25f, 0.24f));
+
+    // --- 外周の低い柵（壁の代わりに視界を遮らず、遠景の山まで見通せるようにする） ---
+    for (float p = -20.0f; p <= 20.0f; p += 8.0f) {
+        AddProp("Assets/model/fence/fence.obj", "Assets/model/fence/fence.mtl",
+                XMFLOAT3(p, -1.0f, 21.2f), XMFLOAT3(6.0f, 6.0f, 6.0f), 0.0f);
+        AddProp("Assets/model/fence/fence.obj", "Assets/model/fence/fence.mtl",
+                XMFLOAT3(p, -1.0f, -21.2f), XMFLOAT3(6.0f, 6.0f, 6.0f), 0.0f);
+        AddProp("Assets/model/fence/fence.obj", "Assets/model/fence/fence.mtl",
+                XMFLOAT3(21.2f, -1.0f, p), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2);
+        AddProp("Assets/model/fence/fence.obj", "Assets/model/fence/fence.mtl",
+                XMFLOAT3(-21.2f, -1.0f, p), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2);
+    }
 
     // --- (G) キャンプ外周の防護柵（実寸幅3.0m, 厚さ0.48mの薄板コライダー） ---
     // 南側（東西に伸びる柵：回転なし）

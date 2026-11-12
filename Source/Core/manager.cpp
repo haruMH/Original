@@ -28,6 +28,7 @@
 #include "dust_system.h"
 #include "fire_effect.h"
 #include "ambient_effect.h"
+#include "grass_system.h"
 #include "shadow_system.h"
 #include "event_system.h"
 #include "event_types.h"
@@ -140,6 +141,7 @@ void Manager::Init()
     DustSystem::Init();
     FireEffect::Init();
     AmbientEffect::Init();
+    GrassSystem::Init();
 
     // 接地丸影（ドロップシャドウ）システムの初期化
     ShadowSystem::Init();
@@ -200,6 +202,7 @@ void Manager::Uninit()
     DustSystem::Uninit();
     FireEffect::Uninit();
     AmbientEffect::Uninit();
+    GrassSystem::Uninit();
 
     // 接地丸影（ドロップシャドウ）システムの終了処理
     ShadowSystem::Uninit();
@@ -267,6 +270,7 @@ void Manager::Update()
     DustSystem::Update();
     FireEffect::Update();
     AmbientEffect::Update();
+    GrassSystem::Update();
 
     // アイテム入手通知HUDのタイマー更新
     ItemNotificationHUD::Update(1.0f / 60.0f);
@@ -428,6 +432,7 @@ void Manager::Draw(float alpha)
     ShockwaveSystem::Draw();
     // AuraEffect は Renderer::End のポスト合成後(ブラーの後)に描画する
     DustSystem::Draw();
+    GrassSystem::Draw();   // 不透明物の後・半透明エフェクトの前
     FireEffect::Draw();
     AmbientEffect::Draw();
     ScoreHUD::Draw();
@@ -671,6 +676,7 @@ void Manager::ExecuteChangeScene(Scene nextScene)
     DustSystem::Clear();
     FireEffect::Clear();
     AmbientEffect::Clear();
+    GrassSystem::Clear();
     ScorePopupSystem::Clear();
     ItemNotificationHUD::Clear();
 

@@ -12,6 +12,7 @@ public:
     static void Uninit();
     static void Clear();                              // シーン遷移時: 消火して粒子を全消去
     static void SetEmitter(const XMFLOAT3& basePos);  // 点火（炎の根元のワールド座標）
+    static void AddTorch(const XMFLOAT3& basePos);    // 松明（炎の根元）。最大3本。点光源も付く
     static void Update();
     static void Draw();
 };

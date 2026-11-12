@@ -41,6 +41,7 @@ Microsoft::WRL::ComPtr<ID3D11Buffer>             Renderer::m_ViewBuffer;
 Microsoft::WRL::ComPtr<ID3D11Buffer>             Renderer::m_ProjectionBuffer;
 Microsoft::WRL::ComPtr<ID3D11Buffer>             Renderer::m_MaterialBuffer;
 Microsoft::WRL::ComPtr<ID3D11Buffer>             Renderer::m_LightBuffer;
+Microsoft::WRL::ComPtr<ID3D11Buffer>             Renderer::m_PointLightBuffer;
 Microsoft::WRL::ComPtr<ID3D11Buffer>             Renderer::m_ShadowVPBuffer;
 XMMATRIX                                         Renderer::m_ViewMatrix       = XMMatrixIdentity();
 XMMATRIX                                         Renderer::m_ProjectionMatrix = XMMatrixIdentity();
@@ -364,6 +365,14 @@ void Renderer::Init() {
     m_DeviceContext->VSSetConstantBuffers(4, 1, m_LightBuffer.GetAddressOf());
     m_DeviceContext->PSSetConstantBuffers(4, 1, m_LightBuffer.GetAddressOf());
 
+    bd.ByteWidth = sizeof(POINTLIGHT);
+    {
+        POINTLIGHT off = {};   // 初期は消灯
+        D3D11_SUBRESOURCE_DATA plInit = { &off, 0, 0 };
+        m_Device->CreateBuffer(&bd, &plInit, m_PointLightBuffer.ReleaseAndGetAddressOf());
+        m_DeviceContext->PSSetConstantBuffers(7, 1, m_PointLightBuffer.GetAddressOf());
+    }
+
     bd.ByteWidth = sizeof(POSTEFFECT);
     m_Device->CreateBuffer(&bd, NULL, m_PostBuffer.ReleaseAndGetAddressOf());
 
@@ -579,6 +588,7 @@ void Renderer::Uninit() {
     m_ProjectionBuffer.Reset();
     m_MaterialBuffer.Reset();
     m_LightBuffer.Reset();
+    m_PointLightBuffer.Reset();
     m_SamplerState.Reset();
     m_DepthStateEnable.Reset();
     m_DepthStateDisable.Reset();
@@ -842,6 +852,14 @@ void Renderer::SetMaterial(MATERIAL m) {
         m_DeviceContext->UpdateSubresource(m_MaterialBuffer.Get(), 0, NULL, &m, 0, 0);
     }
 }
+void Renderer::SetPointLight(int index, const XMFLOAT3& pos, float radius, const XMFLOAT3& color, float intensity) {
+    if (!m_DeviceContext || !m_PointLightBuffer || index < 0 || index >= MAX_POINT_LIGHTS) return;
+    static POINTLIGHT s_Lights = {};   // 全灯分を保持し、変更のたびに丸ごと転送する
+    s_Lights.PosRadius[index] = XMFLOAT4(pos.x, pos.y, pos.z, radius);
+    s_Lights.Color[index]     = XMFLOAT4(color.x, color.y, color.z, intensity);
+    m_DeviceContext->UpdateSubresource(m_PointLightBuffer.Get(), 0, NULL, &s_Lights, 0, 0);
+}
+
 void Renderer::SetLight(LIGHT l) {
     m_Light = l;
     if (!m_IsCacheInitialized || memcmp(&m_LightCache, &l, sizeof(LIGHT)) != 0) {

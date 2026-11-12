@@ -1,5 +1,6 @@
 ﻿#include "fire_effect.h"
 #include "renderer.h"
+#include "world_look.h"
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -15,15 +16,19 @@ namespace {
         int      Life;
         int      MaxLife;
         int      Kind;       // 0: 炎  1: 火の粉
+        XMFLOAT3 Base;       // 発生源(横揺れの中心)
         bool     Active;
     };
 
-    const int MAX_FIRE = 140;
+    const int MAX_FIRE = 260;
+    const int MAX_TORCH = 3;   // 松明の最大数（点光源は 1 + 松明数）
     FireParticle g_P[MAX_FIRE];
 
     bool     g_Lit = false;
     XMFLOAT3 g_Base = XMFLOAT3(0, 0, 0);
     int      g_Time = 0;
+    XMFLOAT3 g_Torch[MAX_TORCH];
+    int      g_TorchCount = 0;
 
     ID3D11Buffer*             g_QuadVB = nullptr;
     ID3D11VertexShader*       g_VS = nullptr;
@@ -70,7 +75,7 @@ namespace {
         return srv;
     }
 
-    void Spawn(int kind)
+    void Spawn(int kind, const XMFLOAT3& base, float scale)
     {
         for (int i = 0; i < MAX_FIRE; ++i) {
             FireParticle& p = g_P[i];
@@ -82,14 +87,16 @@ namespace {
             p.RotSpeed = (Rand01() - 0.5f) * 0.06f;
             float a = Rand01() * XM_2PI;
             float r = Rand01() * 0.18f;
-            p.Pos = XMFLOAT3(g_Base.x + cosf(a) * r, g_Base.y, g_Base.z + sinf(a) * r);
+            p.Base = base;
+            r *= scale;
+            p.Pos = XMFLOAT3(base.x + cosf(a) * r, base.y, base.z + sinf(a) * r);
             if (kind == 0) {
                 p.Vel = XMFLOAT3((Rand01() - 0.5f) * 0.004f, 0.014f + Rand01() * 0.010f, (Rand01() - 0.5f) * 0.004f);
-                p.Size = 0.55f + Rand01() * 0.30f;
+                p.Size = (0.55f + Rand01() * 0.30f) * scale;
                 p.MaxLife = 26 + rand() % 14;
             } else {
                 p.Vel = XMFLOAT3((Rand01() - 0.5f) * 0.012f, 0.018f + Rand01() * 0.020f, (Rand01() - 0.5f) * 0.012f);
-                p.Size = 0.07f + Rand01() * 0.05f;
+                p.Size = (0.07f + Rand01() * 0.05f) * (0.6f + 0.4f * scale);
                 p.MaxLife = 50 + rand() % 40;
             }
             p.Life = p.MaxLife;
@@ -159,6 +166,9 @@ void FireEffect::Clear()
 {
     g_Lit = false;
     for (int i = 0; i < MAX_FIRE; ++i) g_P[i].Active = false;
+    g_TorchCount = 0;
+    for (int i = 0; i < 1 + MAX_TORCH; ++i)
+        Renderer::SetPointLight(i, XMFLOAT3(0, 0, 0), 1.0f, XMFLOAT3(0, 0, 0), 0.0f);   // 全消灯
 }
 
 void FireEffect::SetEmitter(const XMFLOAT3& basePos)
@@ -167,15 +177,43 @@ void FireEffect::SetEmitter(const XMFLOAT3& basePos)
     g_Lit = true;
 }
 
+void FireEffect::AddTorch(const XMFLOAT3& basePos)
+{
+    if (g_TorchCount >= MAX_TORCH) return;
+    g_Torch[g_TorchCount++] = basePos;
+}
+
 void FireEffect::Update()
 {
     g_Time++;
 
     if (g_Lit) {
         // 炎の粒子は毎フレーム2個、火の粉は時々
-        Spawn(0);
-        Spawn(0);
-        if (rand() % 6 == 0) Spawn(1);
+        Spawn(0, g_Base, 1.0f);
+        Spawn(0, g_Base, 1.0f);
+        if (rand() % 6 == 0) Spawn(1, g_Base, 1.0f);
+
+        // 周囲を照らす点光源。夜ほど強く、炎に合わせて揺らぐ
+        float sun[3] = { 0, 1, 0 };
+        WorldLook::GetSunDirection(sun);
+        float k = std::clamp((sun[1] + 0.05f) / 0.20f, 0.0f, 1.0f);
+        float night = 1.0f - k * k * (3.0f - 2.0f * k);
+        float fl = 0.88f + 0.12f * sinf(g_Time * 0.31f) * sinf(g_Time * 0.17f + 1.3f)
+                 + 0.05f * sinf(g_Time * 0.83f);
+        float intensity = (0.30f + 1.10f * night) * fl;
+        Renderer::SetPointLight(0, XMFLOAT3(g_Base.x, g_Base.y + 1.0f, g_Base.z), 11.0f,
+                                XMFLOAT3(1.0f, 0.52f, 0.18f), intensity);
+
+        // 松明: 小さな炎と、夜ほど強い橙色の点光源
+        for (int i = 0; i < g_TorchCount; ++i) {
+            Spawn(0, g_Torch[i], 0.42f);
+            if (rand() % 10 == 0) Spawn(1, g_Torch[i], 0.5f);
+            float ph = (float)i * 2.1f;
+            float tfl = 0.88f + 0.12f * sinf(g_Time * 0.37f + ph) * sinf(g_Time * 0.19f + ph * 1.7f)
+                      + 0.05f * sinf(g_Time * 0.91f + ph);
+            Renderer::SetPointLight(1 + i, XMFLOAT3(g_Torch[i].x, g_Torch[i].y + 0.5f, g_Torch[i].z), 7.0f,
+                                    XMFLOAT3(1.0f, 0.55f, 0.20f), (0.20f + 0.90f * night) * tfl);
+        }
     }
 
     for (int i = 0; i < MAX_FIRE; ++i) {
@@ -186,8 +224,8 @@ void FireEffect::Update()
         float t = 1.0f - (float)p.Life / (float)p.MaxLife;
         // 横揺れ（中心へ寄せつつ揺らす）
         float sway = sinf(g_Time * 0.12f + p.Phase) * 0.0018f;
-        p.Vel.x += sway - (p.Pos.x - g_Base.x) * 0.004f;
-        p.Vel.z += sway * 0.7f - (p.Pos.z - g_Base.z) * 0.004f;
+        p.Vel.x += sway - (p.Pos.x - p.Base.x) * 0.004f;
+        p.Vel.z += sway * 0.7f - (p.Pos.z - p.Base.z) * 0.004f;
         p.Vel.x *= 0.96f;
         p.Vel.z *= 0.96f;
         if (p.Kind == 0) p.Vel.y *= 0.99f;
@@ -246,6 +284,12 @@ void FireEffect::Draw()
         float fl = 0.85f + 0.15f * sinf(g_Time * 0.31f) * sinf(g_Time * 0.17f + 1.3f);
         drawSprite(XMFLOAT3(g_Base.x, g_Base.y + 0.55f, g_Base.z), 3.6f * fl, 3.0f * fl, 0.0f,
                    XMFLOAT4(1.0f, 0.45f, 0.12f, 0.12f * fl));
+    }
+
+    for (int i = 0; i < g_TorchCount; ++i) {
+        float fl = 0.85f + 0.15f * sinf(g_Time * 0.37f + i * 2.1f);
+        drawSprite(XMFLOAT3(g_Torch[i].x, g_Torch[i].y + 0.25f, g_Torch[i].z), 1.5f * fl, 1.3f * fl, 0.0f,
+                   XMFLOAT4(1.0f, 0.45f, 0.12f, 0.10f * fl));
     }
 
     for (int i = 0; i < MAX_FIRE; ++i) {

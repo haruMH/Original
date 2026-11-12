@@ -56,7 +56,7 @@ void Wall::SetTexture(std::string_view textureName)
 // =================================================================
 // 四方（北・南・東・西）の外周境界壁を一括生成
 // =================================================================
-void Wall::CreateBoundaryWalls(float roomHalfSize, float wallHeight, float wallCenterY, float thickness)
+void Wall::CreateBoundaryWalls(float roomHalfSize, float wallHeight, float wallCenterY, float thickness, bool visible)
 {
     const float halfThick = thickness * 0.5f;
     const float spanLength = roomHalfSize * 2.0f + thickness * 2.0f;
@@ -80,4 +80,11 @@ void Wall::CreateBoundaryWalls(float roomHalfSize, float wallHeight, float wallC
     Wall* wallW = Manager::AddGameObject<Wall>();
     wallW->SetPosition(XMFLOAT3(-(roomHalfSize + halfThick), wallCenterY, 0.0f));
     wallW->SetScale(XMFLOAT3(thickness, wallHeight, spanLength));
+
+    if (!visible) {
+        wallN->SetVisible(false);
+        wallS->SetVisible(false);
+        wallE->SetVisible(false);
+        wallW->SetVisible(false);
+    }
 }
