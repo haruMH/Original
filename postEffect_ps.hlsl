@@ -18,6 +18,7 @@ cbuffer PostEffectBuffer : register(b0) {
 Texture2D    g_Texture1 : register(t0);
 Texture2D    g_Texture2 : register(t1);
 Texture2D<float> g_Depth : register(t2);
+Texture2D<float> g_AoTex : register(t3);   // 半解像度SSAO結果
 SamplerState g_Sampler  : register(s0);
 
 // 深度バッファ値 → ビュー空間の線形距離
@@ -36,7 +37,11 @@ float ComputeAO(float2 uv)
 
     // 画素ごとに回転させて縞を散らす
     float2 px = uv * float2(w, h);
-    float rot = frac(52.9829189f * frac(dot(px, float2(0.06711056f, 0.00583715f)))) * 6.2831853f;
+    // 4x4 の規則的な回転パターン（合成側の4x4ぼかしで打ち消し合い、動いてもざらつかない）
+    // px はフル解像度座標だが、AOは半解像度で描くので半解像度の画素番号で回す（奇数座標だけにならないように）
+    uint2 q = uint2(px * 0.5f) & 3u;
+    const float bayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+    float rot = (bayer[q.y * 4u + q.x] + 0.5f) / 16.0f * 6.2831853f;
     float2 aspect = float2((float)h / (float)w, 1.0f);
     float rUV = AoParams.w / zc * 0.87f;           // 半径のスクリーン上の大きさ(縦UV基準)
     rUV = min(rUV, 0.12f);
@@ -122,6 +127,12 @@ float4 main(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD) : SV_TARG
             color += g_Texture1.Sample(g_Sampler, TexCoord - offset * i) * weight[i];
         }
     }
+    else if (Mode == 4)
+    {
+        // 5. SSAO パス（半解像度。結果は R チャンネルのみ）
+        float ao = ComputeAO(TexCoord);
+        color = float4(ao, ao, ao, 1.0f);
+    }
     else if (Mode == 3)
     {
         // 4. 最終合成パス (色収差 + ラジアルブラー + CASシャープネス + ブルーム + ACES + ヴィネット)
@@ -155,7 +166,13 @@ float4 main(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD) : SV_TARG
         // (d) SSAO（隙間・接地部を暗く。空は対象外）
         if (AoParams.x > 0.001f)
         {
-            finalBase *= ComputeAO(TexCoord);
+            // 半解像度AOを4タップ(実質4x4)でぼかしながら拡大。回転ノイズを均して画面固定の模様を消す
+            float2 aoOff = TexelSize * 2.0f;
+            float aoSum = g_AoTex.Sample(g_Sampler, TexCoord + float2( aoOff.x,  aoOff.y))
+                        + g_AoTex.Sample(g_Sampler, TexCoord + float2(-aoOff.x,  aoOff.y))
+                        + g_AoTex.Sample(g_Sampler, TexCoord + float2( aoOff.x, -aoOff.y))
+                        + g_AoTex.Sample(g_Sampler, TexCoord + float2(-aoOff.x, -aoOff.y));
+            finalBase *= aoSum * 0.25f;
         }
 
         float4 bloomColor = g_Texture2.Sample(g_Sampler, TexCoord);

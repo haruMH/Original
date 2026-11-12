@@ -68,6 +68,9 @@ Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   Renderer::m_SceneRTV;
 Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Renderer::m_SceneSRV;
 Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   Renderer::m_LumRTV;
 Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Renderer::m_LumSRV;
+Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   Renderer::m_AoRTV;
+Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Renderer::m_AoSRV;
+D3D11_VIEWPORT                                   Renderer::m_AoViewport = {};
 Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   Renderer::m_BlurRTV;
 Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Renderer::m_BlurSRV;
 
@@ -179,6 +182,23 @@ void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
         m_Device->CreateShaderResourceView(tempTex.Get(), NULL, m_BlurSRV.ReleaseAndGetAddressOf());
     }
 
+    // SSAO用バッファ (1/2サイズ・単チャンネル)
+    {
+        D3D11_TEXTURE2D_DESC aoDesc = rtDesc;
+        aoDesc.Width  = (std::max)(1u, (UINT)width  / 2);
+        aoDesc.Height = (std::max)(1u, (UINT)height / 2);
+        aoDesc.Format = DXGI_FORMAT_R8_UNORM;
+        m_AoViewport = {};
+        m_AoViewport.Width    = (float)aoDesc.Width;
+        m_AoViewport.Height   = (float)aoDesc.Height;
+        m_AoViewport.MaxDepth = 1.0f;
+        m_Device->CreateTexture2D(&aoDesc, NULL, tempTex.ReleaseAndGetAddressOf());
+        if (tempTex) {
+            m_Device->CreateRenderTargetView(tempTex.Get(), NULL, m_AoRTV.ReleaseAndGetAddressOf());
+            m_Device->CreateShaderResourceView(tempTex.Get(), NULL, m_AoSRV.ReleaseAndGetAddressOf());
+        }
+    }
+
     // 4. 屈折エフェクト用背景コピーテクスチャ
     D3D11_TEXTURE2D_DESC bgDesc = {};
     bgDesc.Width = width;
@@ -205,6 +225,8 @@ void Renderer::ReleaseScreenSizeResources() {
     m_LumSRV.Reset();
     m_BlurRTV.Reset();
     m_BlurSRV.Reset();
+    m_AoRTV.Reset();
+    m_AoSRV.Reset();
     m_BackgroundCopyTexture.Reset();
     m_BackgroundCopySRV.Reset();
 }
@@ -718,16 +740,32 @@ void Renderer::End() {
         m_DeviceContext->Draw(3, 0);
     }
 
-    // 4. 合成 (SceneRTV + LumRTV → バックバッファ)
+    // 3.5 SSAO (深度 → AoRTV, 半解像度。品質Lowでは無効)
+    const bool enableAo = (m_DepthSRV && m_AoRTV && gs.postProcess != PostProcessQuality::Post_Low);
+    if (enableAo) {
+        m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
+        m_DeviceContext->RSSetViewports(1, &m_AoViewport);
+        m_DeviceContext->OMSetRenderTargets(1, m_AoRTV.GetAddressOf(), NULL);
+        m_DeviceContext->PSSetShaderResources(2, 1, m_DepthSRV.GetAddressOf());
+        pe.Mode = 4;
+        pe.AoParams = XMFLOAT4(0.85f, Constants::Camera::NEAR_CLIP, Constants::Camera::FAR_CLIP, 0.9f);
+        m_DeviceContext->UpdateSubresource(m_PostBuffer.Get(), 0, NULL, &pe, 0, 0);
+        m_DeviceContext->Draw(3, 0);
+        ID3D11ShaderResourceView* nullDepth[] = { NULL };
+        m_DeviceContext->PSSetShaderResources(2, 1, nullDepth);
+    }
+
+    // 4. 合成 (SceneRTV + LumRTV + AO → バックバッファ)
     SetScreenViewport();
     m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
     m_DeviceContext->OMSetRenderTargets(1, m_RenderTargetView.GetAddressOf(), NULL);
     m_DeviceContext->PSSetShaderResources(0, 1, m_SceneSRV.GetAddressOf());
     m_DeviceContext->PSSetShaderResources(1, 1, enableBloom ? m_LumSRV.GetAddressOf() : m_SceneSRV.GetAddressOf());
     m_DeviceContext->PSSetShaderResources(2, 1, m_DepthSRV.GetAddressOf());
+    m_DeviceContext->PSSetShaderResources(3, 1, enableAo ? m_AoSRV.GetAddressOf() : nullSRV);
     pe.Mode = 3;
-    // SSAO（品質Low では無効）
-    pe.AoParams = XMFLOAT4((m_DepthSRV && gs.postProcess != PostProcessQuality::Post_Low) ? 0.85f : 0.0f,
+    // SSAO（品質Low では無効）。AO値は半解像度バッファから読む
+    pe.AoParams = XMFLOAT4(enableAo ? 0.85f : 0.0f,
                            Constants::Camera::NEAR_CLIP, Constants::Camera::FAR_CLIP, 0.9f);
     pe.SlowMotionIntensity = Manager::GetSlowMotionIntensity();
     pe.FlashColor = Manager::GetFlashColor();
@@ -747,8 +785,8 @@ void Renderer::End() {
     m_DeviceContext->Draw(3, 0);
 
     // SRV バインド解除（次フレームへの干渉を防ぐ。深度SRVはDSVと同時に使えないため必須）
-    ID3D11ShaderResourceView* nullSRV3[] = { NULL, NULL, NULL };
-    m_DeviceContext->PSSetShaderResources(0, 3, nullSRV3);
+    ID3D11ShaderResourceView* nullSRV3[] = { NULL, NULL, NULL, NULL };
+    m_DeviceContext->PSSetShaderResources(0, 4, nullSRV3);
     m_DeviceContext->OMSetDepthStencilState(m_DepthStateEnable.Get(), 0);
 
     // チャージオーラはポスト合成(ラジアルブラー)の後にバックバッファへ直接描く（深度はシーンのものを利用）

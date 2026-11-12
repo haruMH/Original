@@ -134,6 +134,9 @@ private:
     static Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_LumSRV;
     static Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   m_BlurRTV;
     static Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_BlurSRV;
+    static Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   m_AoRTV;   // SSAO(半解像度)
+    static Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_AoSRV;
+    static D3D11_VIEWPORT                                   m_AoViewport;
     
     static Microsoft::WRL::ComPtr<ID3D11VertexShader>       m_OutlineVS;
     static Microsoft::WRL::ComPtr<ID3D11PixelShader>        m_OutlinePS;
