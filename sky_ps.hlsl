@@ -48,18 +48,28 @@ float ValueNoise(float2 p)
     return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
 }
 
-float Fbm(float2 p)
+// 4オクターブ。lowには先頭2オクターブの和を返す（陰影用に再計算せず流用して負荷を減らす）
+float Fbm(float2 p, out float low)
 {
     float v = 0.0f;
     float a = 0.5f;
+    low = 0.0f;
     [unroll]
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 4; i++)
     {
         v += a * ValueNoise(p);
+        if (i == 1) low = v;
         p = p * 2.03f + 17.1f;
         a *= 0.5f;
     }
     return v;
+}
+
+float Fbm2(float2 p)
+{
+    float v = 0.5f * ValueNoise(p);
+    p = p * 2.03f + 17.1f;
+    return v + 0.25f * ValueNoise(p);
 }
 
 float4 main(PS_IN input) : SV_TARGET
@@ -91,13 +101,14 @@ float4 main(PS_IN input) : SV_TARGET
     if (h > 0.0f)
     {
         float2 uv = d.xz / (h + 0.14f) * 0.85f + float2(t * 0.012f, t * 0.005f);
-        float n  = Fbm(uv);
-        float n2 = Fbm(uv + sunDir.xz * 0.10f);      // 太陽側へずらした濃さ（陰影用）
+        float nLow;
+        float n  = Fbm(uv, nLow);
+        float n2 = Fbm2(uv + sunDir.xz * 0.10f);     // 太陽側へずらした濃さ（陰影用・低周波のみ）
         float cover = smoothstep(0.50f, 0.78f, n);
         float fade  = smoothstep(0.0f, 0.20f, h);
         cloudDensity = cover * fade;
 
-        float shade = saturate((n - n2) * 3.5f + 0.55f);   // 太陽側が明るい
+        float shade = saturate((nLow - n2) * 4.5f + 0.55f);   // 太陽側が明るい
         float3 ambient = lerp(HorizonColor.rgb, ZenithColor.rgb, 0.35f) * 0.85f + 0.10f;
         float3 lit = ambient + SunColor.rgb * 0.60f * shade * sunVis;
         // 縁(薄い部分)ほど太陽の光が透けて明るい

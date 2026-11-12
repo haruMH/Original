@@ -143,7 +143,7 @@ void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
     rtDesc.Height = height;
     rtDesc.MipLevels = 1;
     rtDesc.ArraySize = 1;
-    rtDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    rtDesc.Format = DXGI_FORMAT_R11G11B10_FLOAT; // HDR(帯域は16bit版の半分): 自発光(>1.0)をブルームに活かす
     rtDesc.SampleDesc.Count = 1;
     rtDesc.Usage = D3D11_USAGE_DEFAULT;
     rtDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
@@ -185,7 +185,7 @@ void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
     bgDesc.Height = height;
     bgDesc.MipLevels = 1;
     bgDesc.ArraySize = 1;
-    bgDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    bgDesc.Format = DXGI_FORMAT_R11G11B10_FLOAT; // シーンRTと同一形式（CopyResource用）
     bgDesc.SampleDesc.Count = 1;
     bgDesc.Usage = D3D11_USAGE_DEFAULT;
     bgDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
@@ -687,8 +687,10 @@ void Renderer::End() {
 
     POSTEFFECT pe;
     ZeroMemory(&pe, sizeof(pe));
-    pe.Threshold     = 0.85f;
-    pe.BlurIntensity = enableBloom ? (gs.postProcess == PostProcessQuality::Post_High ? 0.6f : 0.35f) : 0.0f;
+    pe.Threshold     = 0.95f;
+    // ブルーム用バッファ(縮小)のテクセルサイズ。ウィンドウサイズに依らず同じ見た目のぼかしにする
+    pe.TexelSize     = XMFLOAT2(1.0f / m_PostViewport.Width, 1.0f / m_PostViewport.Height);
+    pe.BlurIntensity = enableBloom ? (gs.postProcess == PostProcessQuality::Post_High ? 0.28f : 0.18f) : 0.0f;
 
     if (enableBloom) {
         // 1. 高輝度抽出 (SceneRTV → LumRTV)

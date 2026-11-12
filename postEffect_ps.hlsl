@@ -43,10 +43,10 @@ float ComputeAO(float2 uv)
 
     float occ = 0.0f;
     [unroll]
-    for (int i = 0; i < 12; ++i)
+    for (int i = 0; i < 8; ++i)
     {
         float a = rot + (float)i * 2.39996f;       // 黄金角で螺旋状に配置
-        float r = sqrt(((float)i + 0.5f) / 12.0f);
+        float r = sqrt(((float)i + 0.5f) / 8.0f);
         float2 off = float2(cos(a), sin(a)) * r * rUV * aspect;
         float2 suv = saturate(uv + off);
         float zs = LinearDepth(g_Depth.Load(int3(suv * float2(w, h), 0)));
@@ -54,7 +54,7 @@ float ComputeAO(float2 uv)
         float rangeCheck = saturate(1.0f - diff / (AoParams.w * 2.5f));
         occ += (diff > 0.04f * zc * 0.25f + 0.02f ? 1.0f : 0.0f) * rangeCheck;
     }
-    float ao = 1.0f - (occ / 12.0f) * AoParams.x;
+    float ao = 1.0f - (occ / 8.0f) * AoParams.x;
     // 遠いほど弱く
     return lerp(ao, 1.0f, smoothstep(40.0f, 110.0f, zc));
 }
@@ -105,12 +105,15 @@ float4 main(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD) : SV_TARG
         // 1. 高輝度抽出パス
         color = g_Texture1.Sample(g_Sampler, TexCoord);
         float brightness = dot(color.rgb, float3(0.2126, 0.7152, 0.0722));
-        if (brightness < Threshold) color = float4(0, 0, 0, 1);
+        // ソフトニー: しきい値付近を滑らかに立ち上げる。ホタル防止で上限もかける
+        float knee = smoothstep(Threshold, Threshold + 0.6f, brightness);
+        color = float4(min(color.rgb, 2.5f) * knee, 1.0f);
     }
     else if (Mode == 1 || Mode == 2)
     {
         // 2 & 3. ガウシアンブラーパス
-        float2 offset = (Mode == 1) ? float2(1.0 / 320.0, 0) : float2(0, 1.0 / 180.0);
+        // 縮小バッファの実テクセル幅 x 1.6 で広めににじませる（解像度非依存）
+        float2 offset = ((Mode == 1) ? float2(TexelSize.x, 0) : float2(0, TexelSize.y)) * 1.6f;
         float weight[5] = { 0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216 };
         
         color = g_Texture1.Sample(g_Sampler, TexCoord) * weight[0];

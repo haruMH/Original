@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "enemy.h"
 
 // =================================================================
@@ -21,6 +21,7 @@ private:
 public:
     void Init()   override;
     void Update() override;
+
 
     // 固定砲台モードの設定
     void SetTurretMode(bool enable) { m_IsTurretMode = enable; }
