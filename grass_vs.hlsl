@@ -38,7 +38,10 @@ VS_OUT main(uint vid : SV_VertexID, uint iid : SV_InstanceID)
 
     // キャンプの内側、またはカメラから遠すぎる所は描かない（画面外へ退避させて無効化）
     float2 dc = root.xz - P3.xz;
-    if ((abs(root.x) < P2.y && abs(root.z) < P2.z) || dot(dc, dc) > P2.w * P2.w)
+    float  distC = length(dc);
+    // 遠いほど本数を間引き（確率で消す）、残った草も低くする → 境目が見えず霧に溶ける
+    float  fade = 1.0 - smoothstep(P2.w * 0.40, P2.w, distC);
+    if ((abs(root.x) < P2.y && abs(root.z) < P2.z) || hash21(id2 + 9.1) > fade)
     {
         o.pos = float4(2.0, 2.0, 2.0, 1.0);
         o.col = 0; o.worldPos = 0;
@@ -46,7 +49,7 @@ VS_OUT main(uint vid : SV_VertexID, uint iid : SV_InstanceID)
     }
 
     float rnd    = hash21(id2 + 3.7);
-    float bladeH = P0.w * (0.6 + 0.8 * rnd);
+    float bladeH = P0.w * (0.6 + 0.8 * rnd) * lerp(0.55, 1.0, fade);
     float ang    = rnd * 6.2831853;
     float2 face  = float2(cos(ang), sin(ang));       // 刃の幅方向
 

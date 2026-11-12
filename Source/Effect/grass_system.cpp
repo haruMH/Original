@@ -21,7 +21,7 @@ namespace {
     const float WIND_SPEED   = 1.5f;
     const float WIND_DIR     = 0.6f;
     const float CAMP_HALF    = 21.8f;    // この内側（キャンプ）には生やさない
-    const float DRAW_DIST    = 55.0f;
+    const float DRAW_DIST    = 75.0f;    // この距離までに草を間引きながら消していく
 
     bool  g_Enabled = false;
     int   g_Time = 0;
