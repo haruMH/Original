@@ -393,9 +393,6 @@
     <ClInclude Include="Source\Graphics\obj_model.h">
       <Filter>Source\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Graphics\graphics_config.h">
-      <Filter>Source\Graphics</Filter>
-    </ClInclude>
     <!-- UI -->
     <ClInclude Include="Source\UI\score_hud.h">
       <Filter>Source\UI</Filter>
@@ -456,6 +453,12 @@
     </ClInclude>
     <ClInclude Include="imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\UI\ui_theme.h">
+      <Filter>Source\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\UI\title_logo.h">
+      <Filter>Source\UI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

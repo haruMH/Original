@@ -197,6 +197,18 @@ void HubScene::Update()
 {
     UpdateFacilities();
 
+    // 修練サンドバッグが壊れたら少し待って同じ場所に復活させる（無限に練習できる）
+    if (!Manager::GetGameObject<Enemy>()) {
+        if (++m_SandbagRespawnTimer >= 90) {
+            m_SandbagRespawnTimer = 0;
+            Enemy* dummy = Manager::AddGameObject<Enemy>();
+            dummy->SetPosition(XMFLOAT3(0.0f, -0.5f, 13.0f));
+            dummy->SetSandbag(true, 999999);
+        }
+    } else {
+        m_SandbagRespawnTimer = 0;
+    }
+
     // UIオープン時はマウスロック解除
     bool isAnyUIOpen = m_IsWorkshopOpen || m_IsQuestMenuOpen;
     Input::SetMouseLocked(!isAnyUIOpen);

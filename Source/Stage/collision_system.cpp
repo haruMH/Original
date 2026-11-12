@@ -37,13 +37,14 @@ void CollisionSystem::TriggerChainLightning(const XMFLOAT3& startPos, Player* pl
     chainedEnemies.reserve(maxChain);
 
     bool playedSound = false;
+    std::vector<Enemy*> candidates; // ループ間で使い回す（毎回の確保を避ける）
 
     for (int chain = 0; chain < maxChain; chain++) {
         Enemy* nearest = nullptr;
         float nearestDistSq = chainRadius * chainRadius;
 
         // SpatialGrid の FindNearbyEnemies で周囲の敵を絞り込む
-        std::vector<Enemy*> candidates;
+        candidates.clear();
         SpatialGrid::GetInstance().FindNearbyEnemies(currentPos, chainRadius, candidates);
 
         for (Enemy* enemy : candidates) {
