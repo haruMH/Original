@@ -172,6 +172,9 @@
       <Filter>Source\Graphics</Filter>
     </ClCompile>
     <!-- UI -->
+    <ClCompile Include="Source\UI\title_logo.cpp">
+      <Filter>Source\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Source\UI\ui_theme.cpp">
       <Filter>Source\UI</Filter>
     </ClCompile>
@@ -493,6 +496,9 @@
       <Filter>Shaders</Filter>
     </FXCompile>
     <FXCompile Include="aura_ring_ps.hlsl">
+      <Filter>Shaders</Filter>
+    </FXCompile>
+    <FXCompile Include="title_logo_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
     <FXCompile Include="ui_ps.hlsl">

@@ -9,6 +9,7 @@
 #include "render_constants.h"
 #include "game_constants.h"
 #include "ui_theme.h"
+#include "title_logo.h"
 #include "graphics_config.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
@@ -753,6 +754,7 @@ void Renderer::End() {
     m_DeviceContext->RSSetState(m_RasterizerStateCullBack.Get());
     AuraEffect::Draw();
     HitImpactEffect::Draw();
+    TitleLogo::Draw();   // タイトルロゴ（ポスト合成の影響を受けない純粋な黒白）
     // フェード描画のためポストプロセス直後と同じパイプライン状態へ戻す
     m_DeviceContext->OMSetRenderTargets(1, m_RenderTargetView.GetAddressOf(), NULL);
     m_DeviceContext->IASetInputLayout(NULL);

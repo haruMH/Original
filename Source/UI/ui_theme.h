@@ -12,6 +12,7 @@ namespace UITheme {
 
     // ボタンの種類分け（PushXxx の後に必ず PopButton() を呼ぶ）
     void PushPrimaryButton();   // 主要操作: 橙（セーブ・出撃・解放など）
+    void PushNormalButton();    // 通常（選択されていない項目）: 青
     void PushDangerButton();    // 危険操作: 赤（ゲーム終了など）
     void PopButton();
 }

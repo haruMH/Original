@@ -1,5 +1,7 @@
 ﻿#include "title_scene.h"
 #include "input.h"
+#include "title_logo.h"
+#include "ui_theme.h"
 #include "manager.h"
 #include "sound_manager.h"
 #include "field.h"
@@ -204,6 +206,9 @@ void TitleScene::Init()
         player->SetDamageTimer(99999); // タイトル中のキー入力による勝手な移動を抑止
     }
 
+    // 登場アニメーション付きのロゴを開始
+    TitleLogo::Start("TOON SLASHER");
+
     // 4. カメラの初期旋回位置を設定（巨大建造物を見上げるシネマティック構図）
     if (g_Camera) {
         DirectX::XMFLOAT3 eye(0.0f, 4.0f, 12.5f);
@@ -217,6 +222,7 @@ void TitleScene::Init()
 // =================================================================
 void TitleScene::Uninit()
 {
+    TitleLogo::Stop();
     // タイトル終了時にカメラのカットシーン固定を解除
     if (g_Camera) {
         g_Camera->SetCutsceneMode(false);
@@ -253,7 +259,16 @@ void TitleScene::Update()
         player->SetDamageTimer(99999);
     }
 
-    // 3. メニューキーボード操作
+    // 3. ロゴ演出（決定入力で飛ばせる。飛ばした入力でメニューは操作しない）
+    TitleLogo::Update();
+    if (!TitleLogo::IsMenuReady()) {
+        if (Input::GetKeyTrigger(VK_RETURN) || Input::GetKeyTrigger(VK_SPACE) || PlayerController::IsGrabOrThrowAction()) {
+            TitleLogo::Skip();
+        }
+        return;
+    }
+
+    // 4. メニューキーボード操作
     if (m_ShowNewGameConfirm) {
         // 上書き確認中: ESCキーまたはBボタンでキャンセル
         if (Input::GetKeyTrigger(VK_ESCAPE) || PlayerController::IsGuardAction()) {
@@ -301,8 +316,9 @@ void TitleScene::Draw()
     float screenH = io.DisplaySize.y;
 
     // 画面下部中央にメニューパネルを配置
-    ImGui::SetNextWindowPos(ImVec2(screenW * 0.5f, screenH * 0.72f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(480.0f, 0.0f));
+    const float s = (std::max)(0.6f, (std::min)(1.0f, screenH / 900.0f));
+    ImGui::SetNextWindowPos(ImVec2(screenW * 0.5f, screenH * 0.60f), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+    ImGui::SetNextWindowSize(ImVec2((std::min)(480.0f * s, screenW * 0.9f), 0.0f));
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
                            | ImGuiWindowFlags_NoResize
@@ -310,25 +326,14 @@ void TitleScene::Draw()
                            | ImGuiWindowFlags_NoScrollbar
                            | ImGuiWindowFlags_NoSavedSettings;
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(24.0f, 20.0f));
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.04f, 0.06f, 0.12f, 0.88f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.25f, 0.50f, 0.90f, 0.70f));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
+    // ロゴの演出が進むまでメニューは出さない（終盤でフェードイン）。配色や丸みは UITheme に任せる
+    const float menuAlpha = TitleLogo::GetMenuAlpha();
+    if (menuAlpha <= 0.001f) return;
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, menuAlpha);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(24.0f * s, 20.0f * s));
 
     if (ImGui::Begin("TitleMenuOverlay", nullptr, flags)) {
-        // タイトル見出し
-        ImGui::SetWindowFontScale(1.4f);
-        const char* titleText = (const char*)u8"TOON SLASHER";
-        float titleW = ImGui::CalcTextSize(titleText).x;
-        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - titleW) * 0.5f);
-        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.25f, 1.0f), "%s", titleText);
-        ImGui::SetWindowFontScale(1.0f);
-
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-
+        ImGui::SetWindowFontScale((std::max)(0.8f, s));
         if (m_ShowNewGameConfirm) {
             // 上書き確認ダイアログ
             ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), (const char*)u8"※既存のセーブデータが上書きされます！");
@@ -350,11 +355,9 @@ void TitleScene::Draw()
                 // 1. つづきから (CONTINUE)
                 bool isContinueSelected = (m_SelectedIndex == 0);
                 if (isContinueSelected) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.52f, 0.95f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.62f, 1.0f, 1.0f));
+                    UITheme::PushPrimaryButton();
                 } else {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.8f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.30f, 0.45f, 1.0f));
+                    UITheme::PushNormalButton();
                 }
 
                 std::string continueLabel = std::string((const char*)u8"つづきから (拠点キャンプ)") + (isContinueSelected ? "  <" : "");
@@ -363,7 +366,7 @@ void TitleScene::Draw()
                     SaveSystem::Load();
                     Manager::ChangeScene(Scene::HUB);
                 }
-                ImGui::PopStyleColor(2);
+                UITheme::PopButton();
 
                 // セーブデータプレビュー
                 const SaveData& data = SaveSystem::GetData();
@@ -377,11 +380,9 @@ void TitleScene::Draw()
                 // 2. はじめから (NEW GAME)
                 bool isNewGameSelected = (m_SelectedIndex == 1);
                 if (isNewGameSelected) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.52f, 0.95f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.62f, 1.0f, 1.0f));
+                    UITheme::PushPrimaryButton();
                 } else {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.8f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.30f, 0.45f, 1.0f));
+                    UITheme::PushNormalButton();
                 }
 
                 std::string newGameLabel = std::string((const char*)u8"はじめから (チュートリアル)") + (isNewGameSelected ? "  <" : "");
@@ -389,7 +390,7 @@ void TitleScene::Draw()
                     SoundManager::PlaySE(SoundID::SE_DECIDE);
                     m_ShowNewGameConfirm = true;
                 }
-                ImGui::PopStyleColor(2);
+                UITheme::PopButton();
             } else {
                 // 初回起動（セーブデータなし）: ゲーム開始
                 if (ImGui::Button((const char*)u8"ゲーム開始 (START)", ImVec2(-1, 50))) {
@@ -409,6 +410,5 @@ void TitleScene::Draw()
     }
     ImGui::End();
 
-    ImGui::PopStyleColor(2);
-    ImGui::PopStyleVar(3);
+    ImGui::PopStyleVar(2);
 }

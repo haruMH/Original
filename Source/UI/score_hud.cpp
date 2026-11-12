@@ -1017,12 +1017,14 @@ void ScoreHUD::Draw()
     switch (currentScene) {
     case Scene::TITLE:
         texToDraw = m_TitleTexture.Get();
-        w = 512.0f;
-        h = 256.0f;
         {
+            // ウィンドウサイズに応じて縮小し、ロゴとメニューの間に収める
+            const float s = (std::max)(0.6f, (std::min)(1.0f, screenH / 900.0f));
+            w = 512.0f * s;
+            h = 256.0f * s;
             static float titleFloatTime = 0.0f;
             titleFloatTime += 0.035f;
-            posY = screenH * 0.5f + sinf(titleFloatTime) * 7.0f; // 上下にフワフワ浮遊
+            posY = screenH * 0.42f + sinf(titleFloatTime) * 5.0f * s; // 上下にフワフワ浮遊
         }
         emissionColor = XMFLOAT4(0.0f, 1.2f, 1.8f, 0.0f); // タイトルは青白発光
         break;

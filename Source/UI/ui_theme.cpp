@@ -127,6 +127,16 @@ void PushPrimaryButton()
     ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(0.14f, 0.08f, 0.03f, 1.00f));
 }
 
+void PushNormalButton()
+{
+    // テーマの既定色と同じ値を 4 色分 push（PopButton と数を合わせるため）
+    ImGuiStyle& s = ImGui::GetStyle();
+    ImGui::PushStyleColor(ImGuiCol_Button,        s.Colors[ImGuiCol_Button]);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, s.Colors[ImGuiCol_ButtonHovered]);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  s.Colors[ImGuiCol_ButtonActive]);
+    ImGui::PushStyleColor(ImGuiCol_Text,          s.Colors[ImGuiCol_Text]);
+}
+
 void PushDangerButton()
 {
     ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.62f, 0.17f, 0.20f, 0.95f));
