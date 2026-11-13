@@ -205,6 +205,14 @@ public:
     static void SetShadowVPMatrix(XMMATRIX m);
     static void SetMaterial(MATERIAL m);
     static void SetLight(LIGHT l);
+
+    // GPU 処理時間の計測（タイムスタンプクエリ。結果は 2 フレーム遅れで取れる）。
+    // 区間(12): 0:影など準備 1:空 2:地面 3:物体 4:アウトライン 5:丘と木 6:草 7:エフェクト・UI
+    //           8:ブルーム 9:SSAO 10:合成 11:ImGui・オーラなど
+    static void  GpuFrameBegin();
+    static void  GpuMark(int index);                 // index 1〜12 の区切りを記録（0 は GpuFrameBegin が記録）
+    static void  GpuFrameEnd();
+    static float GetGpuSegmentMs(int segment);       // segment 0〜11
     static void SetPointLight(int index, const XMFLOAT3& pos, float radius, const XMFLOAT3& color, float intensity); // intensity 0 で消灯
     static void SetCameraPosition(XMFLOAT3 p);
     static void SetShadowMode(bool e);

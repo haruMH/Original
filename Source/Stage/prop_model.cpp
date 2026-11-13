@@ -1,6 +1,19 @@
 ﻿#include "prop_model.h"
 
+#include <unordered_map>
+
 using namespace DirectX;
+
+namespace {
+    // 同じ OBJ は 1 回だけ読み込んで共有する（キーは obj + mtl のパス）
+    std::unordered_map<std::string, std::shared_ptr<ObjModel>> g_ModelCache;
+}
+
+void PropModel::ClearModelCache()
+{
+    g_ModelCache.clear();
+    ObjModel::ReleaseSharedResources();
+}
 
 // =================================================================
 // コンストラクタ / デストラクタ
@@ -46,8 +59,21 @@ void PropModel::Update()
 // =================================================================
 bool PropModel::LoadModel(const std::string& objPath, const std::string& mtlPath)
 {
-    m_Model = std::make_shared<ObjModel>();
-    return m_Model->Load(objPath, mtlPath);
+    const std::string key = objPath + "|" + mtlPath;
+    auto it = g_ModelCache.find(key);
+    if (it != g_ModelCache.end()) {
+        m_Model = it->second;
+        return true;
+    }
+
+    auto model = std::make_shared<ObjModel>();
+    if (!model->Load(objPath, mtlPath)) {
+        m_Model = model;   // 読み込み失敗でも描画側は null チェック済み。キャッシュはしない
+        return false;
+    }
+    g_ModelCache[key] = model;
+    m_Model = model;
+    return true;
 }
 
 // =================================================================

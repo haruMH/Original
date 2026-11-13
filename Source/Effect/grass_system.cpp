@@ -7,21 +7,32 @@ namespace {
         XMFLOAT4X4 View;
         XMFLOAT4X4 Proj;
         XMFLOAT4   P0;   // x:時間 y:風の強さ z:風の速さ w:草の高さ
-        XMFLOAT4   P1;   // x:風向X y:風向Z z:範囲 w:1辺の本数
-        XMFLOAT4   P2;   // x:幅 y:除外半幅X z:除外半幅Z w:描画距離
-        XMFLOAT4   P3;   // xyz:カメラ位置
+        XMFLOAT4   P1;   // x:風向X y:風向Z z:刃の間隔 w:1辺の本数
+        XMFLOAT4   P2;   // x:幅 y:除外半幅X z:除外半幅Z w:外縁
+        XMFLOAT4   P3;   // xyz:カメラ位置 w:1本あたりの頂点数
+        XMFLOAT4   P4;   // x:内縁 y:高さ倍率 z:幅倍率 w:草を生やす範囲(±)
     };
 
-    // 調整用の定数
-    const int   GRASS_SIDE   = 330;      // 1辺の本数（総数 = SIDE^2）
-    const float GRASS_RANGE  = 140.0f;   // 草を生やす範囲（±70m。丘の手前の平地まで）
+    // ---- 調整用の定数 ----
     const float GRASS_HEIGHT = 0.62f;
     const float GRASS_WIDTH  = 0.030f;
     const float WIND_POWER   = 0.55f;
     const float WIND_SPEED   = 1.5f;
     const float WIND_DIR     = 0.6f;
     const float CAMP_HALF    = 21.8f;    // この内側（キャンプ）には生やさない
-    const float DRAW_DIST    = 75.0f;    // この距離までに草を間引きながら消していく
+    const float GRASS_LIMIT  = 68.0f;    // 草を生やす範囲（±。丘の手前の平地まで）
+
+    // 近景: 密で細い刃（カメラ周囲 約17m）
+    const int   NEAR_SIDE   = 180;       // 1辺の本数（総数 = SIDE^2）
+    const float NEAR_CELL   = 0.19f;     // 刃の間隔(m)。小さいほど密
+    const float NEAR_OUTER  = 17.0f;
+    const int   NEAR_VERTS  = 9;
+    // 遠景: 疎で太く高い刃（近景の外側 〜 約40m）。遠いほど刃を大きくして隙間を埋める
+    const int   FAR_SIDE    = 150;
+    const float FAR_CELL    = 0.55f;
+    const float FAR_INNER   = 15.0f;
+    const float FAR_OUTER   = 40.0f;
+    const int   FAR_VERTS   = 5;
 
     bool  g_Enabled = false;
     int   g_Time = 0;
@@ -97,10 +108,6 @@ void GrassSystem::Draw()
     XMStoreFloat4x4(&cb.View, XMMatrixTranspose(view));
     XMStoreFloat4x4(&cb.Proj, XMMatrixTranspose(Renderer::GetProjectionMatrix()));
     cb.P0 = XMFLOAT4((float)g_Time / 60.0f, WIND_POWER, WIND_SPEED, GRASS_HEIGHT);
-    cb.P1 = XMFLOAT4(cosf(WIND_DIR), sinf(WIND_DIR), GRASS_RANGE, (float)GRASS_SIDE);
-    cb.P2 = XMFLOAT4(GRASS_WIDTH, CAMP_HALF, CAMP_HALF, DRAW_DIST);
-    cb.P3 = XMFLOAT4(vInv._41, vInv._42, vInv._43, 0.0f);
-    ctx->UpdateSubresource(g_CB, 0, nullptr, &cb, 0, 0);
 
     // 現在のラスタライザ状態を退避して、描画後に戻す
     ID3D11RasterizerState* oldRs = nullptr;
@@ -114,7 +121,16 @@ void GrassSystem::Draw()
     ctx->OMSetDepthStencilState(g_Depth, 0);
     ctx->RSSetState(g_Rs);
 
-    ctx->DrawInstanced(9, (UINT)(GRASS_SIDE * GRASS_SIDE), 0, 0);
+    auto drawLayer = [&](int side, float cell, int verts, float inner, float outer, float heightMul, float widthMul) {
+        cb.P1 = XMFLOAT4(cosf(WIND_DIR), sinf(WIND_DIR), cell, (float)side);
+        cb.P2 = XMFLOAT4(GRASS_WIDTH, CAMP_HALF, CAMP_HALF, outer);
+        cb.P3 = XMFLOAT4(vInv._41, vInv._42, vInv._43, (float)verts);
+        cb.P4 = XMFLOAT4(inner, heightMul, widthMul, GRASS_LIMIT);
+        ctx->UpdateSubresource(g_CB, 0, nullptr, &cb, 0, 0);
+        ctx->DrawInstanced((UINT)verts, (UINT)(side * side), 0, 0);
+    };
+    drawLayer(NEAR_SIDE, NEAR_CELL, NEAR_VERTS, 0.0f,       NEAR_OUTER, 1.0f, 1.0f);
+    drawLayer(FAR_SIDE,  FAR_CELL,  FAR_VERTS,  FAR_INNER,  FAR_OUTER,  1.5f, 2.6f);
 
     ctx->RSSetState(oldRs);
     if (oldRs) oldRs->Release();

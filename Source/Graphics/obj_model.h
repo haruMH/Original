@@ -25,6 +25,12 @@ public:
 
     int GetVertexCount() const { return m_VertexCount; }
 
+    // 全 ObjModel で共有しているリソース（軽量ピクセルシェーダー）の解放。アプリ終了時に呼ぶ
+    static void ReleaseSharedResources();
+
+    // 自然物(木・茂み・花・岩)の表示/非表示（FPSの原因切り分け用）
+    static void SetFoliageHidden(bool hidden);
+
 private:
     // MTLマテリアル読み込みヘルパー
     // matTex: マテリアル名 → そのマテリアルの map_Kd（木の樹皮と葉のように、1モデルに複数テクスチャがある場合用）
@@ -44,4 +50,5 @@ private:
     ID3D11RasterizerState*     m_RasterizerStateNoCull = nullptr;
     ID3D11ShaderResourceView*  m_TextureSRV = nullptr;
     int                        m_VertexCount = 0;
+    bool                       m_UseFoliageShader = false;   // 自然物(木・茂み・花)は軽いシェーダーで描く
 };

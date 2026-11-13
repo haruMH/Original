@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <vector>
 #include <fstream>
 #include "hub_scene.h"
 #include "localization.h"
@@ -26,6 +28,8 @@
 using namespace DirectX;
 
 namespace {
+    // 確認用（FPSの原因切り分け）: F5 草 / F6 丘と木 / F7 自然物モデル の表示切り替え。確認が済んだら削除
+    bool s_DbgGrass = true, s_DbgHill = true, s_DbgFoliage = true;
     const XMFLOAT3 FORGE_POS = XMFLOAT3(-10.0f, 0.0f, 8.0f);
     const XMFLOAT3 GATE_POS  = XMFLOAT3(10.0f, 0.0f, 8.0f);
     const float INTERACT_RADIUS = 4.0f;
@@ -99,6 +103,8 @@ void HubScene::Init()
     AmbientEffect::SetEnabled(true);
     // キャンプの外側に風で揺れる草原を広げる
     GrassSystem::SetEnabled(true);
+    s_DbgGrass = s_DbgHill = s_DbgFoliage = true;
+    ObjModel::SetFoliageHidden(false);
     // 草原の向こうに丘と木の遠景を広げる
     HillTerrain::SetEnabled(true);
     // 焚き火脇の休憩用木箱・丸太
@@ -201,26 +207,80 @@ void HubScene::Init()
                 XMFLOAT3(-21.2f, -1.0f, p), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2);
     }
 
-    // --- 草原の自然物（Stylized Nature MegaKit）。まず北側の柵の外に少数置いて見え方を確認する ---
+    // --- 草原の自然物（Stylized Nature MegaKit）。柵の外の草原に、木・岩・茂み・花を散らす ---
+    // 位置は固定の乱数列で決める（毎回同じ景色になる）。当たり判定なし（外周は見えない壁が止める）
     {
         const std::string N = "Assets/model/nature/";
-        auto nat = [&](const char* sub, const char* name, float x, float z, float scale, float rotY) {
+        auto nat = [&](const std::string& sub, const std::string& name, float x, float z, float scale, float rotY) {
             AddProp(N + sub + "/" + name + ".obj", N + sub + "/" + name + ".mtl",
                     XMFLOAT3(x, -1.0f, z), XMFLOAT3(scale, scale, scale), rotY);
         };
-        // 確認用（スタート地点の正面の見える位置。見え方を確認したら本番の配置に差し替える）
-        nat("trees", "CommonTree_1", -7.0f, 9.0f, 1.0f, 0.4f);
-        nat("trees", "Pine_2",        7.0f, 9.0f, 1.0f, 1.1f);
-        nat("trees", "CommonTree_3", -13.0f, 4.0f, 1.0f, 2.3f);
-        nat("trees", "Pine_4",       13.0f, 4.0f, 1.0f, 0.2f);
-        nat("bushes", "Bush_Common",         -3.0f, 3.0f, 1.3f, 0.5f);
-        nat("bushes", "Bush_Common_Flowers",  3.5f, 3.0f, 1.3f, 1.9f);
-        nat("bushes", "Fern_1",              -5.5f, 1.0f, 1.0f, 0.0f);
-        nat("rocks",  "Rock_Medium_1",        5.5f, 1.0f, 1.3f, 0.8f);
-        nat("rocks",  "Rock_Medium_2",       -9.5f, 2.0f, 1.2f, 2.0f);
-        nat("flowers", "Flower_3_Group",      -1.5f, 2.0f, 1.2f, 0.0f);
-        nat("flowers", "Flower_4_Group",       1.5f, 2.0f, 1.2f, 0.0f);
-        nat("flowers", "Mushroom_Common",      0.0f, 3.5f, 1.8f, 0.0f);
+
+        unsigned int seed = 20260101u;
+        auto rnd = [&]() { seed = seed * 1664525u + 1013904223u; return (float)(seed >> 8) / (float)(1 << 24); };
+        auto range = [&](float a, float b) { return a + (b - a) * rnd(); };
+        auto pickName = [&](const char* base, int count) { return std::string(base) + std::to_string(1 + (int)(rnd() * count) % count); };
+
+        // 柵の外側(キャンプの外)で、草原の端(±46m)までの範囲から、既存の配置と離れた位置を選ぶ
+        std::vector<XMFLOAT2> placed;
+        auto place = [&](float minDist, XMFLOAT2* out) {
+            for (int tries = 0; tries < 40; ++tries) {
+                float x = range(-46.0f, 46.0f), z = range(-46.0f, 46.0f);
+                if ((std::max)(fabsf(x), fabsf(z)) < 24.5f) continue;          // キャンプの内側は除外
+                bool ok = true;
+                for (const XMFLOAT2& p : placed) {
+                    float dx = p.x - x, dz = p.y - z;
+                    if (dx * dx + dz * dz < minDist * minDist) { ok = false; break; }
+                }
+                if (!ok) continue;
+                placed.push_back(XMFLOAT2(x, z));
+                *out = XMFLOAT2(x, z);
+                return true;
+            }
+            return false;
+        };
+
+        XMFLOAT2 p;
+        // 木: 大きなものを少数、離して置く
+        for (int i = 0; i < 16; ++i) {
+            if (!place(9.0f, &p)) continue;
+            float r = rnd();
+            std::string name = (r < 0.45f) ? pickName("CommonTree_", 5)
+                             : (r < 0.90f) ? pickName("Pine_", 5)
+                             : pickName("DeadTree_", 2);
+            nat("trees", name, p.x, p.y, range(1.3f, 1.9f), range(0.0f, 6.28f));
+        }
+        // 岩: 大小まぜて。まわりに茂みを添える
+        for (int i = 0; i < 12; ++i) {
+            if (!place(4.0f, &p)) continue;
+            nat("rocks", pickName("Rock_Medium_", 3), p.x, p.y, range(1.0f, 2.4f), range(0.0f, 6.28f));
+            if (rnd() < 0.7f) {
+                nat("bushes", rnd() < 0.5f ? "Bush_Common" : "Bush_Common_Flowers",
+                    p.x + range(-2.2f, 2.2f), p.y + range(-2.2f, 2.2f), range(1.0f, 1.7f), range(0.0f, 6.28f));
+            }
+        }
+        // 茂み・シダ・草花の株
+        for (int i = 0; i < 18; ++i) {
+            if (!place(2.5f, &p)) continue;
+            float r = rnd();
+            if (r < 0.40f)      nat("bushes", rnd() < 0.5f ? "Bush_Common" : "Bush_Common_Flowers", p.x, p.y, range(1.0f, 1.8f), range(0.0f, 6.28f));
+            else if (r < 0.70f) nat("bushes", "Fern_1", p.x, p.y, range(0.9f, 1.5f), range(0.0f, 6.28f));
+            else if (r < 0.85f) nat("bushes", rnd() < 0.5f ? "Plant_1_Big" : "Plant_7_Big", p.x, p.y, range(0.9f, 1.5f), range(0.0f, 6.28f));
+            else                nat("bushes", rnd() < 0.5f ? "Plant_1" : "Plant_7", p.x, p.y, range(1.0f, 1.6f), range(0.0f, 6.28f));
+        }
+        // 花のかたまり（中心のまわりに数株）。キノコも少し
+        for (int i = 0; i < 14; ++i) {
+            if (!place(3.0f, &p)) continue;
+            const char* flower = (rnd() < 0.5f) ? "Flower_3_Group" : "Flower_4_Group";
+            int n = 3 + (int)(rnd() * 3.0f);
+            for (int k = 0; k < n; ++k) {
+                nat("flowers", flower, p.x + range(-1.6f, 1.6f), p.y + range(-1.6f, 1.6f), range(1.0f, 1.6f), range(0.0f, 6.28f));
+            }
+            if (rnd() < 0.4f) {
+                nat("flowers", rnd() < 0.5f ? "Mushroom_Common" : "Mushroom_Laetiporus",
+                    p.x + range(-1.0f, 1.0f), p.y + range(-1.0f, 1.0f), range(1.4f, 2.2f), range(0.0f, 6.28f));
+            }
+        }
     }
 
     // --- (G) キャンプ外周の防護柵（実寸幅3.0m, 厚さ0.48mの薄板コライダー） ---
@@ -251,6 +311,11 @@ void HubScene::Uninit()
 void HubScene::Update()
 {
     UpdateFacilities();
+
+    // 確認用: F5 草 / F6 丘と木 / F7 自然物モデル
+    if (Input::GetKeyTrigger(VK_F5)) { s_DbgGrass   = !s_DbgGrass;   GrassSystem::SetEnabled(s_DbgGrass); }
+    if (Input::GetKeyTrigger(VK_F6)) { s_DbgHill    = !s_DbgHill;    HillTerrain::SetEnabled(s_DbgHill); }
+    if (Input::GetKeyTrigger(VK_F7)) { s_DbgFoliage = !s_DbgFoliage; ObjModel::SetFoliageHidden(!s_DbgFoliage); }
 
     // 修練サンドバッグが壊れたら少し待って同じ場所に復活させる（無限に練習できる）
     if (!Manager::GetGameObject<Enemy>()) {
@@ -348,6 +413,27 @@ void HubScene::UpdateFacilities()
 void HubScene::Draw()
 {
     DrawFacilityHUD();
+
+    // 確認用: FPSと切り替え状態（確認が済んだら削除）
+    {
+        ImGui::SetNextWindowPos(ImVec2(12.0f, 80.0f), ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.65f);
+        if (ImGui::Begin("##PerfDebug", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings)) {
+            ImGui::Text("FPS %.0f (frame %.1f ms) | CPU update %.1f ms, draw-submit %.1f ms",
+                        ImGui::GetIO().Framerate, 1000.0f / (std::max)(ImGui::GetIO().Framerate, 1.0f),
+                        Manager::s_DbgCpuUpdateMs, Manager::s_DbgCpuDrawMs);
+            ImGui::Text("GPU ms: prep %.1f | sky %.1f | ground %.1f | objects %.1f | outline %.1f | hill %.1f | grass %.1f",
+                        Renderer::GetGpuSegmentMs(0), Renderer::GetGpuSegmentMs(1), Renderer::GetGpuSegmentMs(2),
+                        Renderer::GetGpuSegmentMs(3), Renderer::GetGpuSegmentMs(4), Renderer::GetGpuSegmentMs(5),
+                        Renderer::GetGpuSegmentMs(6));
+            ImGui::Text("        fx+ui %.1f | bloom %.1f | ssao %.1f | post %.1f | imgui %.1f",
+                        Renderer::GetGpuSegmentMs(7), Renderer::GetGpuSegmentMs(8), Renderer::GetGpuSegmentMs(9),
+                        Renderer::GetGpuSegmentMs(10), Renderer::GetGpuSegmentMs(11));
+            ImGui::Text((const char*)u8"F5 草: %s   F6 丘と木: %s   F7 自然物: %s",
+                        s_DbgGrass ? "ON" : "off", s_DbgHill ? "ON" : "off", s_DbgFoliage ? "ON" : "off");
+        }
+        ImGui::End();
+    }
 
 
     if (m_IsWorkshopOpen) {

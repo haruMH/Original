@@ -253,6 +253,29 @@ namespace {
             }
         }
 
+        // ---- 柵の外の芝の敷物（石畳の上に薄く敷く。草の刃の下地になり、石畳が透けて見えるのを防ぐ）----
+        {
+            const float CARPET_INNER = 22.5f;            // 柵(21.2)の少し外から
+            const float CARPET_Y     = GROUND_Y + 0.015f; // 地面の 1.5cm 上
+            const float C = 2.5f;                        // 敷物の1マス
+            const int M = (int)(GROUND_HALF * 2.0f / C);
+            for (int j = 0; j < M; ++j) {
+                for (int i = 0; i < M; ++i) {
+                    float x0 = -GROUND_HALF + C * i, x1 = x0 + C;
+                    float z0 =  GROUND_HALF - C * j, z1 = z0 - C;
+                    if ((std::max)(fabsf(x0), fabsf(x1)) <= CARPET_INNER && (std::max)(fabsf(z0), fabsf(z1)) <= CARPET_INNER) continue;
+                    auto mk = [&](float x, float z) {
+                        float v = Fbm(x * 0.09f + 3.0f, z * 0.09f + 9.0f);
+                        XMFLOAT4 col(0.14f + 0.10f * v, 0.32f + 0.10f * v, 0.09f + 0.03f * v, 1.0f);
+                        return MakeV(XMFLOAT3(x, CARPET_Y, z), XMFLOAT3(0, 1, 0), col);
+                    };
+                    VERTEX_3D a = mk(x0, z0), b = mk(x1, z0), c = mk(x0, z1), d = mk(x1, z1);
+                    verts.push_back(a); verts.push_back(b); verts.push_back(c);
+                    verts.push_back(b); verts.push_back(d); verts.push_back(c);
+                }
+            }
+        }
+
         // ---- 木 ----
         BuildTrees(verts);
 

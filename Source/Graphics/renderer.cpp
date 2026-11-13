@@ -677,9 +677,84 @@ void Renderer::EndOutlinePass() {
     m_DeviceContext->OMSetDepthStencilState(m_DepthStateEnable.Get(), 0);
 }
 
+// ─────────────────────────────────────────────────────────────────
+// GPU 処理時間の計測（D3D11 タイムスタンプクエリ）
+// ─────────────────────────────────────────────────────────────────
+namespace {
+    const int TS_RING  = 3;     // 3 フレーム分を循環（古い結果から読むので待たない）
+    const int TS_MARKS = 13;    // 区切りの数（区間は 12）
+    ID3D11Query* g_TsDisjoint[TS_RING] = {};
+    ID3D11Query* g_TsMark[TS_RING][TS_MARKS] = {};
+    bool         g_TsWritten[TS_RING] = {};
+    int          g_TsWrite = 0;
+    bool         g_TsReady = false;
+    float        g_GpuSegMs[TS_MARKS - 1] = {};
+}
+
+void Renderer::GpuFrameBegin()
+{
+    if (!m_Device || !m_DeviceContext) return;
+    if (!g_TsReady) {
+        D3D11_QUERY_DESC qd = {};
+        bool ok = true;
+        for (int r = 0; r < TS_RING && ok; ++r) {
+            qd.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+            ok &= SUCCEEDED(m_Device->CreateQuery(&qd, &g_TsDisjoint[r]));
+            for (int i = 0; i < TS_MARKS && ok; ++i) {
+                qd.Query = D3D11_QUERY_TIMESTAMP;
+                ok &= SUCCEEDED(m_Device->CreateQuery(&qd, &g_TsMark[r][i]));
+            }
+        }
+        if (!ok) return;
+        g_TsReady = true;
+    }
+
+    // いちばん古い結果（2 フレーム前）を読む。まだ準備できていなければ前回値のまま
+    int rd = (g_TsWrite + 1) % TS_RING;
+    if (g_TsWritten[rd]) {
+        D3D11_QUERY_DATA_TIMESTAMP_DISJOINT dj = {};
+        if (m_DeviceContext->GetData(g_TsDisjoint[rd], &dj, sizeof(dj), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK && !dj.Disjoint) {
+            UINT64 t[TS_MARKS] = {};
+            bool all = true;
+            for (int i = 0; i < TS_MARKS && all; ++i) {
+                all &= (m_DeviceContext->GetData(g_TsMark[rd][i], &t[i], sizeof(UINT64), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK);
+            }
+            if (all) {
+                for (int i = 0; i < TS_MARKS - 1; ++i) {
+                    g_GpuSegMs[i] = (t[i + 1] >= t[i]) ? (float)((double)(t[i + 1] - t[i]) / (double)dj.Frequency * 1000.0) : 0.0f;
+                }
+            }
+        }
+    }
+
+    g_TsWrite = (g_TsWrite + 1) % TS_RING;
+    g_TsWritten[g_TsWrite] = false;
+    m_DeviceContext->Begin(g_TsDisjoint[g_TsWrite]);
+    m_DeviceContext->End(g_TsMark[g_TsWrite][0]);
+}
+
+void Renderer::GpuMark(int index)
+{
+    if (!g_TsReady || !m_DeviceContext || index < 1 || index >= TS_MARKS) return;
+    m_DeviceContext->End(g_TsMark[g_TsWrite][index]);
+}
+
+void Renderer::GpuFrameEnd()
+{
+    if (!g_TsReady || !m_DeviceContext) return;
+    m_DeviceContext->End(g_TsDisjoint[g_TsWrite]);
+    g_TsWritten[g_TsWrite] = true;
+}
+
+float Renderer::GetGpuSegmentMs(int segment)
+{
+    return (segment >= 0 && segment < TS_MARKS - 1) ? g_GpuSegMs[segment] : 0.0f;
+}
+
 void Renderer::Begin() {
     // 中間バッファ（SceneRTV）に描画し、ビューポートを現在の解像度に設定
     SetScreenViewport();
+    GpuMark(1);   // 準備(影など)の終わり = 通常描画の始まり
 
     // バックバッファではなく、SceneRTV（中間バッファ）に描画する
     float c[4] = {0.1f, 0.1f, 0.2f, 1.0f};
@@ -695,6 +770,7 @@ void Renderer::Begin() {
 }
 
 void Renderer::BeginNewFrame() {
+    GpuFrameBegin();
     // ImGui のフレーム開始
     UITheme::Update();   // UI の配色を空の時間に連動させる
     ImGui_ImplDX11_NewFrame();
@@ -703,6 +779,7 @@ void Renderer::BeginNewFrame() {
 }
 
 void Renderer::End() {
+    GpuMark(8);   // シーン描画（エフェクト・UI含む）の終わり
     // ─── ブルームポストプロセス ─────────────────────────────
     m_DeviceContext->IASetInputLayout(NULL);
     m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
@@ -750,6 +827,7 @@ void Renderer::End() {
         m_DeviceContext->Draw(3, 0);
     }
 
+    GpuMark(9);   // ブルームの終わり
     // 3.5 SSAO (深度 → AoRTV, 半解像度。品質Lowでは無効)
     const bool enableAo = (m_DepthSRV && m_AoRTV && gs.postProcess != PostProcessQuality::Post_Low);
     if (enableAo) {
@@ -765,6 +843,7 @@ void Renderer::End() {
         m_DeviceContext->PSSetShaderResources(2, 1, nullDepth);
     }
 
+    GpuMark(10);  // SSAO の終わり
     // 4. 合成 (SceneRTV + LumRTV + AO → バックバッファ)
     SetScreenViewport();
     m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
@@ -793,6 +872,7 @@ void Renderer::End() {
     m_DeviceContext->UpdateSubresource(m_PostBuffer.Get(), 0, NULL, &pe, 0, 0);
     m_DeviceContext->PSSetConstantBuffers(0, 1, m_PostBuffer.GetAddressOf());
     m_DeviceContext->Draw(3, 0);
+    GpuMark(11);  // 合成の終わり
 
     // SRV バインド解除（次フレームへの干渉を防ぐ。深度SRVはDSVと同時に使えないため必須）
     ID3D11ShaderResourceView* nullSRV3[] = { NULL, NULL, NULL, NULL };
@@ -818,6 +898,8 @@ void Renderer::End() {
     // ImGui のレンダリングと描画実行
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+    GpuMark(12);
+    GpuFrameEnd();
 
     // 垂直同期（VSync）はオフにし、メインループ側で指定FPS（30/60/120/180/240/無制限）に高精度制御
     // Flipモデル＋テアリング許可時は DXGI_PRESENT_ALLOW_TEARING を指定（DWM合成待ちを回避）

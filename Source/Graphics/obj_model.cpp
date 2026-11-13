@@ -6,6 +6,20 @@
 using namespace DirectX;
 
 namespace {
+    // 自然物用の軽いピクセルシェーダー（初めて必要になった時に読み込み、全モデルで共有する）
+    ID3D11PixelShader* g_FoliagePS = nullptr;
+    bool               g_FoliageTried = false;
+    bool               g_FoliageHidden = false;
+
+    ID3D11PixelShader* GetFoliagePS()
+    {
+        if (!g_FoliageTried) {
+            g_FoliageTried = true;
+            Renderer::CreatePixelShader(&g_FoliagePS, Renderer::ResolveShaderPath("foliage_ps.cso").c_str());
+        }
+        return g_FoliagePS;
+    }
+
     // アセットの場所を解決する。実行フォルダ(x64/Release 等)にコピーされていない場合でも、
     // プロジェクト直下の Assets を見に行く（開発中の起動で、コピー漏れがあっても読めるようにする）
     std::string ResolveAssetPath(const std::string& path)
@@ -20,6 +34,17 @@ namespace {
         }
         return path;
     }
+}
+
+void ObjModel::SetFoliageHidden(bool hidden)
+{
+    g_FoliageHidden = hidden;
+}
+
+void ObjModel::ReleaseSharedResources()
+{
+    if (g_FoliagePS) { g_FoliagePS->Release(); g_FoliagePS = nullptr; }
+    g_FoliageTried = false;
 }
 
 // =================================================================
@@ -104,6 +129,7 @@ bool ObjModel::Load(const std::string& objPathIn, const std::string& mtlPathIn)
 
     const std::string objPath = ResolveAssetPath(objPathIn);
     const std::string mtlPath = ResolveAssetPath(mtlPathIn);
+    m_UseFoliageShader = (objPath.find("/nature/") != std::string::npos);
 
     std::ifstream file(objPath);
     if (!file.is_open()) {
@@ -331,6 +357,7 @@ void ObjModel::Draw(const XMMATRIX& worldMatrix)
 {
     if (!m_VertexBuffer || m_VertexCount == 0) return;
     if (Renderer::IsOutlineMode() || Renderer::IsShadowMode()) return;
+    if (m_UseFoliageShader && g_FoliageHidden) return;
 
     Renderer::SetWorldMatrix(worldMatrix);
 
@@ -342,6 +369,13 @@ void ObjModel::Draw(const XMMATRIX& worldMatrix)
     if (m_RasterizerStateNoCull) {
         Renderer::GetDeviceContext()->RSGetState(&prevRS);
         Renderer::GetDeviceContext()->RSSetState(m_RasterizerStateNoCull);
+    }
+
+    // 自然物は影サンプリングなどを省いた軽いシェーダーで描く（標準シェーダーは後でまた設定される）
+    if (m_UseFoliageShader) {
+        if (ID3D11PixelShader* fps = GetFoliagePS()) {
+            Renderer::GetDeviceContext()->PSSetShader(fps, nullptr, 0);
+        }
     }
 
     // 頂点バッファを自前のOBJ頂点バッファに差し替えて描画

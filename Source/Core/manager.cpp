@@ -30,6 +30,7 @@
 #include "ambient_effect.h"
 #include "grass_system.h"
 #include "hill_terrain.h"
+#include "prop_model.h"
 #include "shadow_system.h"
 #include "event_system.h"
 #include "event_types.h"
@@ -206,6 +207,7 @@ void Manager::Uninit()
     AmbientEffect::Uninit();
     GrassSystem::Uninit();
     HillTerrain::Uninit();
+    PropModel::ClearModelCache();
 
     // 接地丸影（ドロップシャドウ）システムの終了処理
     ShadowSystem::Uninit();
@@ -345,6 +347,8 @@ void Manager::Update()
 // ─────────────────────────────────────────────
 void Manager::Draw(float alpha)
 {
+    LARGE_INTEGER dbgT0;
+    QueryPerformanceCounter(&dbgT0);
     // 描画補間: カメラのビュー行列を alpha に応じて補間適用
     if (g_Camera) {
         g_Camera->ApplyViewMatrix(alpha);
@@ -389,11 +393,13 @@ void Manager::Draw(float alpha)
         if (obj && !obj->IsDestroy()) { obj->Draw(); }
     }
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    Renderer::GpuMark(2);   // 空の終わり
 
     for (GameObject* obj : GetCategoryList(ObjectType::Field)) {
         if (obj && !obj->IsDestroy()) { obj->Draw(); }
     }
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    Renderer::GpuMark(3);   // 地面の終わり
 
     const GraphicsSettings& gs = GraphicsConfig::GetConst();
 
@@ -418,6 +424,8 @@ void Manager::Draw(float alpha)
         context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
 
+    Renderer::GpuMark(4);   // 物体（インスタンス描画・個別描画・丸影）の終わり
+
     // === 3. アウトライン描画パス (シャドウと同様の除外判定) ===
     if (gs.outline != OutlineQuality::Outline_Off) {
         Renderer::BeginOutlinePass();
@@ -435,8 +443,11 @@ void Manager::Draw(float alpha)
     ShockwaveSystem::Draw();
     // AuraEffect は Renderer::End のポスト合成後(ブラーの後)に描画する
     DustSystem::Draw();
+    Renderer::GpuMark(5);   // アウトラインの終わり
     HillTerrain::Draw();   // 遠景の丘と木（不透明）
+    Renderer::GpuMark(6);   // 丘と木の終わり
     GrassSystem::Draw();   // 不透明物の後・半透明エフェクトの前
+    Renderer::GpuMark(7);   // 草の終わり
     FireEffect::Draw();
     AmbientEffect::Draw();
     ScoreHUD::Draw();
@@ -453,6 +464,12 @@ void Manager::Draw(float alpha)
     // アイテム入手通知HUDの描画（ImGuiオーバーレイ）
     ItemNotificationHUD::Draw();
 
+    {
+        LARGE_INTEGER t1, fq;
+        QueryPerformanceCounter(&t1);
+        QueryPerformanceFrequency(&fq);
+        s_DbgCpuDrawMs = (float)((double)(t1.QuadPart - dbgT0.QuadPart) / (double)fq.QuadPart * 1000.0);
+    }
     Renderer::End();
 }
 

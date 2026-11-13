@@ -101,6 +101,10 @@ public:
     // 更新と描画（アクティブなシーンオブジェクトに処理を委譲します）
     static void Update();
     static void Draw(float alpha = 1.0f);
+
+    // 確認用: CPU 側の処理時間(ms)。FPS の低下がCPUかGPUかの切り分けに使う（確認が済んだら削除）
+    static inline float s_DbgCpuUpdateMs = 0.0f;   // Manager::Update の合計（1描画フレーム分）
+    static inline float s_DbgCpuDrawMs   = 0.0f;   // Manager::Draw の、コマンド発行にかかった時間（Present の待ちは含まない）
     static void DestroyObjectsIf(); // オブジェクト破棄処理の一元化（IsDestroy == true）
 
     // 条件指定によるオブジェクト破棄の一元化（ボスステージ遷移等で使用）

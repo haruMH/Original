@@ -23,6 +23,9 @@ public:
     // 配置モデルオブジェクト
     virtual ObjectType GetObjectType() const override { return ObjectType::Prop; }
 
+    // 共有キャッシュの全解放（アプリ終了時に呼ぶ）
+    static void ClearModelCache();
+
 private:
     std::shared_ptr<ObjModel> m_Model;
 };

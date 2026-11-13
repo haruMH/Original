@@ -46,3 +46,11 @@
 回転必須化: Step1 非回転投げ(ノックバックのみ+クールダウン)+抜け道封じ → Step2 4段階チャージ(30/60/90/100%保証、4段階目に爆発等) → Step3 チャージ演出+回転中リスク → Step4 クールダウン/段階UI(score_hud)。
 詳細プラン: C:\Users\HARU17\.claude\plans\reply-4-tidy-allen.md
 進捗: Step0〜4すべて完了(ビルド成功・手触り確認待ち)。チャージ演出は放電→オーラ(Source/Effect/aura_effect、Manager::Drawから描画)に変更。UIは score_hud の DrawChargeGauge(右下: 4分割チャージ+クールダウンバー)。次: 遊んで調整、後回しメモ(接線発射/難易度)の再検討。
+
+### 拠点の見栄え強化(feature/field-visual。進行中)
+- 実装済み: ブルーム強化(HDR R11G11B10)、SSAO半解像度、夜の蛍(ambient_effect)、焚き火/かがり火の点光源(最大4灯, b7)、草(grass_system, カメラ中心2層)、丘と木と芝敷物(Stage/hill_terrain)、空の山(sky_ps)、外周は見えない壁+柵。
+- 素材: Assets/model/nature(Quaternius Stylized Nature MegaKit, CC0)。ライセンス記録は Assets/CREDITS.md(素材追加時に必ず追記)。ObjModelは複数テクスチャ+アルファテスト対応、/nature/ は foliage_ps(軽量PS)で描画。PropModelは同一OBJを共有キャッシュ。
+- 未コミット: GPU/CPU計測(Renderer::GpuMark、Manager::s_DbgCpu*)、拠点の確認用オーバーレイとF5/F6/F7切替(hub_scene.cpp の「確認用」。確認後に削除)、草の2層化、foliage_ps、自然物の本配置。
+- FPS問題(フルスクリーン36〜42): CPUは update0.1ms/draw-submit0.3ms で問題なし。GPUの重さは **標準 pixelShader.hlsl** に集中(地面 ground 3〜10ms、物体 objects 5〜16ms。影16タップPCF+床ノイズ+点光源4灯ループ)。草・丘・自然物を個別にOFFしても各+3FPSのみ。次の手: pixelShader の影を8タップ化/距離で省略、床ノイズの簡略化、点光源ループの条件省略、必要なら内部解像度スケール。
+- ファイル整理の計画(未着手): ステップ1(素材取り込み)は完了。ステップ2: ルートの.hlsl19個を Shaders/ へ(ResolveShaderPath・vcxproj・ポストビルドも修正)。ステップ3: ルートのログ類を logs/ へ、Assets/model の Kenney素材を survival_kit/ に整理(コード内パス文字列も修正)。各段階でビルド+起動確認してコミット。
+- 注意: Releaseは x64\Release で実行され Assets のコピーが漏れることがある。ObjModel は ../ ../../ を探すフォールバックあり。drive-download(63モデル)とMedieval Village MegaKit(Standard)は Downloads 内に未取り込み(使う時は CREDITS.md に追記)。

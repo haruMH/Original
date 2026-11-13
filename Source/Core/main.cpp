@@ -126,11 +126,15 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 			accumulator += frameDelta;
 
 			// ゲームロジックの固定ステップ更新（60Hz）
+			LARGE_INTEGER dbgU0, dbgU1;
+			QueryPerformanceCounter(&dbgU0);
 			while (accumulator >= FIXED_DELTA_TIME)
 			{
 				Manager::Update();
 				accumulator -= FIXED_DELTA_TIME;
 			}
+			QueryPerformanceCounter(&dbgU1);
+			Manager::s_DbgCpuUpdateMs = (float)((double)(dbgU1.QuadPart - dbgU0.QuadPart) * invFreq * 1000.0);
 
 			// 描画フレームレート制御
 			int targetFPS = Manager::GetTargetFPS();
