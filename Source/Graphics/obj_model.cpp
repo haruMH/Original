@@ -5,6 +5,23 @@
 
 using namespace DirectX;
 
+namespace {
+    // アセットの場所を解決する。実行フォルダ(x64/Release 等)にコピーされていない場合でも、
+    // プロジェクト直下の Assets を見に行く（開発中の起動で、コピー漏れがあっても読めるようにする）
+    std::string ResolveAssetPath(const std::string& path)
+    {
+        if (path.empty()) return path;
+        { std::ifstream f(path); if (f.is_open()) return path; }
+        static const char* kPrefixes[] = { "../", "../../", "../../../" };
+        for (const char* p : kPrefixes) {
+            std::string cand = std::string(p) + path;
+            std::ifstream f(cand);
+            if (f.is_open()) return cand;
+        }
+        return path;
+    }
+}
+
 // =================================================================
 // コンストラクタ / デストラクタ
 // =================================================================
@@ -36,13 +53,19 @@ void ObjModel::Uninit()
         m_TextureSRV->Release();
         m_TextureSRV = nullptr;
     }
+    for (ID3D11ShaderResourceView* t : m_ExtraTextures) {
+        if (t) t->Release();
+    }
+    m_ExtraTextures.clear();
+    m_SubMeshes.clear();
     m_VertexCount = 0;
 }
 
 // =================================================================
 // MTLマテリアル読み込み
 // =================================================================
-void ObjModel::LoadMtl(const std::string& mtlPath, std::unordered_map<std::string, XMFLOAT4>& materials, std::string& outTexture)
+void ObjModel::LoadMtl(const std::string& mtlPath, std::unordered_map<std::string, XMFLOAT4>& materials, std::string& outTexture,
+                       std::unordered_map<std::string, std::string>& matTex)
 {
     std::ifstream file(mtlPath);
     if (!file.is_open()) return;
@@ -67,6 +90,7 @@ void ObjModel::LoadMtl(const std::string& mtlPath, std::unordered_map<std::strin
             LOG_INFO("[ObjModel] Mat: %s -> Kd(%.2f, %.2f, %.2f)\n", currentMatName.c_str(), r, g, b);
         } else if (tag == "map_Kd") {
             iss >> outTexture;
+            if (!currentMatName.empty()) matTex[currentMatName] = outTexture;
         }
     }
 }
@@ -74,9 +98,12 @@ void ObjModel::LoadMtl(const std::string& mtlPath, std::unordered_map<std::strin
 // =================================================================
 // OBJファイル読み込み
 // =================================================================
-bool ObjModel::Load(const std::string& objPath, const std::string& mtlPath)
+bool ObjModel::Load(const std::string& objPathIn, const std::string& mtlPathIn)
 {
     Uninit();
+
+    const std::string objPath = ResolveAssetPath(objPathIn);
+    const std::string mtlPath = ResolveAssetPath(mtlPathIn);
 
     std::ifstream file(objPath);
     if (!file.is_open()) {
@@ -92,8 +119,9 @@ bool ObjModel::Load(const std::string& objPath, const std::string& mtlPath)
 
     std::string textureFileName = "";
     std::unordered_map<std::string, XMFLOAT4> materials;
+    std::unordered_map<std::string, std::string> matTex;
     if (!mtlPath.empty()) {
-        LoadMtl(mtlPath, materials, textureFileName);
+        LoadMtl(mtlPath, materials, textureFileName, matTex);
     }
 
     std::vector<XMFLOAT3> positions;
@@ -102,6 +130,12 @@ bool ObjModel::Load(const std::string& objPath, const std::string& mtlPath)
     std::vector<VERTEX_3D> vertices;
 
     XMFLOAT4 currentDiffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+
+    // usemtl の切り替わりごとに頂点範囲を記録する（マテリアルごとにテクスチャを切り替えるため）
+    struct MatRange { std::string name; size_t start; size_t count; };
+    std::vector<MatRange> ranges;
+    std::string curMatName;
+    size_t subStart = 0;
 
     std::string line;
     while (std::getline(file, line)) {
@@ -114,10 +148,15 @@ bool ObjModel::Load(const std::string& objPath, const std::string& mtlPath)
         if (tag == "mtllib" && mtlPath.empty()) {
             std::string mtlFileName;
             iss >> mtlFileName;
-            LoadMtl(dir + mtlFileName, materials, textureFileName);
+            LoadMtl(dir + mtlFileName, materials, textureFileName, matTex);
         } else if (tag == "usemtl") {
             std::string matName;
             iss >> matName;
+            if (vertices.size() > subStart) {
+                ranges.push_back({ curMatName, subStart, vertices.size() - subStart });
+            }
+            subStart = vertices.size();
+            curMatName = matName;
             auto it = materials.find(matName);
             if (it != materials.end()) {
                 currentDiffuse = it->second;
@@ -201,6 +240,9 @@ bool ObjModel::Load(const std::string& objPath, const std::string& mtlPath)
     if (vertices.empty()) {
         return false;
     }
+    if (vertices.size() > subStart) {
+        ranges.push_back({ curMatName, subStart, vertices.size() - subStart });
+    }
 
     m_VertexCount = static_cast<int>(vertices.size());
 
@@ -231,9 +273,49 @@ bool ObjModel::Load(const std::string& objPath, const std::string& mtlPath)
         std::string texPath = dir + textureFileName;
         std::ifstream tf(texPath);
         if (!tf.is_open()) {
-            texPath = "Assets/model/Textures/colormap.png";
+            texPath = ResolveAssetPath("Assets/model/Textures/colormap.png");
         }
         Renderer::CreateTexture(texPath.c_str(), &m_TextureSRV);
+    }
+
+    // マテリアルごとのテクスチャを解決して、描画範囲（SubMesh）を作る。
+    // 個別の map_Kd が無い／読めないマテリアルは、従来どおりモデル共通のテクスチャを使う（既存モデルの見た目は変えない）
+    {
+        std::unordered_map<std::string, ID3D11ShaderResourceView*> loaded;
+        for (const MatRange& r : ranges) {
+            SubMesh sm;
+            sm.start = static_cast<int>(r.start);
+            sm.count = static_cast<int>(r.count);
+            sm.tex = m_TextureSRV;
+
+            auto it = matTex.find(r.name);
+            if (it != matTex.end() && it->second != textureFileName) {
+                auto cached = loaded.find(it->second);
+                if (cached != loaded.end()) {
+                    sm.tex = cached->second;
+                } else {
+                    std::string p = dir + it->second;
+                    std::ifstream tf2(p);
+                    if (tf2.is_open()) {
+                        ID3D11ShaderResourceView* srv = nullptr;
+                        Renderer::CreateTexture(p.c_str(), &srv);
+                        if (srv) {
+                            m_ExtraTextures.push_back(srv);
+                            loaded[it->second] = srv;
+                            sm.tex = srv;
+                        }
+                    }
+                }
+            }
+            m_SubMeshes.push_back(sm);
+        }
+        if (m_SubMeshes.empty()) {
+            SubMesh sm;
+            sm.start = 0;
+            sm.count = m_VertexCount;
+            sm.tex = m_TextureSRV;
+            m_SubMeshes.push_back(sm);
+        }
     }
 
     LOG_INFO("[ObjModel] Successfully loaded: %s (Vertices: %d, Tex: %s)\n",
@@ -252,26 +334,6 @@ void ObjModel::Draw(const XMMATRIX& worldMatrix)
 
     Renderer::SetWorldMatrix(worldMatrix);
 
-    // テクスチャまたは頂点カラー（Diffuse）を設定
-    if (m_TextureSRV) {
-        Renderer::GetDeviceContext()->PSSetShaderResources(0, 1, &m_TextureSRV);
-        ID3D11ShaderResourceView* nullSRV = nullptr;
-        Renderer::GetDeviceContext()->PSSetShaderResources(1, 1, &nullSRV);
-    } else {
-        ID3D11ShaderResourceView* nullSRV = nullptr;
-        Renderer::GetDeviceContext()->PSSetShaderResources(0, 1, &nullSRV);
-        Renderer::GetDeviceContext()->PSSetShaderResources(1, 1, &nullSRV);
-    }
-
-    MATERIAL material;
-    ZeroMemory(&material, sizeof(material));
-    material.Diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    material.Ambient = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    material.Specular = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
-    material.Shininess = 20.0f;
-    material.TextureEnable = (m_TextureSRV != nullptr) ? TRUE : FALSE;
-    Renderer::SetMaterial(material);
-
     // キューブ共通のシェーダー・定数バッファ・パイプラインステートをセット
     Renderer::SetupCubeDraw();
 
@@ -286,7 +348,30 @@ void ObjModel::Draw(const XMMATRIX& worldMatrix)
     UINT stride = sizeof(VERTEX_3D);
     UINT offset = 0;
     Renderer::GetDeviceContext()->IASetVertexBuffers(0, 1, &m_VertexBuffer, &stride, &offset);
-    Renderer::GetDeviceContext()->Draw(m_VertexCount, 0);
+
+    // マテリアル（テクスチャ）ごとに描画。葉などの透明部分は、ピクセルシェーダーで切り抜く（アルファテスト）
+    ID3D11ShaderResourceView* nullSRV = nullptr;
+    for (const SubMesh& sm : m_SubMeshes) {
+        if (sm.tex) {
+            ID3D11ShaderResourceView* t = sm.tex;
+            Renderer::GetDeviceContext()->PSSetShaderResources(0, 1, &t);
+        } else {
+            Renderer::GetDeviceContext()->PSSetShaderResources(0, 1, &nullSRV);
+        }
+        Renderer::GetDeviceContext()->PSSetShaderResources(1, 1, &nullSRV);
+
+        MATERIAL material;
+        ZeroMemory(&material, sizeof(material));
+        material.Diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        material.Ambient = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        material.Specular = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
+        material.Shininess = 20.0f;
+        material.TextureEnable = (sm.tex != nullptr) ? TRUE : FALSE;
+        material.Dummy = (sm.tex != nullptr) ? 0.5f : 0.0f;   // アルファテストのしきい値
+        Renderer::SetMaterial(material);
+
+        Renderer::GetDeviceContext()->Draw(sm.count, sm.start);
+    }
 
     // ラスタライザーステートを復元
     if (prevRS) {

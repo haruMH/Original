@@ -1,3 +1,4 @@
+#include <fstream>
 #include "hub_scene.h"
 #include "localization.h"
 #include "fire_effect.h"
@@ -200,6 +201,28 @@ void HubScene::Init()
                 XMFLOAT3(-21.2f, -1.0f, p), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2);
     }
 
+    // --- 草原の自然物（Stylized Nature MegaKit）。まず北側の柵の外に少数置いて見え方を確認する ---
+    {
+        const std::string N = "Assets/model/nature/";
+        auto nat = [&](const char* sub, const char* name, float x, float z, float scale, float rotY) {
+            AddProp(N + sub + "/" + name + ".obj", N + sub + "/" + name + ".mtl",
+                    XMFLOAT3(x, -1.0f, z), XMFLOAT3(scale, scale, scale), rotY);
+        };
+        // 確認用（スタート地点の正面の見える位置。見え方を確認したら本番の配置に差し替える）
+        nat("trees", "CommonTree_1", -7.0f, 9.0f, 1.0f, 0.4f);
+        nat("trees", "Pine_2",        7.0f, 9.0f, 1.0f, 1.1f);
+        nat("trees", "CommonTree_3", -13.0f, 4.0f, 1.0f, 2.3f);
+        nat("trees", "Pine_4",       13.0f, 4.0f, 1.0f, 0.2f);
+        nat("bushes", "Bush_Common",         -3.0f, 3.0f, 1.3f, 0.5f);
+        nat("bushes", "Bush_Common_Flowers",  3.5f, 3.0f, 1.3f, 1.9f);
+        nat("bushes", "Fern_1",              -5.5f, 1.0f, 1.0f, 0.0f);
+        nat("rocks",  "Rock_Medium_1",        5.5f, 1.0f, 1.3f, 0.8f);
+        nat("rocks",  "Rock_Medium_2",       -9.5f, 2.0f, 1.2f, 2.0f);
+        nat("flowers", "Flower_3_Group",      -1.5f, 2.0f, 1.2f, 0.0f);
+        nat("flowers", "Flower_4_Group",       1.5f, 2.0f, 1.2f, 0.0f);
+        nat("flowers", "Mushroom_Common",      0.0f, 3.5f, 1.8f, 0.0f);
+    }
+
     // --- (G) キャンプ外周の防護柵（実寸幅3.0m, 厚さ0.48mの薄板コライダー） ---
     // 南側（東西に伸びる柵：回転なし）
     AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
@@ -325,6 +348,7 @@ void HubScene::UpdateFacilities()
 void HubScene::Draw()
 {
     DrawFacilityHUD();
+
 
     if (m_IsWorkshopOpen) {
         DrawWorkshopUI();

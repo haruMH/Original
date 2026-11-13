@@ -27,7 +27,18 @@ public:
 
 private:
     // MTLマテリアル読み込みヘルパー
-    void LoadMtl(const std::string& mtlPath, std::unordered_map<std::string, DirectX::XMFLOAT4>& materials, std::string& outTexture);
+    // matTex: マテリアル名 → そのマテリアルの map_Kd（木の樹皮と葉のように、1モデルに複数テクスチャがある場合用）
+    void LoadMtl(const std::string& mtlPath, std::unordered_map<std::string, DirectX::XMFLOAT4>& materials, std::string& outTexture,
+                 std::unordered_map<std::string, std::string>& matTex);
+
+    // マテリアルごとの描画範囲（頂点の並びを usemtl の切り替わりで区切る）
+    struct SubMesh {
+        int start = 0;
+        int count = 0;
+        ID3D11ShaderResourceView* tex = nullptr;   // 所有しない（m_TextureSRV か m_ExtraTextures のどれか）
+    };
+    std::vector<SubMesh>                      m_SubMeshes;
+    std::vector<ID3D11ShaderResourceView*>    m_ExtraTextures;   // マテリアル個別のテクスチャ（所有）
 
     ID3D11Buffer*              m_VertexBuffer = nullptr;
     ID3D11RasterizerState*     m_RasterizerStateNoCull = nullptr;

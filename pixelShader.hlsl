@@ -62,6 +62,8 @@ float4 main(PS_INPUT input) : SV_TARGET
     if (Material.TextureEnable)
     {
         float4 tex = g_Texture.Sample(g_Sampler, input.TexCoord);
+        // 葉などの透明部分を切り抜く（Material.Dummy をしきい値として使う。0 なら無効）
+        if (Material.Dummy > 0.0f && tex.a < Material.Dummy) discard;
         if (tex.r + tex.g + tex.b > 0.01f)
             color = tex * input.Diffuse;
     }
