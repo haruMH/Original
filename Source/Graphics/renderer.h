@@ -145,7 +145,15 @@ private:
     static Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   m_AoRTV;   // SSAO(半解像度)
     static Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_AoSRV;
     static D3D11_VIEWPORT                                   m_AoViewport;
-    
+
+    // 描画解像度スケール(renderScale)。シーン/深度/ポストは scene サイズ、合成の出力だけ画面サイズ
+    static UINT                                             m_SceneWidth;
+    static UINT                                             m_SceneHeight;
+    static float                                            m_AppliedRenderScale;
+    static Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   m_LdrRTV;          // scale<1 のみ。合成結果を受けるシーン解像度の一時画像(オーラ等もここへ描く)
+    static Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_LdrSRV;
+    static Microsoft::WRL::ComPtr<ID3D11PixelShader>        m_UpscalePS;       // 一時画像 → バックバッファの拡大
+
     static Microsoft::WRL::ComPtr<ID3D11VertexShader>       m_OutlineVS;
     static Microsoft::WRL::ComPtr<ID3D11PixelShader>        m_OutlinePS;
     static Microsoft::WRL::ComPtr<ID3D11VertexShader>       m_PostVS;
@@ -186,6 +194,8 @@ private:
     static void CreateScreenSizeResources(UINT width, UINT height);
     static void ReleaseScreenSizeResources();
     static void SetScreenViewport();
+    static void SetSceneViewport();
+    static void ApplyRenderScaleIfChanged();
     static void BindCubePipeline(ID3D11VertexShader* customVS = nullptr, ID3D11PixelShader* customPS = nullptr);
     static void DrawCubeInternal(const XMMATRIX& worldMatrix, ID3D11ShaderResourceView* texture, ID3D11PixelShader* customPS);
 
@@ -240,6 +250,8 @@ public:
     static UINT m_ScreenHeight;
     static UINT GetScreenWidth() { return m_ScreenWidth; }
     static UINT GetScreenHeight() { return m_ScreenHeight; }
+    static UINT GetSceneWidth()  { return m_SceneWidth; }    // 実際に3Dを描く解像度(renderScale 反映)
+    static UINT GetSceneHeight() { return m_SceneHeight; }
     static void OnResize(UINT width, UINT height);
     static void CreateVertexShader(ID3D11VertexShader** vs, ID3D11InputLayout** il, const char* name);
     static void CreatePixelShader(ID3D11PixelShader** ps, const char* name);

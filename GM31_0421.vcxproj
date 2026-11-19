@@ -362,6 +362,11 @@
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
     </FXCompile>
+    <FXCompile Include="upscale_ps.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+    </FXCompile>
     <FXCompile Include="postEffect_vs.hlsl">
       <ShaderType>Vertex</ShaderType>
       <ShaderModel>5.0</ShaderModel>

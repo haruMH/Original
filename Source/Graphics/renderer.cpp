@@ -72,6 +72,12 @@ Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Renderer::m_LumSRV;
 Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   Renderer::m_AoRTV;
 Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Renderer::m_AoSRV;
 D3D11_VIEWPORT                                   Renderer::m_AoViewport = {};
+UINT                                             Renderer::m_SceneWidth  = SCREEN_WIDTH;
+UINT                                             Renderer::m_SceneHeight = SCREEN_HEIGHT;
+float                                            Renderer::m_AppliedRenderScale = 1.0f;
+Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   Renderer::m_LdrRTV;
+Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Renderer::m_LdrSRV;
+Microsoft::WRL::ComPtr<ID3D11PixelShader>        Renderer::m_UpscalePS;
 Microsoft::WRL::ComPtr<ID3D11RenderTargetView>   Renderer::m_BlurRTV;
 Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Renderer::m_BlurSRV;
 
@@ -107,6 +113,14 @@ XMFLOAT4X4           Renderer::m_ProjectionCache = {};
 bool                 Renderer::m_IsCacheInitialized = false;
 
 void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
+    // 描画解像度。renderScale < 1 のとき画面より小さく描き、合成パスで画面へ引き伸ばす
+    float rs = (std::min)(1.0f, (std::max)(0.5f, GraphicsConfig::GetConst().renderScale));
+    const UINT sceneW = (std::max)(1u, (UINT)((float)width  * rs + 0.5f));
+    const UINT sceneH = (std::max)(1u, (UINT)((float)height * rs + 0.5f));
+    m_SceneWidth  = sceneW;
+    m_SceneHeight = sceneH;
+    m_AppliedRenderScale = rs;
+
     // 1. バックバッファからRTVを作成
     Microsoft::WRL::ComPtr<ID3D11Texture2D> pb;
     m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)pb.GetAddressOf());
@@ -116,8 +130,8 @@ void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
 
     // 2. 通常のデプスステンシルビュー作成
     D3D11_TEXTURE2D_DESC td = {};
-    td.Width = width;
-    td.Height = height;
+    td.Width = sceneW;
+    td.Height = sceneH;
     td.MipLevels = 1;
     td.ArraySize = 1;
     td.Format = DXGI_FORMAT_R24G8_TYPELESS;   // SSAO用にシェーダーからも読めるようにする
@@ -143,8 +157,8 @@ void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
     // 3. ブルーム用レンダーターゲット
     Microsoft::WRL::ComPtr<ID3D11Texture2D> tempTex;
     D3D11_TEXTURE2D_DESC rtDesc = {};
-    rtDesc.Width = width;
-    rtDesc.Height = height;
+    rtDesc.Width = sceneW;
+    rtDesc.Height = sceneH;
     rtDesc.MipLevels = 1;
     rtDesc.ArraySize = 1;
     rtDesc.Format = DXGI_FORMAT_R11G11B10_FLOAT; // HDR(帯域は16bit版の半分): 自発光(>1.0)をブルームに活かす
@@ -160,8 +174,8 @@ void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
     }
 
     // 縮小バッファ設定 (1/4サイズ)
-    rtDesc.Width = width / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
-    rtDesc.Height = height / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
+    rtDesc.Width = sceneW / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
+    rtDesc.Height = sceneH / RenderConstants::PostProcess::DOWNSAMPLE_SCALE;
     m_PostViewport.Width = (float)rtDesc.Width;
     m_PostViewport.Height = (float)rtDesc.Height;
     m_PostViewport.MinDepth = 0.0f;
@@ -186,8 +200,8 @@ void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
     // SSAO用バッファ (1/2サイズ・単チャンネル)
     {
         D3D11_TEXTURE2D_DESC aoDesc = rtDesc;
-        aoDesc.Width  = (std::max)(1u, (UINT)width  / 2);
-        aoDesc.Height = (std::max)(1u, (UINT)height / 2);
+        aoDesc.Width  = (std::max)(1u, sceneW / 2);
+        aoDesc.Height = (std::max)(1u, sceneH / 2);
         aoDesc.Format = DXGI_FORMAT_R8_UNORM;
         m_AoViewport = {};
         m_AoViewport.Width    = (float)aoDesc.Width;
@@ -202,8 +216,8 @@ void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
 
     // 4. 屈折エフェクト用背景コピーテクスチャ
     D3D11_TEXTURE2D_DESC bgDesc = {};
-    bgDesc.Width = width;
-    bgDesc.Height = height;
+    bgDesc.Width = sceneW;
+    bgDesc.Height = sceneH;
     bgDesc.MipLevels = 1;
     bgDesc.ArraySize = 1;
     bgDesc.Format = DXGI_FORMAT_R11G11B10_FLOAT; // シーンRTと同一形式（CopyResource用）
@@ -214,11 +228,34 @@ void Renderer::CreateScreenSizeResources(UINT width, UINT height) {
     if (m_BackgroundCopyTexture) {
         m_Device->CreateShaderResourceView(m_BackgroundCopyTexture.Get(), nullptr, m_BackgroundCopySRV.ReleaseAndGetAddressOf());
     }
+
+    // 5. renderScale < 1 のみ: 合成結果を受ける一時画像（シーンと同じ解像度のLDR）。
+    //    オーラ等はここへシーン深度で描き、最後に画面解像度へ拡大する
+    m_LdrRTV.Reset();
+    m_LdrSRV.Reset();
+    if (sceneW != width || sceneH != height) {
+        D3D11_TEXTURE2D_DESC ld = {};
+        ld.Width = sceneW;
+        ld.Height = sceneH;
+        ld.MipLevels = 1;
+        ld.ArraySize = 1;
+        ld.Format = DXGI_FORMAT_R8G8B8A8_UNORM;   // バックバッファと同じ形式
+        ld.SampleDesc.Count = 1;
+        ld.Usage = D3D11_USAGE_DEFAULT;
+        ld.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> ldrTex;
+        if (SUCCEEDED(m_Device->CreateTexture2D(&ld, NULL, ldrTex.GetAddressOf()))) {
+            m_Device->CreateRenderTargetView(ldrTex.Get(), NULL, m_LdrRTV.ReleaseAndGetAddressOf());
+            m_Device->CreateShaderResourceView(ldrTex.Get(), NULL, m_LdrSRV.ReleaseAndGetAddressOf());
+        }
+    }
 }
 
 void Renderer::ReleaseScreenSizeResources() {
     m_RenderTargetView.Reset();
     m_DepthStencilView.Reset();
+    m_LdrRTV.Reset();
+    m_LdrSRV.Reset();
     m_DepthSRV.Reset();
     m_SceneRTV.Reset();
     m_SceneSRV.Reset();
@@ -241,6 +278,31 @@ void Renderer::SetScreenViewport() {
     vp.TopLeftX = 0.0f;
     vp.TopLeftY = 0.0f;
     m_DeviceContext->RSSetViewports(1, &vp);
+}
+
+// シーン(3D描画・ポスト前)用。renderScale 反映後の解像度
+void Renderer::SetSceneViewport() {
+    D3D11_VIEWPORT vp = {};
+    vp.Width = (FLOAT)m_SceneWidth;
+    vp.Height = (FLOAT)m_SceneHeight;
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    m_DeviceContext->RSSetViewports(1, &vp);
+}
+
+// renderScale が変わっていたら、解像度依存リソースを作り直す（フレーム先頭で呼ぶ）
+void Renderer::ApplyRenderScaleIfChanged() {
+    if (!m_Device || !m_DeviceContext || !m_SwapChain) return;
+    const float rs = (std::min)(1.0f, (std::max)(0.5f, GraphicsConfig::GetConst().renderScale));
+    if (std::fabs(rs - m_AppliedRenderScale) < 0.001f) return;
+
+    ID3D11RenderTargetView* nullRTV = nullptr;
+    m_DeviceContext->OMSetRenderTargets(1, &nullRTV, nullptr);
+    ID3D11ShaderResourceView* nullSRVs[4] = { nullptr, nullptr, nullptr, nullptr };
+    m_DeviceContext->PSSetShaderResources(0, 4, nullSRVs);
+    m_DeviceContext->Flush();
+    ReleaseScreenSizeResources();
+    CreateScreenSizeResources(m_ScreenWidth, m_ScreenHeight);
 }
 
 void Renderer::Init() {
@@ -445,6 +507,9 @@ void Renderer::Init() {
     CreateVertexShader(m_PostVS.ReleaseAndGetAddressOf(), nullptr, ResolveShaderPath("postEffect_vs.cso").c_str());
     CreatePixelShader(m_PostPS.ReleaseAndGetAddressOf(),           ResolveShaderPath("postEffect_ps.cso").c_str());
 
+    // renderScale < 1 用: 一時画像を画面解像度へ拡大するシェーダー
+    CreatePixelShader(m_UpscalePS.ReleaseAndGetAddressOf(),        ResolveShaderPath("upscale_ps.cso").c_str());
+
     // === キューブ共通リソースの作成 ===
     {
         XMFLOAT3 ltf(-0.5f, 0.5f, 0.5f), rtf(0.5f, 0.5f, 0.5f);
@@ -577,6 +642,7 @@ void Renderer::Uninit() {
     m_RasterizerStateCullFront.Reset();
     m_PostVS.Reset();
     m_PostPS.Reset();
+    m_UpscalePS.Reset();
     m_PostBuffer.Reset();
     m_ShadowMapTexture.Reset();
     m_ShadowMapDSV.Reset();
@@ -657,7 +723,7 @@ void Renderer::EndShadowPass() {
     // シャドウマップの書き込み（DSV）を解除する
     m_DeviceContext->OMSetRenderTargets(0, NULL, NULL);
 
-    SetScreenViewport();
+    SetSceneViewport();
 
     // DSVが解除されたので、安全にテクスチャ（SRV）として読み込めるようにバインド
     m_DeviceContext->PSSetShaderResources(2, 1, m_ShadowMapSRV.GetAddressOf());
@@ -752,8 +818,8 @@ float Renderer::GetGpuSegmentMs(int segment)
 }
 
 void Renderer::Begin() {
-    // 中間バッファ（SceneRTV）に描画し、ビューポートを現在の解像度に設定
-    SetScreenViewport();
+    // 中間バッファ（SceneRTV）に描画し、ビューポートを描画解像度(renderScale 反映)に設定
+    SetSceneViewport();
     GpuMark(1);   // 準備(影など)の終わり = 通常描画の始まり
 
     // バックバッファではなく、SceneRTV（中間バッファ）に描画する
@@ -770,6 +836,7 @@ void Renderer::Begin() {
 }
 
 void Renderer::BeginNewFrame() {
+    ApplyRenderScaleIfChanged();
     GpuFrameBegin();
     // ImGui のフレーム開始
     UITheme::Update();   // UI の配色を空の時間に連動させる
@@ -845,9 +912,11 @@ void Renderer::End() {
 
     GpuMark(10);  // SSAO の終わり
     // 4. 合成 (SceneRTV + LumRTV + AO → バックバッファ)
-    SetScreenViewport();
+    //    renderScale < 1 のときは、シーンと同じ解像度の一時画像(m_LdrRTV)へ出し、最後に画面解像度へ拡大する
+    const bool useLdr = (m_LdrRTV && m_LdrSRV && m_UpscalePS);
+    if (useLdr) SetSceneViewport(); else SetScreenViewport();
     m_DeviceContext->PSSetShaderResources(0, 2, nullSRV);
-    m_DeviceContext->OMSetRenderTargets(1, m_RenderTargetView.GetAddressOf(), NULL);
+    m_DeviceContext->OMSetRenderTargets(1, useLdr ? m_LdrRTV.GetAddressOf() : m_RenderTargetView.GetAddressOf(), NULL);
     m_DeviceContext->PSSetShaderResources(0, 1, m_SceneSRV.GetAddressOf());
     m_DeviceContext->PSSetShaderResources(1, 1, enableBloom ? m_LumSRV.GetAddressOf() : m_SceneSRV.GetAddressOf());
     m_DeviceContext->PSSetShaderResources(2, 1, m_DepthSRV.GetAddressOf());
@@ -861,7 +930,8 @@ void Renderer::End() {
     pe.RadialBlurIntensity = gs.radialBlur ? Manager::GetRadialBlurIntensity() : 0.0f;
     pe.ChromaticAberration = (gs.postProcess == PostProcessQuality::Post_High) ? Manager::GetChromaticAberration() : 0.0f;
     pe.RadialBlurCenter = Manager::GetRadialBlurCenter();
-    pe.TexelSize = XMFLOAT2(1.0f / (float)m_ScreenWidth, 1.0f / (float)m_ScreenHeight);
+    // 合成の読み取り元(シーン・AO)は描画解像度。CAS/AOぼかしの隣接距離はシーンの1画素
+    pe.TexelSize = XMFLOAT2(1.0f / (float)m_SceneWidth, 1.0f / (float)m_SceneHeight);
     pe.Dummy.x = gs.casSharpness;
     // 空に連動したカラーグレード
     pe.GradeParams = XMFLOAT4(WorldLook::GetSaturation(), WorldLook::GetContrast(), 0.0f, 0.0f);
@@ -879,8 +949,10 @@ void Renderer::End() {
     m_DeviceContext->PSSetShaderResources(0, 4, nullSRV3);
     m_DeviceContext->OMSetDepthStencilState(m_DepthStateEnable.Get(), 0);
 
-    // チャージオーラはポスト合成(ラジアルブラー)の後にバックバッファへ直接描く（深度はシーンのものを利用）
-    m_DeviceContext->OMSetRenderTargets(1, m_RenderTargetView.GetAddressOf(), m_DepthStencilView.Get());
+    // チャージオーラはポスト合成(ラジアルブラー)の後に、合成結果へ直接描く（深度はシーンのものを利用）
+    // renderScale < 1 のときの合成結果は、シーンと同じ解像度の一時画像(m_LdrRTV)。深度と大きさが揃うのでそのまま使える
+    ID3D11RenderTargetView* overlayRTV = useLdr ? m_LdrRTV.Get() : m_RenderTargetView.Get();
+    m_DeviceContext->OMSetRenderTargets(1, &overlayRTV, m_DepthStencilView.Get());
     m_DeviceContext->RSSetState(m_RasterizerStateCullBack.Get());
     AuraEffect::Draw();
     HitImpactEffect::Draw();
@@ -891,6 +963,21 @@ void Renderer::End() {
     m_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     m_DeviceContext->VSSetShader(m_PostVS.Get(), NULL, 0);
     m_DeviceContext->PSSetShader(m_PostPS.Get(), NULL, 0);
+
+    // renderScale < 1: 一時画像を画面解像度のバックバッファへ拡大する（フェード・ImGui は画面解像度のまま描く）
+    if (useLdr && m_UpscalePS) {
+        float bf[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        SetScreenViewport();
+        m_DeviceContext->RSSetState(m_RasterizerStateCullBack.Get());
+        m_DeviceContext->OMSetBlendState(m_BlendState.Get(), bf, 0xffffffff);
+        m_DeviceContext->OMSetDepthStencilState(m_DepthStateDisable.Get(), 0);
+        m_DeviceContext->PSSetSamplers(0, 1, m_SamplerState.GetAddressOf());
+        m_DeviceContext->PSSetShader(m_UpscalePS.Get(), NULL, 0);
+        m_DeviceContext->PSSetShaderResources(0, 1, m_LdrSRV.GetAddressOf());
+        m_DeviceContext->Draw(3, 0);
+        m_DeviceContext->PSSetShaderResources(0, 4, nullSRV3);
+        m_DeviceContext->PSSetShader(m_PostPS.Get(), NULL, 0);
+    }
 
     // バックバッファ最前面にフェードオーバーレイを描画
     FadeSystem::Draw(m_DeviceContext.Get());
@@ -1011,9 +1098,73 @@ void Renderer::CreatePixelShader(ID3D11PixelShader** ps, const char* name) {
     FILE* f = fopen(name, "rb"); if(!f) return; fseek(f, 0, SEEK_END); long s = ftell(f); fseek(f, 0, SEEK_SET);
     unsigned char* b = new unsigned char[s]; fread(b, s, 1, f); fclose(f); m_Device->CreatePixelShader(b, s, NULL, ps); delete[] b;
 }
+// 同名の .dds(BC1/BC3/BC7、ミップ入り)があれば読む。無ければ false を返し、呼び出し側が従来どおり WIC で読む。
+// sRGB 指定のDDSも UNORM として扱う（従来の RGBA8_UNORM と同じ色味にするため）
+static bool LoadDdsTexture(ID3D11Device* dev, const char* pngPath, ID3D11ShaderResourceView** out)
+{
+    std::string path(pngPath);
+    size_t dot = path.find_last_of('.');
+    if (dot == std::string::npos) return false;
+    path = path.substr(0, dot) + ".dds";
+
+    FILE* f = fopen(path.c_str(), "rb");
+    if (!f) return false;
+    fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, 0, SEEK_SET);
+    if (sz < 128) { fclose(f); return false; }
+    std::vector<BYTE> buf((size_t)sz);
+    size_t rd = fread(buf.data(), 1, (size_t)sz, f);
+    fclose(f);
+    if (rd != (size_t)sz) return false;
+
+    auto u32 = [&](size_t off) { UINT v; memcpy(&v, &buf[off], 4); return v; };
+    if (u32(0) != 0x20534444) return false;          // "DDS "
+    const UINT height = u32(12), width = u32(16);
+    UINT mips = u32(28); if (mips == 0) mips = 1;
+    const UINT fourCC = u32(84);
+
+    DXGI_FORMAT fmt = DXGI_FORMAT_UNKNOWN;
+    size_t dataOff = 128;
+    if (fourCC == 0x30315844) {                       // "DX10" 拡張ヘッダ
+        if (sz < 148) return false;
+        const UINT dxgi = u32(128);
+        dataOff = 148;
+        if (dxgi == 71 || dxgi == 72) fmt = DXGI_FORMAT_BC1_UNORM;
+        else if (dxgi == 77 || dxgi == 78) fmt = DXGI_FORMAT_BC3_UNORM;
+        else if (dxgi == 98 || dxgi == 99) fmt = DXGI_FORMAT_BC7_UNORM;
+    } else if (fourCC == 0x31545844) fmt = DXGI_FORMAT_BC1_UNORM;   // "DXT1"
+    else if (fourCC == 0x35545844)   fmt = DXGI_FORMAT_BC3_UNORM;   // "DXT5"
+    if (fmt == DXGI_FORMAT_UNKNOWN || width == 0 || height == 0 || mips > 15) return false;
+
+    const UINT blockBytes = (fmt == DXGI_FORMAT_BC1_UNORM) ? 8 : 16;
+    D3D11_SUBRESOURCE_DATA sub[15] = {};
+    size_t off = dataOff;
+    UINT w = width, h = height;
+    for (UINT m = 0; m < mips; ++m) {
+        const UINT bw = (std::max)(1u, (w + 3) / 4), bh = (std::max)(1u, (h + 3) / 4);
+        const size_t pitch = (size_t)bw * blockBytes, size = pitch * bh;
+        if (off + size > (size_t)sz) return false;
+        sub[m].pSysMem = &buf[off];
+        sub[m].SysMemPitch = (UINT)pitch;
+        off += size;
+        w = (std::max)(1u, w / 2); h = (std::max)(1u, h / 2);
+    }
+
+    D3D11_TEXTURE2D_DESC td = {};
+    td.Width = width; td.Height = height; td.MipLevels = mips; td.ArraySize = 1;
+    td.Format = fmt; td.SampleDesc.Count = 1;
+    td.Usage = D3D11_USAGE_IMMUTABLE; td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> t2;
+    if (FAILED(dev->CreateTexture2D(&td, sub, t2.GetAddressOf())) || !t2) return false;
+    return SUCCEEDED(dev->CreateShaderResourceView(t2.Get(), NULL, out)) && *out;
+}
+
 void Renderer::CreateTexture(const char* name, ID3D11ShaderResourceView** tex) {
     *tex = nullptr;
     if (!name || strlen(name) == 0) return;
+
+    // 圧縮済み(.dds)があれば優先（読み出し帯域・メモリが減る）
+    if (LoadDdsTexture(m_Device.Get(), name, tex)) return;
+    *tex = nullptr;
 
     Microsoft::WRL::ComPtr<IWICImagingFactory> fc;
     HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&fc));
@@ -1209,7 +1360,7 @@ void Renderer::DrawCubeWithRefractShader(const XMMATRIX& worldMatrix, ID3D11Shad
     GlassCB cb = {};
     cb.RefractionIndex = refractionIndex;
     cb.FresnelPower = fresnelPower;
-    cb.ScreenSize = XMFLOAT2((float)m_ScreenWidth, (float)m_ScreenHeight);
+    cb.ScreenSize = XMFLOAT2((float)m_SceneWidth, (float)m_SceneHeight);   // 背景コピーはシーン解像度
     cb.HighlightColor = highlightColor;
     m_DeviceContext->UpdateSubresource(m_GlassBuffer.Get(), 0, nullptr, &cb, 0, 0);
 

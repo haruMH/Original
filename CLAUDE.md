@@ -52,5 +52,8 @@
 - 素材: Assets/model/nature(Quaternius Stylized Nature MegaKit, CC0)。ライセンス記録は Assets/CREDITS.md(素材追加時に必ず追記)。ObjModelは複数テクスチャ+アルファテスト対応、/nature/ は foliage_ps(軽量PS)で描画。PropModelは同一OBJを共有キャッシュ。
 - 未コミット: GPU/CPU計測(Renderer::GpuMark、Manager::s_DbgCpu*)、拠点の確認用オーバーレイとF5/F6/F7切替(hub_scene.cpp の「確認用」。確認後に削除)、草の2層化、foliage_ps、自然物の本配置。
 - FPS問題(フルスクリーン36〜42): CPUは update0.1ms/draw-submit0.3ms で問題なし。GPUの重さは **標準 pixelShader.hlsl** に集中(地面 ground 3〜10ms、物体 objects 5〜16ms。影16タップPCF+床ノイズ+点光源4灯ループ)。草・丘・自然物を個別にOFFしても各+3FPSのみ。次の手: pixelShader の影を8タップ化/距離で省略、床ノイズの簡略化、点光源ループの条件省略、必要なら内部解像度スケール。
+- FPS対策(未コミット・手触り確認待ち): pixelShader の影を4点下見→半影のみ16点、床ノイズをFogEnd付近で省略、点光源の半径外スキップ。renderScale を実装(設定の「レンダリング解像度」50〜100%。Renderer::ApplyRenderScaleIfChanged、シーン/深度/ポストを縮小し合成で拡大+CAS。scale<1のみ合成結果をシーン解像度のLDR一時画像へ出し、オーラ等もそこへ描いてから upscale_ps で画面へ拡大。深度コピー方式はimgui区間+3.4msで廃止)。HUD(ScoreHUD)はシーンRT内なので縮小時はやや柔らかい。計測: Wallpaper Engine 稼働中は約10fps低下(38→46〜50)。post(合成)4.4msは中身の割に重く待ち時間混入の疑い。
+- テクスチャのBC7化: 大きい14枚(nature 2048px×5+1024×2、壁1024×7)を AssetConverter で .dds 化し同フォルダへ配置(pngは残す)。Renderer::CreateTexture が同名 .dds を優先(BC1/3/7、sRGB指定はUNORMとして扱う。変換時に sRGB出力だと色が変わるため注意)。効果は未測定。
+- 最大の原因: ゲームが内蔵GPU(Intel UHD)で動いていた(D3D11CreateDeviceのアダプタ未指定)。main.cpp に NvOptimusEnablement/AmdPowerXpressRequestHighPerformance を追加して専用GPUへ。以降のFPS/GPU計測はこれ以前の値と比較不可(再測定すること)。
 - ファイル整理の計画(未着手): ステップ1(素材取り込み)は完了。ステップ2: ルートの.hlsl19個を Shaders/ へ(ResolveShaderPath・vcxproj・ポストビルドも修正)。ステップ3: ルートのログ類を logs/ へ、Assets/model の Kenney素材を survival_kit/ に整理(コード内パス文字列も修正)。各段階でビルド+起動確認してコミット。
 - 注意: Releaseは x64\Release で実行され Assets のコピーが漏れることがある。ObjModel は ../ ../../ を探すフォールバックあり。drive-download(63モデル)とMedieval Village MegaKit(Standard)は Downloads 内に未取り込み(使う時は CREDITS.md に追記)。

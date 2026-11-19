@@ -50,20 +50,21 @@ struct PS_INPUT {
 };
 
 // Poisson Disk 16点サンプリング定数
+// 先頭4点は上下左右に散らした「下見用」。半影判定の早期打ち切りに使う
 static const float2 kPoissonDisk[16] = {
     float2(-0.94201624, -0.39906216),
-    float2( 0.94558609, -0.76890725),
+    float2( 0.97484398,  0.75648377),
     float2(-0.09418410, -0.92938870),
+    float2(-0.24188840,  0.99706507),
+    float2( 0.94558609, -0.76890725),
     float2( 0.34495938,  0.29387760),
     float2(-0.91588581,  0.45771432),
     float2(-0.81544232, -0.87912464),
     float2(-0.38277543,  0.27676845),
-    float2( 0.97484398,  0.75648377),
     float2( 0.44323325, -0.97511554),
     float2( 0.53742981, -0.47373420),
     float2(-0.26496911, -0.41893023),
     float2( 0.79197514,  0.19090188),
-    float2(-0.24188840,  0.99706507),
     float2(-0.81409955,  0.91437590),
     float2( 0.19984126,  0.78641367),
     float2( 0.14383161, -0.14100790)
@@ -99,12 +100,22 @@ float4 main(PS_INPUT input) : SV_TARGET
             float filterRadius = 2.2f / 2048.0f;
             float sum = 0.0f;
 
+            // まず4点だけ見て、全部影/全部日向なら半影ではないので残り12点を省略（大半の画素はここで終わる）
             [unroll]
-            for (int i = 0; i < 16; ++i) {
+            for (int i = 0; i < 4; ++i) {
                 sum += g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler,
                            proj.xy + kPoissonDisk[i] * filterRadius, proj.z - bias);
             }
-            float rawShadow = sum / 16.0f;
+            float rawShadow = sum * 0.25f;
+            if (sum > 0.001f && sum < 3.999f)
+            {
+                [unroll]
+                for (int j = 4; j < 16; ++j) {
+                    sum += g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler,
+                               proj.xy + kPoissonDisk[j] * filterRadius, proj.z - bias);
+                }
+                rawShadow = sum / 16.0f;
+            }
             shadow = lerp(0.28f, 1.0f, smoothstep(0.15f, 0.85f, rawShadow));
         }
 
@@ -152,7 +163,9 @@ float4 main(PS_INPUT input) : SV_TARGET
         {
             if (PLColor[pli].w <= 0.001f) continue;
             float3 toP = PLPosRadius[pli].xyz - input.WorldPos;
-            float pd = length(toP);
+            float pd2 = dot(toP, toP);
+            if (pd2 >= PLPosRadius[pli].w * PLPosRadius[pli].w) continue; // 届かない画素は sqrt 以降を省略
+            float pd = sqrt(pd2);
             float att = saturate(1.0f - pd / PLPosRadius[pli].w);
             att *= att;
             float ndlP = saturate(dot(N, toP / max(pd, 0.001f))) * 0.75f + 0.25f;

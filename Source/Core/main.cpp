@@ -8,6 +8,12 @@
 
 #pragma comment(lib, "imm32.lib")
 
+// ノートPCの2GPU構成（内蔵+専用）で、専用GPU(NVIDIA/AMD)を優先して使わせる
+extern "C" {
+    __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+    __declspec(dllexport) int   AmdPowerXpressRequestHighPerformance = 1;
+}
+
 const char* CLASS_NAME = "AppClass";
 const char* WINDOW_NAME = "TOON SLASHER";
 
