@@ -3,7 +3,12 @@
 #include "manager.h"
 #include "sound_manager.h"
 #include "field.h"
-#include "town_backdrop.h"
+#include "beach.h"
+#include "result_banner.h"
+#include "ui_theme.h"
+#include "save_system.h"
+#include <algorithm>
+#include "world_look.h"
 #include "wall.h"
 #include "player.h"
 #include "camera.h"
@@ -134,13 +139,14 @@ void GameOverScene::Init()
     DustSystem::Clear();
     ScorePopupSystem::Clear();
 
-    // 1. 拠点と同じ街並みの背景
-    TownBackdrop::Build(false);
+    // 1. 夜の砂浜と海（タイトルと同じ舞台。静かで暗い雰囲気）
+    Manager::AddGameObject<Beach>();
+    Manager::AddGameObject<Skybox>()->SetSkyType(SkyType::Night);
 
     // 3. 中央で倒れ伏すプレイヤー（横倒し姿勢・さっきの状態に復元）
     Player* player = Manager::AddGameObject<Player>();
     if (player) {
-        player->SetPosition(DirectX::XMFLOAT3(0.0f, -0.15f, 0.0f));
+        player->SetPosition(DirectX::XMFLOAT3(0.0f, Beach::GroundY(0.0f, 0.0f) + 0.85f, 0.0f));
         // 横倒し（Z軸回転90度）で地面に倒れ込んでいる姿
         player->SetRotation(DirectX::XMFLOAT3(0.0f, 0.6f, DirectX::XM_PIDIV2));
         player->SetDamageTimer(0);
@@ -156,14 +162,20 @@ void GameOverScene::Init()
     }
 
     Input::SetMouseLocked(false);
+
+    // 見出しの演出（1文字ずつ動く）
+    ResultBanner::Start("GAME OVER", false);
 }
 
 void GameOverScene::Uninit()
 {
+    ResultBanner::Stop();
+    WorldLook::SetTarget(0, true);   // 夜を他のシーンへ持ち越さない（昼へ戻す）
 }
 
 void GameOverScene::Update()
 {
+    ResultBanner::Update();
     // 重厚で低速な旋回カメラワーク（寂寥感と悲壮感の演出）
     m_Timer += 0.016f;
     m_OrbitAngle += 0.0025f; // ゆっくり旋回
@@ -192,7 +204,11 @@ void GameOverScene::Update()
 
 void GameOverScene::Draw()
 {
+    ResultBanner::Draw();
     DrawRewardUI();
+
+    // 旧背景の4つの巨石(顔つき)は砂浜背景へ置き換えたため描かない（以降は旧巨石の顔の描画のみ）
+    return;
 
     Renderer::GetDeviceContext()->OMSetDepthStencilState(Renderer::GetDepthStateEnable(), 0);
     Renderer::SetupCubeDraw();
@@ -299,68 +315,69 @@ void GameOverScene::Draw()
 void GameOverScene::DrawRewardUI()
 {
     ImGuiIO& io = ImGui::GetIO();
+    const float s = (std::max)(0.7f, (std::min)(1.0f, io.DisplaySize.y / 900.0f));
+    const bool shortMode = SaveSystem::IsShortMode();
 
-    // 画面右側に半透明のリザルト・回収素材ウィンドウを配置
-    float panelWidth = 360.0f;
-    float panelHeight = 440.0f;
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - panelWidth - 30.0f, (io.DisplaySize.y - panelHeight) * 0.5f), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(panelWidth, panelHeight), ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.85f);
+    // 画面右側のリザルト枠。高さは内容に合わせ、色とボタンはタイトルと同じ UITheme に揃える
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 30.0f, io.DisplaySize.y * 0.56f), ImGuiCond_Always, ImVec2(1.0f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(380.0f * s, 0.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.88f);
 
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
-    if (ImGui::Begin("OPERATION RESULT##GameOverResult", nullptr, flags)) {
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "  === OPERATION FAILED ===");
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize
+                           | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(22.0f * s, 18.0f * s));
+    if (ImGui::Begin("##GameOverResult", nullptr, flags)) {
+        ImGui::SetWindowFontScale((std::max)(0.8f, s));
+
+        ImGui::TextColored(ImVec4(1.0f, 0.40f, 0.40f, 1.0f), (const char*)u8"クエスト失敗");
         ImGui::Separator();
         ImGui::Spacing();
 
-        // 戦闘スタッツ
-        ImGui::Text("Defeated Enemies: %d", ProgressionManager::GetSessionKills());
+        ImGui::Text((const char*)u8"撃破数: %d体", ProgressionManager::GetSessionKills());
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
 
-        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f), "RECOVERED MATERIALS:");
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f), (const char*)u8"回収した素材");
         ImGui::Spacing();
 
-        const char* matNames[] = {
-            "Scrap Metal",
-            "Energy Cell",
-            "Gunpowder",
-            "Charged Plug",
-            "Titan Plating",
-            "Kinetic Core"
-        };
-
+        const float valueX = ImGui::GetWindowWidth() * 0.50f;
         bool anyAcquired = false;
         for (int i = 0; i < static_cast<int>(MaterialType::COUNT); ++i) {
             MaterialType mType = static_cast<MaterialType>(i);
             int sessionCount = ProgressionManager::GetSessionMaterial(mType);
             int totalCount = SaveSystem::GetMaterialCount(mType);
             DirectX::XMFLOAT3 col = ProgressionData::GetMaterialColor(mType);
+            const char* name = ProgressionData::GetMaterialNameUtf8(mType);
 
             if (sessionCount > 0) {
                 anyAcquired = true;
-                ImGui::TextColored(ImVec4(col.x, col.y, col.z, 1.0f), " * %-14s : +%d  (Total: %d)", matNames[i], sessionCount, totalCount);
+                ImGui::TextColored(ImVec4(col.x, col.y, col.z, 1.0f), "%s", name);
+                ImGui::SameLine(valueX);
+                ImGui::TextColored(ImVec4(col.x, col.y, col.z, 1.0f), (const char*)u8"+%d  (所持 %d)", sessionCount, totalCount);
             } else {
-                ImGui::TextDisabled("   %-14s :  0  (Total: %d)", matNames[i], totalCount);
+                ImGui::TextDisabled("%s", name);
+                ImGui::SameLine(valueX);
+                ImGui::TextDisabled((const char*)u8"0  (所持 %d)", totalCount);
             }
         }
-
         if (!anyAcquired) {
-            ImGui::TextDisabled("   (No materials recovered)");
+            ImGui::TextDisabled((const char*)u8"回収した素材はありません");
         }
 
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
 
-        // 帰還ボタン
-        if (ImGui::Button("Return to Base Camp [SPACE / ENTER]", ImVec2(-1.0f, 40.0f))) {
+        // 戻るボタン（ストーリーは拠点へ、ショートモードはタイトルへ）
+        UITheme::PushPrimaryButton();
+        const char* label = shortMode ? (const char*)u8"タイトルへ戻る  (Space / Enter)" : (const char*)u8"拠点へ戻る  (Space / Enter)";
+        if (ImGui::Button(label, ImVec2(-1.0f, 42.0f * s))) {
             SoundManager::PlaySE(SoundID::SE_DECIDE);
-            Manager::ChangeScene(SaveSystem::IsShortMode() ? Scene::TITLE : Scene::HUB);
+            Manager::ChangeScene(shortMode ? Scene::TITLE : Scene::HUB);
         }
-
-        ImGui::End();
+        UITheme::PopButton();
     }
+    ImGui::End();
+    ImGui::PopStyleVar();
 }

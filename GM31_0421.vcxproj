@@ -227,6 +227,7 @@
     <ClCompile Include="Source\Stage\beach.cpp" />
     <ClCompile Include="Source\UI\ui_theme.cpp" />
     <ClCompile Include="Source\UI\title_logo.cpp" />
+    <ClCompile Include="Source\UI\result_banner.cpp" />
     <!-- Audio -->
     <ClCompile Include="Source\Audio\sound_manager.cpp" />
     <!-- ImGui -->
@@ -313,6 +314,7 @@
     <ClInclude Include="Source\Stage\beach.h" />
     <ClInclude Include="Source\UI\ui_theme.h" />
     <ClInclude Include="Source\UI\title_logo.h" />
+    <ClInclude Include="Source\UI\result_banner.h" />
     <!-- Audio -->
     <ClInclude Include="Source\Audio\sound_manager.h" />
     <!-- ImGui -->

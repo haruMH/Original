@@ -1024,17 +1024,17 @@ void ScoreHUD::Draw()
         posY = 45.0f;
         break;
     case Scene::CLEAR:
-        texToDraw = m_ClearTexture.Get();
+        texToDraw = nullptr; // 見出しは TitleLogo の演出に置き換えた
         w = 512.0f;
         h = 256.0f;
         posY = screenH * 0.5f;
         emissionColor = XMFLOAT4(1.5f, 1.2f, 0.0f, 0.0f); // クリアは黄金発光
         break;
     case Scene::GAMEOVER:
-        texToDraw = m_GameOverTexture.Get();
+        texToDraw = nullptr; // 見出しは TitleLogo の演出に置き換えた
         w = 512.0f;
         h = 256.0f;
-        posY = screenH * 0.5f;
+        posY = h * 0.5f + screenH * 0.03f; // 背景の砂浜と倒れたプレイヤーを見せるため画面上部に置く
         emissionColor = XMFLOAT4(1.8f, 0.0f, 0.0f, 0.0f); // ゲームオーバーは赤発光
         break;
     }
