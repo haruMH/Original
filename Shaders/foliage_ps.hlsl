@@ -28,6 +28,8 @@ cbuffer PointLightBuffer : register(b7) {
     float4 PLColor[4];
 }
 
+static const float FACET_SMOOTH = 0.9f;   // 0=元の法線 / 1=真上向き。三角形が目立つときは上げる
+
 struct PS_INPUT {
     float4 Position      : SV_POSITION;
     float3 Normal        : NORMAL;
@@ -47,7 +49,9 @@ float4 main(PS_INPUT input) : SV_TARGET
         if (tex.r + tex.g + tex.b > 0.01f) color = tex * input.Diffuse;
     }
 
-    float3 N = normalize(input.Normal);
+    // 低ポリの葉は面ごとに法線が大きく違い、トゥーン階調で三角形の塊に見える。
+    // 法線を上向きに寄せて、面ごとの明暗差をならす（木・茂み全体が丸く見える）
+    float3 N = normalize(lerp(normalize(input.Normal), float3(0.0f, 1.0f, 0.0f), FACET_SMOOTH));
     float3 L = normalize(-LightDirection.xyz);
 
     // トゥーン階調（標準シェーダーと同じ式）

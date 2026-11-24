@@ -28,8 +28,8 @@
 using namespace DirectX;
 
 namespace {
-    const XMFLOAT3 FORGE_POS = XMFLOAT3(-10.0f, 0.0f, 8.0f);
-    const XMFLOAT3 GATE_POS  = XMFLOAT3(10.0f, 0.0f, 8.0f);
+    const XMFLOAT3 FORGE_POS = XMFLOAT3(-12.0f, 0.0f, 13.0f);
+    const XMFLOAT3 GATE_POS  = XMFLOAT3(0.0f, 0.0f, 19.0f);   // 道の突き当たり（北端の中央）
     const float INTERACT_RADIUS = 4.0f;
 }
 
@@ -59,7 +59,9 @@ void HubScene::Init()
     SaveSystem::Save();
 
     // 1. 地面と空
-    Manager::AddGameObject<Field>()->SetFloorTexture("cobble.png", "cobble_normal.png");   // 石畳
+    Field* field = Manager::AddGameObject<Field>();
+    field->SetFloorTexture("cobble.png", "cobble_normal.png");   // 石畳
+    field->SetRoad(-3.0f, 3.0f, -22.0f, 22.0f, "road.png", "road_normal.png");   // 中央の道（幅6m、南北に貫く）
     Manager::AddGameObject<Skybox>();   // 空は時間経過で変化する
 
     // 2. プレイヤー（広場南側からキャンプ全体を見渡せる位置にスポーン）
@@ -107,29 +109,33 @@ void HubScene::Init()
 
     // 出撃ゲート（Quest Gate）柱オブジェクト
     Wall* gateL = Manager::AddGameObject<Wall>();
-    gateL->SetPosition(XMFLOAT3(GATE_POS.x - 1.5f, 0.5f, GATE_POS.z));
-    gateL->SetScale(XMFLOAT3(0.7f, 3.5f, 0.7f));
+    // 道(幅6m)の両端に太い柱を立て、上に梁を渡す大きな門。柱の内側の通り幅は4.8m
+    gateL->SetPosition(XMFLOAT3(GATE_POS.x - 3.0f, 2.25f, GATE_POS.z));
+    gateL->SetScale(XMFLOAT3(1.2f, 6.5f, 1.2f));
 
     Wall* gateR = Manager::AddGameObject<Wall>();
-    gateR->SetPosition(XMFLOAT3(GATE_POS.x + 1.5f, 0.5f, GATE_POS.z));
-    gateR->SetScale(XMFLOAT3(0.7f, 3.5f, 0.7f));
+    gateR->SetPosition(XMFLOAT3(GATE_POS.x + 3.0f, 2.25f, GATE_POS.z));
+    gateR->SetScale(XMFLOAT3(1.2f, 6.5f, 1.2f));
 
     Wall* gateTop = Manager::AddGameObject<Wall>();
-    gateTop->SetPosition(XMFLOAT3(GATE_POS.x, 2.3f, GATE_POS.z));
-    gateTop->SetScale(XMFLOAT3(3.8f, 0.6f, 0.8f));
+    gateTop->SetPosition(XMFLOAT3(GATE_POS.x, 5.0f, GATE_POS.z));
+    gateTop->SetScale(XMFLOAT3(7.2f, 1.0f, 1.3f));
+    gateL->SetOutline(false);   // 門はアウトラインなし
+    gateR->SetOutline(false);
+    gateTop->SetOutline(false);
 
     // --- 松明（夜は橙色の点光源になる。ゲート両脇と工房の入口） ---
     // 焚き火と同じモデル（石の火床）を小さくした「かがり火」にして、画風を揃える
     auto AddTorch = [&](float x, float z) {
         FireEffect::AddTorch(XMFLOAT3(x, -0.85f, z));
     };
-    AddTorch(GATE_POS.x - 2.6f, GATE_POS.z - 1.0f);
-    AddTorch(GATE_POS.x + 2.6f, GATE_POS.z - 1.0f);
+    AddTorch(GATE_POS.x - 4.8f, GATE_POS.z - 1.0f);
+    AddTorch(GATE_POS.x + 4.8f, GATE_POS.z - 1.0f);
     AddTorch(FORGE_POS.x + 3.0f, FORGE_POS.z - 2.5f);
 
     // --- (E) 北中央：修練エリア（試し振りサンドバッグ） ---
     Enemy* dummy = Manager::AddGameObject<Enemy>();
-    dummy->SetPosition(XMFLOAT3(0.0f, -0.5f, 13.0f));
+    dummy->SetPosition(XMFLOAT3(13.0f, -0.5f, 14.0f));
     dummy->SetSandbag(true, 999999);
 
 
@@ -165,65 +171,82 @@ void HubScene::Init()
                         XMFLOAT3(S * sx, S, S), rot + rotAdd, collSize);
             };
             // rot: 0=正面が+Z向き / π=-Z向き / π/2=+X向き / -π/2=-X向き（広場の中心に向ける）
-            auto house = [&](float cx, float cz, bool brick, float rot, int nx, int nz, int deco) {
-                // deco: 1=煙突 2=煙突(別形) 4=丸いドア 8=雨戸(開) 16=雨戸(閉)
+            auto house = [&](float cx, float cz, bool brick, float rot, int nx, int nz, int deco, int floors = 1) {
+                // deco: 1=煙突 2=煙突(別形) 4=丸いドア 8=雨戸(開) 16=雨戸(閉) 32=塔(円錐の屋根・細い丸窓)。floors=階数(1階=3.12m)
                 const float HW = (float)nx, HD = (float)nz;   // 半幅・半奥行(m)。nx,nzは壁モジュール数(幅2m)
+                const bool tower = (deco & 32) != 0;
                 const std::string wall = brick ? "Wall_UnevenBrick_" : "Wall_Plaster_";
-                for (int i = 0; i < nx; ++i) {        // 正面(ドア+窓)と背面
-                    const float lx = -(float)(nx - 1) + 2.0f * i;
-                    const bool door = (i == nx / 2);
-                    const bool rnd = (deco & 4) != 0;
-                    mp(wall + (door ? (rnd ? "Door_Round" : "Door_Flat") : "Window_Wide_Flat"), lx, HD, 0.0f, cx, cz, rot, 0.0f);
-                    // ドア板は蝶番側が原点(x:-0.05〜1.07、幅1.12)で、壁の開口は x:-0.65〜0.65(幅1.3)。
-                    // 開口に合わせて横に1.17倍し、-0.59ずらして隙間をなくす
-                    if (door) mp(rnd ? "Door_1_Round" : "Door_1_Flat", lx - 0.59f, HD, 0.0f, cx, cz, rot, 0.0f, XMFLOAT3(0.0f, 0.0f, 0.0f), 1.17f);
-                    else {
-                        mp("Window_Wide_Flat1", lx, HD, 0.0f, cx, cz, rot, 0.0f);
-                        if (deco & 24) mp((deco & 8) ? "WindowShutters_Wide_Flat_Open" : "WindowShutters_Wide_Flat_Closed", lx, HD, 0.0f, cx, cz, rot, 0.0f);
+                const std::string winWall  = wall + (tower ? "Window_Thin_Round" : "Window_Wide_Flat");
+                const char*       winGlass = tower ? "Window_Thin_Round1" : "Window_Wide_Flat1";
+                for (int f = 0; f < floors; ++f) {
+                    const float ly = 3.12f * (float)f;
+                    for (int i = 0; i < nx; ++i) {        // 正面(1階はドア+窓、2階以上は窓)と背面
+                        const float lx = -(float)(nx - 1) + 2.0f * i;
+                        const bool door = (f == 0 && i == nx / 2);
+                        const bool rnd = (deco & 4) != 0;
+                        mp(door ? wall + (rnd ? "Door_Round" : "Door_Flat") : winWall, lx, HD, ly, cx, cz, rot, 0.0f);
+                        // ドア板は蝶番側が原点(x:-0.05〜1.07、幅1.12)で、壁の開口は x:-0.65〜0.65(幅1.3)。
+                        // 開口に合わせて横に1.17倍し、-0.59ずらして隙間をなくす
+                        if (door) mp(rnd ? "Door_1_Round" : "Door_1_Flat", lx - 0.59f, HD, ly, cx, cz, rot, 0.0f, XMFLOAT3(0.0f, 0.0f, 0.0f), 1.17f);
+                        else {
+                            mp(winGlass, lx, HD, ly, cx, cz, rot, 0.0f);
+                            if (!tower && (deco & 24)) mp((deco & 8) ? "WindowShutters_Wide_Flat_Open" : "WindowShutters_Wide_Flat_Closed", lx, HD, ly, cx, cz, rot, 0.0f);
+                        }
+                        mp(wall + "Straight", lx, -HD, ly, cx, cz, rot, XM_PI);
                     }
-                    mp(wall + "Straight", lx, -HD, 0.0f, cx, cz, rot, XM_PI);
-                }
-                for (int i = 0; i < nz; ++i) {        // 左右の側面（両端以外に窓）
-                    const float lz = -(float)(nz - 1) + 2.0f * i;
-                    const bool win = (i >= 1 && i <= nz - 2);
-                    const std::string nm = wall + (win ? "Window_Wide_Flat" : "Straight");
-                    mp(nm, HW, lz, 0.0f, cx, cz, rot, XM_PIDIV2);
-                    mp(nm, -HW, lz, 0.0f, cx, cz, rot, -XM_PIDIV2);
-                    if (win) {
-                        mp("Window_Wide_Flat1", HW, lz, 0.0f, cx, cz, rot, XM_PIDIV2);
-                        mp("Window_Wide_Flat1", -HW, lz, 0.0f, cx, cz, rot, -XM_PIDIV2);
-                        if (deco & 24) {
-                            const char* sh = (deco & 8) ? "WindowShutters_Wide_Flat_Open" : "WindowShutters_Wide_Flat_Closed";
-                            mp(sh, HW, lz, 0.0f, cx, cz, rot, XM_PIDIV2);
-                            mp(sh, -HW, lz, 0.0f, cx, cz, rot, -XM_PIDIV2);
+                    for (int i = 0; i < nz; ++i) {        // 左右の側面（家は両端以外に窓、塔は2階以上の全面に窓）
+                        const float lz = -(float)(nz - 1) + 2.0f * i;
+                        const bool win = tower ? (f >= 1) : (i >= 1 && i <= nz - 2);
+                        const std::string nm = win ? winWall : wall + "Straight";
+                        mp(nm, HW, lz, ly, cx, cz, rot, XM_PIDIV2);
+                        mp(nm, -HW, lz, ly, cx, cz, rot, -XM_PIDIV2);
+                        if (win) {
+                            mp(winGlass, HW, lz, ly, cx, cz, rot, XM_PIDIV2);
+                            mp(winGlass, -HW, lz, ly, cx, cz, rot, -XM_PIDIV2);
+                            if (!tower && (deco & 24)) {
+                                const char* sh = (deco & 8) ? "WindowShutters_Wide_Flat_Open" : "WindowShutters_Wide_Flat_Closed";
+                                mp(sh, HW, lz, ly, cx, cz, rot, XM_PIDIV2);
+                                mp(sh, -HW, lz, ly, cx, cz, rot, -XM_PIDIV2);
+                            }
                         }
                     }
+                    mp("Corner_Exterior_Wood",  HW,  HD, ly, cx, cz, rot, 0.0f);
+                    mp("Corner_Exterior_Wood", -HW,  HD, ly, cx, cz, rot, 0.0f);
+                    mp("Corner_Exterior_Wood",  HW, -HD, ly, cx, cz, rot, 0.0f);
+                    mp("Corner_Exterior_Wood", -HW, -HD, ly, cx, cz, rot, 0.0f);
                 }
-                mp("Corner_Exterior_Wood",  HW,  HD, 0.0f, cx, cz, rot, 0.0f);
-                mp("Corner_Exterior_Wood", -HW,  HD, 0.0f, cx, cz, rot, 0.0f);
-                mp("Corner_Exterior_Wood",  HW, -HD, 0.0f, cx, cz, rot, 0.0f);
-                mp("Corner_Exterior_Wood", -HW, -HD, 0.0f, cx, cz, rot, 0.0f);
+                const float top = 3.12f * (float)floors;   // 壁の上端の高さ
+                const float up  = 3.12f * (float)(floors - 1);
+                if (tower) {
+                    // 塔の屋根は軒先が壁の上端より1.3m下がる位置(原点 = 壁上端 - 0.73)。ここに土台の当たり判定を付ける
+                    mp("Roof_Tower_RoundTiles", 0.0f, 0.0f, top - 0.73f, cx, cz, rot, 0.0f, XMFLOAT3(2.0f * HW, 1.0f, 2.0f * HD));
+                    return;
+                }
                 const std::string gable = "Roof_Front_Brick" + std::to_string(nx * 2);
-                mp(gable, 0.0f,  HD, 3.12f, cx, cz, rot, 0.0f);     // 屋根の下の三角壁
-                mp(gable, 0.0f, -HD, 3.12f, cx, cz, rot, XM_PI);
-                // 屋根の原点が家の中心。ここに土台(6x8m)の当たり判定を付ける（家の中には入れない）
+                mp(gable, 0.0f,  HD, top, cx, cz, rot, 0.0f);     // 屋根の下の三角壁
+                mp(gable, 0.0f, -HD, top, cx, cz, rot, XM_PI);
+                // 屋根の原点が家の中心。ここに土台の当たり判定を付ける（家の中には入れない）
                 // 屋根の原点の高さは部品ごとに違う（軒先を同じ高さにそろえる）。小さい4m幅だけ低い
-                const float roofY = (nx == 2) ? 2.34f : 2.6f;
+                const float roofY = ((nx == 2) ? 2.34f : 2.6f) + up;
                 mp("Roof_RoundTiles_" + std::to_string(nx * 2) + "x" + std::to_string(nz * 2), 0.0f, 0.0f, roofY, cx, cz, rot, 0.0f, XMFLOAT3(2.0f * HW, 1.0f, 2.0f * HD));
                 if (deco & 3) {                       // 煙突：底のV字の切り欠きが棟(屋根の頂上)をまたぐ向きに置く
-                    const float peak = (nx == 2) ? 6.06f : (nx == 3 ? 7.49f : 8.6f);
+                    const float peak = ((nx == 2) ? 6.06f : (nx == 3 ? 7.49f : 8.6f)) + up;
                     mp((deco & 1) ? "Prop_Chimney" : "Prop_Chimney2", 0.0f, HD * 0.3f, peak - 1.3f, cx, cz, rot, XM_PIDIV2);
                 }
             };
             // 拠点（44m四方）の四隅に1軒ずつ。既存のプロップと重ならない位置
-            house(-16.5f,  16.0f, false, XM_PI,      3, 4, 1 | 8);   // 6x8m 漆喰
-            house( 16.5f,  16.0f, true,  XM_PI,      4, 4, 2 | 16);   // 8x8m レンガ(大)
-            house(-16.0f, -15.0f, true,  XM_PIDIV2,  2, 3, 4 | 1);   // 4x6m レンガ(小)
-            house( 16.0f, -16.0f, false, -XM_PIDIV2, 3, 5, 4 | 2 | 8);   // 6x10m 漆喰(細長)
-            // 奥の家の間に荷車と木箱
-            mp("Prop_Wagon", 0.0f, 0.0f, 0.0f, 0.0f, 19.0f, 0.2f, 0.0f);
-            mp("Prop_Crate", 0.0f, 0.0f, 0.0f, 3.6f, 18.4f, 0.4f, 0.0f, XMFLOAT3(1.0f, 1.0f, 1.0f));
-            mp("Prop_Crate", 0.0f, 0.0f, 0.0f, -3.4f, 18.0f, 1.1f, 0.0f, XMFLOAT3(1.0f, 1.0f, 1.0f));
+            // 中央の道(幅6m, x:-3〜3)の左右に、正面を道へ向けて並べる。rot π/2=+X向き(左側) / -π/2=-X向き(右側)
+            // 中心x = 道の端(±6) ± 奥行の半分。z は建物の幅が重ならないように
+            house( -8.0f, -14.0f, true,  XM_PIDIV2,  2, 2, 32, 3);      // 左: 4x4m 石造りの塔(3階)
+            house(-10.0f,  -6.0f, false, XM_PIDIV2,  3, 4, 1 | 8);      // 左: 6x8m 漆喰
+            house( -9.0f,   2.0f, false, XM_PIDIV2,  3, 3, 4 | 2, 2);   // 左: 6x6m 二階建て 漆喰
+            house( 11.0f, -12.0f, false, -XM_PIDIV2, 3, 5, 4 | 2 | 8);  // 右: 6x10m 漆喰(細長)
+            house( 10.0f,  -3.0f, true,  -XM_PIDIV2, 4, 4, 2 | 16);     // 右: 8x8m レンガ(大)
+            house(  9.0f,   6.0f, true,  -XM_PIDIV2, 2, 3, 4 | 1);      // 右: 4x6m レンガ(小)
+            // 道の奥の脇に荷車と木箱
+            mp("Prop_Wagon", 0.0f, 0.0f, 0.0f, -5.4f, 15.5f, 1.3f, 0.0f);
+            mp("Prop_Crate", 0.0f, 0.0f, 0.0f, 5.0f, 16.2f, 0.4f, 0.0f, XMFLOAT3(1.0f, 1.0f, 1.0f));
+            mp("Prop_Crate", 0.0f, 0.0f, 0.0f, 4.6f, 17.4f, 1.1f, 0.0f, XMFLOAT3(1.0f, 1.0f, 1.0f));
         }
 
         auto place =[&](float minDist, XMFLOAT2* out) {
@@ -302,7 +325,7 @@ void HubScene::Update()
         if (++m_SandbagRespawnTimer >= 90) {
             m_SandbagRespawnTimer = 0;
             Enemy* dummy = Manager::AddGameObject<Enemy>();
-            dummy->SetPosition(XMFLOAT3(0.0f, -0.5f, 13.0f));
+            dummy->SetPosition(XMFLOAT3(13.0f, -0.5f, 14.0f));
             dummy->SetSandbag(true, 999999);
         }
     } else {

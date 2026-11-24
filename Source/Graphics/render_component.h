@@ -17,6 +17,7 @@ struct RenderComponent {
     std::string textureKey;  // テクスチャの識別キー (例: "enemy.png")
     MeshType    meshType;    // メッシュの形状タイプ (デフォルトは Cube)
     bool        visible;     // 表示フラグ (true で描画対象となる)
+    bool        outline = true;  // false でアウトライン(黒縁)を描かない（門など、大きく引き伸ばした壁用）
 
     // デフォルトコンストラクタ
     RenderComponent()

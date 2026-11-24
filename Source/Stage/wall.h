@@ -20,6 +20,7 @@ public:
     ObjectType GetObjectType() const override { return GetStaticType(); }
     
     void SetVisible(bool visible) { m_RenderComponent.visible = visible; }
+    void SetOutline(bool outline) { m_RenderComponent.outline = outline; }
     void SetTexture(std::string_view textureName);
     void SetEmissive(const DirectX::XMFLOAT3& emissive) { m_Emissive = emissive; }
     DirectX::XMFLOAT3 GetEmissive() const override { return m_Emissive; }

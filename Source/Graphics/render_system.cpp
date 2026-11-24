@@ -379,6 +379,8 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
                     dataPtr[i].World = m_CachedWorldMatrices[idx];
                     dataPtr[i].TextureIndex = (*m_ActiveTexIndices)[idx];
                     dataPtr[i].Emissive = m_CachedEmissives[idx];
+                    // アウトライン無効の物体は TextureIndex=-1 の印を付ける（頂点シェーダー側で描画から外す）
+                    if (!drawList[idx]->GetRenderComponent().outline) dataPtr[i].TextureIndex = -1.0f;
                 }
             }
             else
@@ -411,6 +413,7 @@ void RenderSystem::RenderCubeInstances(ID3D11DeviceContext* context, const std::
 
                     // テクスチャインデックスを設定
                     dataPtr[i].TextureIndex = (*m_ActiveTexIndices)[idx];
+                    if (pass == RenderPass::Outline && !obj->GetRenderComponent().outline) dataPtr[i].TextureIndex = -1.0f;
                     
                     // 自発光（Emissive）を設定
                     dataPtr[i].Emissive = obj->GetEmissive();

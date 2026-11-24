@@ -153,12 +153,15 @@ namespace {
             int sk = s % slices;
             float th = (float)sk / slices * XM_2PI;
             float ph = (float)k / stacks * XM_PI;                          // 0:上 → π:下
-            float wob = 1.0f + 0.22f * (Hash2(seed, sk + k * 31) - 0.5f) * ((k == 0 || k == stacks) ? 0.0f : 1.0f);
+            // 表面のうねり。下半分は小さくして、下側が尖った三角形にならないようにする
+            const float lowerDamp = (ph > XM_PIDIV2) ? 0.30f : 1.0f;
+            float wob = 1.0f + 0.16f * lowerDamp * (Hash2(seed, sk + k * 31) - 0.5f) * ((k == 0 || k == stacks) ? 0.0f : 1.0f);
             XMFLOAT3 dir(cosf(th) * sinf(ph), cosf(ph), sinf(th) * sinf(ph));
             XMVECTOR n = XMVector3Normalize(XMVectorSet(dir.x / rx, dir.y / ry, dir.z / rx, 0));
             XMStoreFloat3(nOut, n);
             *cOut = Mix(colBottom, colTop, std::clamp(0.5f + 0.5f * dir.y, 0.0f, 1.0f));
-            return XMFLOAT3(center.x + dir.x * rx * wob, center.y + dir.y * ry * wob, center.z + dir.z * rx * wob);
+            const float flatY = (dir.y < 0.0f) ? 0.65f : 1.0f;                  // 下側を平たくして、傘のような形にする
+            return XMFLOAT3(center.x + dir.x * rx * wob, center.y + dir.y * flatY * ry * wob, center.z + dir.z * rx * wob);
         };
         for (int k = 0; k < stacks; ++k) {
             for (int s = 0; s < slices; ++s) {
@@ -199,7 +202,10 @@ namespace {
             float tone = 0.82f + rnd() * 0.30f;
             XMFLOAT3 root(x, y - 0.2f, z);
 
-            if (rnd() < 0.60f) {
+            // 広葉樹(丸い葉のかたまり)は見た目が合わないため作らない。乱数の並びは変えず、全て針葉樹にする
+            const float kindRoll = rnd();
+            const float CONIFER_RATIO = 1.01f;   // 0.60 に戻すと従来どおり広葉樹が混ざる
+            if (kindRoll < CONIFER_RATIO) {
                 // 針葉樹: 幹 + 4段の枝葉（下の段ほど大きく、少したれる）
                 XMFLOAT4 trunk(0.30f, 0.20f, 0.12f, 1.0f);
                 AddTrunk(out, root, 0.45f * s, 3.2f * s, sid, trunk);
@@ -220,9 +226,9 @@ namespace {
                 XMFLOAT4 bottom(0.13f * tone, 0.30f * tone, 0.08f * tone, 1.0f);
                 XMFLOAT4 top(0.34f + 0.20f * hueShift, 0.58f, 0.14f, 1.0f);
                 top = Mul(top, tone);
-                AddBlob(out, XMFLOAT3(x, y + 5.8f * s, z), 3.3f * s, 2.9f * s, 10, 6, sid + 1, bottom, top);
-                AddBlob(out, XMFLOAT3(x + 1.9f * s, y + 5.0f * s, z + 0.8f * s), 2.3f * s, 2.1f * s, 8, 5, sid + 2, bottom, top);
-                AddBlob(out, XMFLOAT3(x - 1.6f * s, y + 5.3f * s, z - 1.0f * s), 2.2f * s, 2.0f * s, 8, 5, sid + 3, bottom, top);
+                AddBlob(out, XMFLOAT3(x, y + 5.8f * s, z), 3.3f * s, 2.9f * s, 12, 8, sid + 1, bottom, top);
+                AddBlob(out, XMFLOAT3(x + 1.9f * s, y + 5.0f * s, z + 0.8f * s), 2.3f * s, 2.1f * s, 10, 7, sid + 2, bottom, top);
+                AddBlob(out, XMFLOAT3(x - 1.6f * s, y + 5.3f * s, z - 1.0f * s), 2.2f * s, 2.0f * s, 10, 7, sid + 3, bottom, top);
             }
         }
     }

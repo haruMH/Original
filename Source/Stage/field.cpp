@@ -92,8 +92,37 @@ void Field::SetFloorTexture(const char* albedoName, const char* normalName)
     }
 }
 
+void Field::SetRoad(float x0, float x1, float z0, float z1, const char* albedoName, const char* normalName)
+{
+    m_RoadTexture = ResourceManager::GetTexture(albedoName);
+    m_RoadNormal  = ResourceManager::GetTexture(normalName);
+    if (!m_RoadTexture) return;
+    if (m_RoadVB) { m_RoadVB->Release(); m_RoadVB = nullptr; }
+    const float Y = 0.012f;      // 床(Field)の1.2cm上。床と同じ高さだと重なってちらつく
+    const float T = 3.0f;        // 絵柄1周のメートル数
+    auto mk = [&](float x, float z) {
+        VERTEX_3D v;
+        v.Position = XMFLOAT3(x, Y, z);
+        v.Normal   = XMFLOAT3(0.0f, 1.0f, 0.0f);
+        v.Diffuse  = XMFLOAT4(1, 1, 1, 1);
+        v.TexCoord = XMFLOAT2(x / T, -z / T);
+        return v;
+    };
+    VERTEX_3D vs[6] = { mk(x0, z1), mk(x1, z1), mk(x0, z0), mk(x1, z1), mk(x1, z0), mk(x0, z0) };
+    D3D11_BUFFER_DESC bd{};
+    bd.Usage     = D3D11_USAGE_DEFAULT;
+    bd.ByteWidth = sizeof(vs);
+    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    D3D11_SUBRESOURCE_DATA sd{};
+    sd.pSysMem = vs;
+    Renderer::GetDevice()->CreateBuffer(&bd, &sd, &m_RoadVB);
+    if (m_RoadNormal && !m_NormalPS)
+        Renderer::CreatePixelShader(&m_NormalPS, Renderer::ResolveShaderPath("medieval_ps.cso").c_str());
+}
+
 void Field::Uninit()
 {
+    if (m_RoadVB)       m_RoadVB->Release();
     if (m_NormalPS)     m_NormalPS->Release();
     if (m_VertexLayout) m_VertexLayout->Release();
     if (m_PixelShader)  m_PixelShader->Release();
@@ -136,6 +165,19 @@ void Field::Draw()
     Renderer::SetMaterial(material);
 
     deviceContext->Draw(m_VertexCount, 0);
+
+    // 道: 同じ頂点レイアウトで、敷石の絵柄と法線マップに差し替えて1枚描く
+    if (m_RoadVB && m_RoadTexture && m_NormalPS && m_RoadNormal)
+    {
+        deviceContext->IASetVertexBuffers(0, 1, &m_RoadVB, &stride, &offset);
+        deviceContext->PSSetShader(m_NormalPS, NULL, 0);
+        Renderer::SetTexture(m_RoadTexture);
+        deviceContext->PSSetShaderResources(1, 1, &m_RoadNormal);
+        material.Specular  = XMFLOAT4(0.05f, 0.05f, 0.05f, 1.0f);
+        material.Shininess = 10.0f;
+        Renderer::SetMaterial(material);
+        deviceContext->Draw(6, 0);
+    }
 }
 
 

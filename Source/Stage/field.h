@@ -14,6 +14,11 @@ private:
     ID3D11ShaderResourceView* m_NormalTexture = nullptr;  // 床の法線マップ（指定時のみ。法線マップ対応シェーダーで描く）
     ID3D11PixelShader*        m_NormalPS       = nullptr;
 
+    // 道（床の上に貼る長方形1枚。SetRoad で指定したときだけ描く）
+    ID3D11Buffer*             m_RoadVB = nullptr;
+    ID3D11ShaderResourceView* m_RoadTexture = nullptr;
+    ID3D11ShaderResourceView* m_RoadNormal  = nullptr;
+
     int m_VertexCount = 0;
 
 public:
@@ -24,6 +29,8 @@ public:
 
     // 床の絵柄と法線マップを差し替える（Assets/texture 内のファイル名）。未指定なら従来の grid.png
     void SetFloorTexture(const char* albedoName, const char* normalName);
+    // 床の上に道を1本通す（ワールド座標 x0〜x1, z0〜z1 の長方形。絵柄は3mで1周）。法線マップ付き
+    void SetRoad(float x0, float x1, float z0, float z1, const char* albedoName, const char* normalName);
 
     static ObjectType GetStaticType() { return ObjectType::Field; }
     ObjectType GetObjectType() const override { return GetStaticType(); }
