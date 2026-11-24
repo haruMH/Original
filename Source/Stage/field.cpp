@@ -88,7 +88,7 @@ void Field::SetFloorTexture(const char* albedoName, const char* normalName)
     {
         m_NormalTexture = ResourceManager::GetTexture(normalName);
         if (m_NormalTexture)
-            Renderer::CreatePixelShader(&m_NormalPS, Renderer::ResolveShaderPath("medieval_ps.cso").c_str());
+            Renderer::CreatePixelShader(&m_NormalPS, Renderer::ResolveShaderPath("floor_ps.cso").c_str());
     }
 }
 
@@ -117,7 +117,7 @@ void Field::SetRoad(float x0, float x1, float z0, float z1, const char* albedoNa
     sd.pSysMem = vs;
     Renderer::GetDevice()->CreateBuffer(&bd, &sd, &m_RoadVB);
     if (m_RoadNormal && !m_NormalPS)
-        Renderer::CreatePixelShader(&m_NormalPS, Renderer::ResolveShaderPath("medieval_ps.cso").c_str());
+        Renderer::CreatePixelShader(&m_NormalPS, Renderer::ResolveShaderPath("floor_ps.cso").c_str());
 }
 
 void Field::Uninit()

@@ -61,3 +61,4 @@
 - 注意: Releaseは x64\Release で実行され Assets のコピーが漏れることがある。ObjModel は ../ ../../ を探すフォールバックあり。drive-download(63モデル)とMedieval Village MegaKit(Standard)は Downloads 内に未取り込み(使う時は CREDITS.md に追記)。
 - 拠点の更新: 床を自作の石畳(Assets/texture/cobble*.png、Field::SetFloorTexture で hub のみ。medieval_ps で法線マップ)に変更。旧Kenney系プロップ(柵/木箱/樽/テント等)は hub_scene から全削除(炎と松明の光・ゲート柱・サンドバッグは残置)。中世の家は house(...,nx,nz,deco) で4種(6x8/8x8/4x6/6x10)＋煙突/雨戸/丸ドア。中世テクスチャ12枚はBC7 .dds化(ロード短縮。obj_modelは法線も.dds優先)。草は3層(近/遠/超遠 66mまで)で、遠景層は内縁から徐々に大きくなる(grass_vs の ramp)。未確認: 煙突の位置、4m幅の屋根の高さ、草の境目。
 - 拠点レイアウト変更: 中央に幅6mの道(Field::SetRoad, road*.png)を南北に通し、左右に6棟(塔3階/二階建て含む)を道向きに配置。ゲートは北端(0,19)の大きな門(アウトラインなし: RenderComponent::outline)。鍛冶台(-12,13)・サンドバッグ(13,14)に移動。アウトラインは非一様スケールを補正。丘の遠景は針葉樹のみ(hill_terrain CONIFER_RATIO)。foliage_ps は FACET_SMOOTH で法線を上向きに寄せる。
+- 床に視差オクルージョンマッピング: Shaders/floor_ps.hlsl(POM_SCALE/POM_DIST)。法線マップのアルファ=高さ(cobble_normal/road_normal)。Field が床と道に使う。
