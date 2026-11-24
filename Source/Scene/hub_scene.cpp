@@ -104,14 +104,20 @@ void HubScene::Init()
     gateR->SetOutline(false);
     gateTop->SetOutline(false);
 
-    // --- 松明（夜は橙色の点光源になる。ゲート両脇と工房の入口） ---
-    // 焚き火と同じモデル（石の火床）を小さくした「かがり火」にして、画風を揃える
-    auto AddTorch = [&](float x, float z) {
-        FireEffect::AddTorch(XMFLOAT3(x, -0.85f, z));
-    };
-    AddTorch(GATE_POS.x - 4.8f, GATE_POS.z - 1.0f);
-    AddTorch(GATE_POS.x + 4.8f, GATE_POS.z - 1.0f);
-    AddTorch(FORGE_POS.x + 3.0f, FORGE_POS.z - 2.5f);
+    // --- 松明（夜は橙色の点光源になる）。モデルは使わず、ゲートの柱の手前に腕木と火皿を付けて炎を灯す ---
+    for (int side = -1; side <= 1; side += 2) {
+        const float tx = GATE_POS.x + 3.0f * (float)side;
+        const float tz = GATE_POS.z - 0.6f;                    // 柱の手前の面
+        Wall* arm = Manager::AddGameObject<Wall>();            // 柱から突き出す腕木
+        arm->SetPosition(XMFLOAT3(tx, 2.15f, tz - 0.25f));
+        arm->SetScale(XMFLOAT3(0.16f, 0.16f, 0.55f));
+        arm->SetOutline(false);
+        Wall* bowl = Manager::AddGameObject<Wall>();           // 炎をのせる火皿
+        bowl->SetPosition(XMFLOAT3(tx, 2.3f, tz - 0.6f));
+        bowl->SetScale(XMFLOAT3(0.5f, 0.14f, 0.5f));
+        bowl->SetOutline(false);
+        FireEffect::AddTorch(XMFLOAT3(tx, 2.4f, tz - 0.6f));
+    }
 
     // --- (E) 北中央：修練エリア（試し振りサンドバッグ） ---
     Enemy* dummy = Manager::AddGameObject<Enemy>();
