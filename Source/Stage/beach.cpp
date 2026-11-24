@@ -144,9 +144,11 @@ void Beach::Init()
         Renderer::GetDevice()->CreateBuffer(&bd, &sd, &m_SandVB);
     }
 
-    // --- 海面（巨大な1枚。波は sea_ps が描く）---
+    // --- 海面（手前ほど細かい格子。頂点は sea_vs が波の形に動かし、色は sea_ps が描く）---
     {
-        const float R = 400.0f;
+        const int N = 160;
+        auto gx = [](float u) { return 400.0f * (0.10f * u + 0.90f * u * u * u); };   // u:-1〜1 → x（中央が細かい）
+        auto gz = [](float w) { return 8.0f + 392.0f * (0.15f * w + 0.85f * w * w); }; // w:0〜1 → z（岸側が細かい）
         auto sv = [](float x, float z) {
             VERTEX_3D vt{};
             vt.Position = XMFLOAT3(x, WATER_Y, z);
@@ -156,13 +158,23 @@ void Beach::Init()
             vt.Tangent = XMFLOAT3(1, 0, 0);
             return vt;
         };
-        VERTEX_3D q[6] = { sv(-R, R), sv(R, R), sv(-R, -R), sv(R, R), sv(R, -R), sv(-R, -R) };
+        std::vector<VERTEX_3D> q;
+        q.reserve((size_t)N * N * 6);
+        for (int zi = 0; zi < N; ++zi) {
+            const float zLo = gz((float)zi / N), zHi = gz((float)(zi + 1) / N);
+            for (int xi = 0; xi < N; ++xi) {
+                const float x0 = gx(-1.0f + 2.0f * xi / N), x1 = gx(-1.0f + 2.0f * (xi + 1) / N);
+                q.push_back(sv(x0, zHi)); q.push_back(sv(x1, zHi)); q.push_back(sv(x0, zLo));
+                q.push_back(sv(x1, zHi)); q.push_back(sv(x1, zLo)); q.push_back(sv(x0, zLo));
+            }
+        }
+        m_SeaVertexCount = (int)q.size();
         D3D11_BUFFER_DESC bd{};
-        bd.ByteWidth = sizeof(q);
+        bd.ByteWidth = (UINT)(sizeof(VERTEX_3D) * q.size());
         bd.Usage = D3D11_USAGE_DEFAULT;
         bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         D3D11_SUBRESOURCE_DATA sd{};
-        sd.pSysMem = q;
+        sd.pSysMem = q.data();
         Renderer::GetDevice()->CreateBuffer(&bd, &sd, &m_SeaVB);
 
         D3D11_BUFFER_DESC cbd{};
@@ -176,6 +188,7 @@ void Beach::Init()
     Renderer::CreateVertexShader(&m_VertexShader, &m_VertexLayout, Renderer::ResolveShaderPath("vertexShader.cso").c_str());
     Renderer::CreatePixelShader(&m_SandPS, Renderer::ResolveShaderPath("pixelShader.cso").c_str());
     Renderer::CreatePixelShader(&m_SeaPS, Renderer::ResolveShaderPath("sea_ps.cso").c_str());
+    Renderer::CreateVertexShader(&m_SeaVS, &m_SeaLayout, Renderer::ResolveShaderPath("sea_vs.cso").c_str());
 }
 
 void Beach::Uninit()
@@ -184,6 +197,8 @@ void Beach::Uninit()
     if (m_SandPS)       { m_SandPS->Release();       m_SandPS = nullptr; }
     if (m_SeaPS)        { m_SeaPS->Release();        m_SeaPS = nullptr; }
     if (m_VertexLayout) { m_VertexLayout->Release(); m_VertexLayout = nullptr; }
+    if (m_SeaVS)        { m_SeaVS->Release();        m_SeaVS = nullptr; }
+    if (m_SeaLayout)    { m_SeaLayout->Release();    m_SeaLayout = nullptr; }
     m_SandVB.Reset();
     m_SeaVB.Reset();
     m_SeaCB.Reset();
@@ -218,7 +233,7 @@ void Beach::Draw()
     }
 
     // 海面（半透明。砂の上に重ねる）
-    if (m_SeaPS && m_SeaCB) {
+    if (m_SeaPS && m_SeaVS && m_SeaCB) {
         float cb[20] = {};
         cb[0] = WorldLook::GetElapsedSeconds();
         float sun[3];
@@ -232,9 +247,12 @@ void Beach::Draw()
         cb[16] = zn[0]; cb[17] = zn[1]; cb[18] = zn[2];
         dc->UpdateSubresource(m_SeaCB.Get(), 0, nullptr, cb, 0, 0);
         dc->PSSetConstantBuffers(6, 1, m_SeaCB.GetAddressOf());
+        dc->VSSetConstantBuffers(6, 1, m_SeaCB.GetAddressOf());
 
+        dc->IASetInputLayout(m_SeaLayout);
+        dc->VSSetShader(m_SeaVS, nullptr, 0);
         dc->IASetVertexBuffers(0, 1, m_SeaVB.GetAddressOf(), &stride, &offset);
         dc->PSSetShader(m_SeaPS, nullptr, 0);
-        dc->Draw(6, 0);
+        dc->Draw(m_SeaVertexCount, 0);
     }
 }

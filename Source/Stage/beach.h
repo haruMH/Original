@@ -32,7 +32,10 @@ private:
     ID3D11PixelShader*  m_SandPS = nullptr;
     ID3D11PixelShader*  m_SeaPS = nullptr;
     ID3D11InputLayout*  m_VertexLayout = nullptr;
+    ID3D11VertexShader* m_SeaVS = nullptr;       // 波で頂点を動かす海面用
+    ID3D11InputLayout*  m_SeaLayout = nullptr;
     int m_SandVertexCount = 0;
+    int m_SeaVertexCount = 0;
 
     void CreateSandTexture();
 };

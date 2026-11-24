@@ -52,17 +52,14 @@ float4 main(PS_INPUT input) : SV_TARGET
     float depth = (p.y - (ShoreZ(p.x) + tide)) * SEA_SLOPE;
     if (depth <= 0.0f) discard;
 
-    // 波の高さ場(斜めに進む4つの波)から法線を作る
-    float2 d1 = normalize(float2( 0.3f, 1.0f));
-    float2 d2 = normalize(float2(-0.5f, 1.0f));
+    // 大きなうねりは頂点シェーダー(sea_vs)が作った法線を使い、ここでは細かい波紋だけを重ねる
     float2 d3 = normalize(float2( 0.9f, 0.4f));
     float2 d4 = normalize(float2(-0.2f, 0.8f));
     float2 g = 0.0f;
-    g += d1 * cos(dot(p, d1) * 0.55f + t * 1.1f) * 0.55f * 0.060f;
-    g += d2 * cos(dot(p, d2) * 0.90f + t * 1.5f) * 0.90f * 0.035f;
     g += d3 * cos(dot(p, d3) * 1.70f + t * 2.1f) * 1.70f * 0.018f;
     g += d4 * cos(dot(p, d4) * 3.10f + t * 2.9f) * 3.10f * 0.008f;
-    float3 N = normalize(float3(-g.x, 1.0f, -g.y));
+    float3 Nb = normalize(input.Normal);
+    float3 N = normalize(float3(Nb.x - g.x, Nb.y, Nb.z - g.y));
 
     float3 V = normalize(CameraPosition.xyz - input.WorldPos);
     float fres = pow(saturate(1.0f - dot(N, V)), 4.0f);
@@ -92,8 +89,34 @@ float4 main(PS_INPUT input) : SV_TARGET
     float sweep = sin(edge * 1.8f - t * 1.6f + sin(p.x * 0.7f) * 1.5f);
     float lines = smoothstep(0.55f, 0.95f, sweep) * (1.0f - smoothstep(1.0f, 5.5f, edge));
     float rim   = 1.0f - smoothstep(0.0f, 0.55f, edge);
-    float foam  = saturate(lines * 0.8f + rim);
+    // 波頭の泡: うねりの頂上(sea_vs が TexCoord.x に渡す)に、ちぎれた泡を散らす
+    float crest = input.TexCoord.x;
+    float calm  = input.TexCoord.y;
+    float n1 = 0.5f + 0.5f * sin(p.x * 2.3f + t * 0.9f) * sin(p.y * 1.9f - t * 1.3f);
+    float n2 = 0.5f + 0.5f * sin(p.x * 5.7f - t * 1.7f + p.y * 1.1f) * sin(p.y * 4.9f + t * 1.1f);
+    float crestFoam = smoothstep(0.55f, 0.95f, crest) * smoothstep(0.25f, 0.75f, n1 * 0.6f + n2 * 0.4f) * calm;
+    float foam  = saturate(lines * 0.8f + rim + crestFoam * 0.85f);
     col = lerp(col, float3(0.95f, 0.98f, 1.0f) * daylight, foam);
+
+    // 浅瀬の光の網目(コースティクス): 水底に揺れる明るい模様。浅いところだけ足す
+    {
+        float2 q = p * 0.55f;
+        float2 ii = q;
+        float c = 1.0f;
+        float tt = t * 0.5f;
+        [unroll]
+        for (int n = 0; n < 3; ++n)
+        {
+            float t2 = tt * (1.0f - 3.5f / (n + 1.0f));
+            ii = q + float2(cos(t2 - ii.x) + sin(t2 + ii.y), sin(t2 - ii.y) + cos(t2 + ii.x));
+            c += 1.0f / length(float2(q.x / (sin(ii.x + t2) / 0.005f), q.y / (cos(ii.y + t2) / 0.005f)));
+        }
+        c = c / 3.0f;
+        c = 1.17f - pow(abs(c), 1.4f);
+        float caus = saturate(pow(abs(c), 8.0f));
+        float shallowW = (1.0f - smoothstep(0.25f, 2.0f, depth)) * smoothstep(0.02f, 0.25f, depth);
+        col += float3(0.85f, 1.0f, 0.95f) * caus * shallowW * 0.55f * daylight;
+    }
 
     // 透明度: 岸際ほど透けて砂が見える。沖ほど不透明
     float alpha = smoothstep(0.0f, 0.12f, depth) * lerp(0.50f, 0.97f, saturate(depth / 2.5f));
