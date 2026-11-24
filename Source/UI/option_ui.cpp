@@ -433,7 +433,7 @@ void OptionUI::Draw()
             if (ImGui::Button(Loc::Tr("Abandon Quest & Return to Camp", "クエスト離脱・拠点へ帰還"), ImVec2(280, 28))) {
                 ProgressionManager::CommitSession(false); // 獲得素材を保存
                 SoundManager::PlaySE(SoundID::SE_DECIDE);
-                Manager::ChangeScene(Scene::HUB);
+                Manager::ChangeScene(SaveSystem::IsShortMode() ? (curScene == Scene::TUTORIAL ? Scene::GAMEPLAY : Scene::TITLE) : Scene::HUB);
                 SetOpen(false);
             }
         } else if (curScene == Scene::HUB) {
@@ -446,7 +446,7 @@ void OptionUI::Draw()
         } else if (curScene == Scene::TUTORIAL) {
             if (ImGui::Button(Loc::Tr("Finish Tutorial & Go to Camp", "チュートリアル終了・拠点へ"), ImVec2(240, 28))) {
                 SoundManager::PlaySE(SoundID::SE_DECIDE);
-                Manager::ChangeScene(Scene::HUB);
+                Manager::ChangeScene(SaveSystem::IsShortMode() ? (curScene == Scene::TUTORIAL ? Scene::GAMEPLAY : Scene::TITLE) : Scene::HUB);
                 SetOpen(false);
             }
         }

@@ -16,6 +16,7 @@
 #include "renderer.h"
 #include "shockwave.h"
 #include "sound_manager.h"
+#include "save_system.h"
 #include "wall.h"
 #include "main.h"
 #include <vector>
@@ -325,7 +326,7 @@ void TutorialScene::UpdateStepLogic() {
           RequestNextStep(TutorialStep::COMPLETE);
           break;
         case TutorialStep::COMPLETE:
-          Manager::ChangeScene(Scene::HUB, 1.0f, 1.0f,
+          Manager::ChangeScene(SaveSystem::IsShortMode() ? Scene::GAMEPLAY : Scene::HUB, 1.0f, 1.0f,
                                XMFLOAT4(0, 0, 0, 1));
           break;
         }
@@ -458,7 +459,7 @@ void TutorialScene::UpdateStepLogic() {
     if (m_TransitionDelay > 0) {
       m_TransitionDelay--;
       if (m_TransitionDelay <= 0) {
-        Manager::ChangeScene(Scene::HUB, 1.0f, 1.0f, XMFLOAT4(0, 0, 0, 1));
+        Manager::ChangeScene(SaveSystem::IsShortMode() ? Scene::GAMEPLAY : Scene::HUB, 1.0f, 1.0f, XMFLOAT4(0, 0, 0, 1));
       }
     }
     break;
@@ -484,7 +485,7 @@ void TutorialScene::Update() {
   // スキップ入力（ESC でいつでも本編へ直行）
   if (Input::GetKeyTrigger(VK_ESCAPE)) {
     SoundManager::PlaySE(SoundID::SE_DECIDE);
-    Manager::ChangeScene(Scene::HUB, 0.8f, 0.8f, XMFLOAT4(0, 0, 0, 1));
+    Manager::ChangeScene(SaveSystem::IsShortMode() ? Scene::GAMEPLAY : Scene::HUB, 0.8f, 0.8f, XMFLOAT4(0, 0, 0, 1));
     return;
   }
 

@@ -7,6 +7,7 @@
 std::string SaveSystem::m_SaveFilePath = "save_data.dat";
 SaveData    SaveSystem::m_CurrentData;
 bool        SaveSystem::m_IsLoaded = false;
+bool        SaveSystem::m_ShortMode = false;
 
 void SaveSystem::Init()
 {
@@ -16,6 +17,7 @@ void SaveSystem::Init()
 
 bool SaveSystem::Save()
 {
+    if (m_ShortMode) return true; // ショートモード中は書き込まない
     std::string tempPath = m_SaveFilePath + ".tmp";
     std::ofstream ofs(tempPath, std::ios::out | std::ios::trunc);
     if (!ofs.is_open())

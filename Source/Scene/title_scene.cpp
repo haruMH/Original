@@ -169,12 +169,25 @@ namespace {
     }
 }
 
+// ショートモード開始: ストーリーのセーブに触れないよう、メモリ上を初期化して書き込みを禁止する
+static void StartShortMode()
+{
+    SaveSystem::ResetData();
+    SaveSystem::SetShortMode(true);
+    Manager::ChangeScene(Scene::TUTORIAL);
+}
+
 // =================================================================
 // 初期化
 // =================================================================
 void TitleScene::Init()
 {
     m_OrbitAngle = 0.0f;
+    // ショートモードから戻った場合はフラグを解除し、ストーリーのセーブを読み直す
+    if (SaveSystem::IsShortMode()) {
+        SaveSystem::SetShortMode(false);
+        SaveSystem::Load();
+    }
     m_HasSaveData = SaveSystem::HasSaveFile();
     m_SelectedIndex = 0; // デフォルトで「つづきから」（セーブデータ有時）
     m_ShowNewGameConfirm = false;
@@ -275,18 +288,23 @@ void TitleScene::Update()
             m_ShowNewGameConfirm = false;
         }
     } else {
-        if (m_HasSaveData) {
-            // 上下選択（W/S または 上下矢印キー）
-            if (Input::GetKeyTrigger('W') || Input::GetKeyTrigger(VK_UP)) {
-                m_SelectedIndex = (m_SelectedIndex - 1 + 2) % 2;
-            }
-            if (Input::GetKeyTrigger('S') || Input::GetKeyTrigger(VK_DOWN)) {
-                m_SelectedIndex = (m_SelectedIndex + 1) % 2;
-            }
+        // 項目: セーブ有り=[つづきから, はじめから, ショート] / 無し=[ストーリー開始, ショート]
+        const int itemCount = m_HasSaveData ? 3 : 2;
+        const int shortIndex = itemCount - 1;
+        if (Input::GetKeyTrigger('W') || Input::GetKeyTrigger(VK_UP)) {
+            m_SelectedIndex = (m_SelectedIndex - 1 + itemCount) % itemCount;
+        }
+        if (Input::GetKeyTrigger('S') || Input::GetKeyTrigger(VK_DOWN)) {
+            m_SelectedIndex = (m_SelectedIndex + 1) % itemCount;
+        }
+        if (m_SelectedIndex >= itemCount) m_SelectedIndex = 0;
 
-            // 決定入力
-            if (Input::GetKeyTrigger(VK_RETURN) || Input::GetKeyTrigger(VK_SPACE) || PlayerController::IsGrabOrThrowAction()) {
-                SoundManager::PlaySE(SoundID::SE_DECIDE);
+        if (Input::GetKeyTrigger(VK_RETURN) || Input::GetKeyTrigger(VK_SPACE) || PlayerController::IsGrabOrThrowAction()) {
+            SoundManager::PlaySE(SoundID::SE_DECIDE);
+            if (m_SelectedIndex == shortIndex) {
+                StartShortMode();
+            } else if (m_HasSaveData) {
+                {
                 if (m_SelectedIndex == 0) {
                     // つづきから: データをロードして拠点へ
                     SaveSystem::Load();
@@ -295,11 +313,9 @@ void TitleScene::Update()
                     // はじめから: 上書き確認を表示
                     m_ShowNewGameConfirm = true;
                 }
-            }
-        } else {
-            // セーブデータなし: ゲーム開始（チュートリアルへ）
-            if (Input::GetKeyTrigger(VK_RETURN) || Input::GetKeyTrigger(VK_SPACE) || PlayerController::IsGrabOrThrowAction()) {
-                SoundManager::PlaySE(SoundID::SE_DECIDE);
+                }
+            } else {
+                // セーブデータなし: ストーリー開始（チュートリアルへ）
                 Manager::ChangeScene(Scene::TUTORIAL);
             }
         }
@@ -360,12 +376,13 @@ void TitleScene::Draw()
                     UITheme::PushNormalButton();
                 }
 
-                std::string continueLabel = std::string((const char*)u8"つづきから (拠点キャンプ)") + (isContinueSelected ? "  <" : "");
+                std::string continueLabel = std::string((const char*)u8"ストーリー: つづきから (拠点キャンプ)") + (isContinueSelected ? "  <" : "");
                 if (ImGui::Button(continueLabel.c_str(), ImVec2(-1, 46))) {
                     SoundManager::PlaySE(SoundID::SE_DECIDE);
                     SaveSystem::Load();
                     Manager::ChangeScene(Scene::HUB);
                 }
+                if (ImGui::IsItemHovered()) m_SelectedIndex = 0; // マウス位置を選択に反映(Updateの決定入力とのズレ防止)
                 UITheme::PopButton();
 
                 // セーブデータプレビュー
@@ -385,18 +402,38 @@ void TitleScene::Draw()
                     UITheme::PushNormalButton();
                 }
 
-                std::string newGameLabel = std::string((const char*)u8"はじめから (チュートリアル)") + (isNewGameSelected ? "  <" : "");
+                std::string newGameLabel = std::string((const char*)u8"ストーリー: はじめから (チュートリアル)") + (isNewGameSelected ? "  <" : "");
                 if (ImGui::Button(newGameLabel.c_str(), ImVec2(-1, 40))) {
                     SoundManager::PlaySE(SoundID::SE_DECIDE);
                     m_ShowNewGameConfirm = true;
                 }
+                if (ImGui::IsItemHovered()) m_SelectedIndex = 1; // マウス位置を選択に反映(Updateの決定入力とのズレ防止)
                 UITheme::PopButton();
             } else {
-                // 初回起動（セーブデータなし）: ゲーム開始
-                if (ImGui::Button((const char*)u8"ゲーム開始 (START)", ImVec2(-1, 50))) {
+                // 初回起動（セーブデータなし）: ストーリー開始
+                bool isStorySelected = (m_SelectedIndex == 0);
+                if (isStorySelected) UITheme::PushPrimaryButton(); else UITheme::PushNormalButton();
+                std::string storyLabel = std::string((const char*)u8"ストーリーモード (START)") + (isStorySelected ? "  <" : "");
+                if (ImGui::Button(storyLabel.c_str(), ImVec2(-1, 46))) {
                     SoundManager::PlaySE(SoundID::SE_DECIDE);
                     Manager::ChangeScene(Scene::TUTORIAL);
                 }
+                if (ImGui::IsItemHovered()) m_SelectedIndex = 0; // マウス位置を選択に反映(Updateの決定入力とのズレ防止)
+                UITheme::PopButton();
+            }
+
+            // ショートモード（チュートリアル→雑魚戦→ボス戦。セーブしない）
+            ImGui::Spacing();
+            {
+                bool isShortSelected = (m_SelectedIndex == (m_HasSaveData ? 2 : 1));
+                if (isShortSelected) UITheme::PushPrimaryButton(); else UITheme::PushNormalButton();
+                std::string shortLabel = std::string((const char*)u8"ショートモード (セーブなし)") + (isShortSelected ? "  <" : "");
+                if (ImGui::Button(shortLabel.c_str(), ImVec2(-1, 40))) {
+                    SoundManager::PlaySE(SoundID::SE_DECIDE);
+                    StartShortMode();
+                }
+                if (ImGui::IsItemHovered()) m_SelectedIndex = (m_HasSaveData ? 2 : 1); // マウス位置を選択に反映(Updateの決定入力とのズレ防止)
+                UITheme::PopButton();
             }
 
             ImGui::Spacing();

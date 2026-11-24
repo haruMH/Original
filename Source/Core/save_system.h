@@ -34,6 +34,7 @@ private:
     static std::string m_SaveFilePath;
     static SaveData    m_CurrentData;
     static bool        m_IsLoaded;
+    static bool        m_ShortMode;
 
 public:
     // Initialize & initial load
@@ -41,6 +42,10 @@ public:
 
     // Save (atomic write)
     static bool Save();
+
+    // ショートモード中はセーブを書かない(ストーリーのデータ保護)
+    static void SetShortMode(bool on) { m_ShortMode = on; }
+    static bool IsShortMode() { return m_ShortMode; }
 
     // Load
     static bool Load();

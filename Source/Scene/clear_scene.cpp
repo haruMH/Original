@@ -159,7 +159,7 @@ void ClearScene::Update()
     bool canClick = !io.WantCaptureMouse && Input::GetKeyTrigger(VK_LBUTTON);
     if (Input::GetKeyTrigger(VK_RETURN) || Input::GetKeyTrigger(VK_SPACE) || canClick) {
         SoundManager::PlaySE(SoundID::SE_DECIDE);
-        Manager::ChangeScene(Scene::HUB);
+        Manager::ChangeScene(SaveSystem::IsShortMode() ? Scene::TITLE : Scene::HUB);
     }
 }
 
@@ -230,7 +230,7 @@ void ClearScene::DrawRewardUI()
         // 帰還ボタン
         if (ImGui::Button("Return to Base Camp [SPACE / ENTER]", ImVec2(-1.0f, 40.0f))) {
             SoundManager::PlaySE(SoundID::SE_DECIDE);
-            Manager::ChangeScene(Scene::HUB);
+            Manager::ChangeScene(SaveSystem::IsShortMode() ? Scene::TITLE : Scene::HUB);
         }
 
         ImGui::End();
