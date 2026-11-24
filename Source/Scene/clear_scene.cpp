@@ -3,6 +3,7 @@
 #include "manager.h"
 #include "sound_manager.h"
 #include "field.h"
+#include "town_backdrop.h"
 #include "wall.h"
 #include "player.h"
 #include "camera.h"
@@ -106,17 +107,13 @@ void ClearScene::Init()
     DustSystem::Clear();
     ScorePopupSystem::Clear();
 
-    // 1. 3D床面の生成
-    Manager::AddGameObject<Field>();
-    Manager::AddGameObject<Skybox>();
-
-    // 2. 栄光の黄金・天空回廊モニュメントの構築
-    BuildVictoryPalace();
+    // 1. 拠点と同じ街並みの背景
+    TownBackdrop::Build(false);
 
     // 3. 中央で堂々と佇むプレイヤーキャラクター
     Player* player = Manager::AddGameObject<Player>();
     if (player) {
-        player->SetPosition(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+        player->SetPosition(DirectX::XMFLOAT3(0.0f, -0.5f, 0.0f));
         player->SetRotation(DirectX::XMFLOAT3(0.0f, DirectX::XM_PI, 0.0f)); // カメラ側（手前）を向く
         player->SetDamageTimer(0);
         player->GetLightningEffects().clear();
@@ -146,8 +143,10 @@ void ClearScene::Update()
 
     if (g_Camera) {
         const float radius = 8.5f + 0.8f * cosf(m_Timer * 0.3f);
-        float eyeX = radius * sinf(m_OrbitAngle);
-        float eyeZ = -radius * cosf(m_OrbitAngle);
+        // 道の南側から左右にゆっくり振る(家並みに入らない範囲)
+        const float swing = 0.4f * sinf(m_OrbitAngle);
+        float eyeX = radius * sinf(swing);
+        float eyeZ = -radius * cosf(swing);
 
         DirectX::XMFLOAT3 eye(eyeX, m_CameraHeight, eyeZ);
         DirectX::XMFLOAT3 target(0.0f, 1.6f, 0.0f);

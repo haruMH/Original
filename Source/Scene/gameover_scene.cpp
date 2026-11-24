@@ -3,6 +3,7 @@
 #include "manager.h"
 #include "sound_manager.h"
 #include "field.h"
+#include "town_backdrop.h"
 #include "wall.h"
 #include "player.h"
 #include "camera.h"
@@ -133,17 +134,13 @@ void GameOverScene::Init()
     DustSystem::Clear();
     ScorePopupSystem::Clear();
 
-    // 1. 3D床面の生成
-    Manager::AddGameObject<Field>();
-    Manager::AddGameObject<Skybox>();
-
-    // 2. 崩落と廃墟の荒野モニュメントの構築
-    BuildDesolationRuins();
+    // 1. 拠点と同じ街並みの背景
+    TownBackdrop::Build(false);
 
     // 3. 中央で倒れ伏すプレイヤー（横倒し姿勢・さっきの状態に復元）
     Player* player = Manager::AddGameObject<Player>();
     if (player) {
-        player->SetPosition(DirectX::XMFLOAT3(0.0f, 0.35f, 0.0f));
+        player->SetPosition(DirectX::XMFLOAT3(0.0f, -0.15f, 0.0f));
         // 横倒し（Z軸回転90度）で地面に倒れ込んでいる姿
         player->SetRotation(DirectX::XMFLOAT3(0.0f, 0.6f, DirectX::XM_PIDIV2));
         player->SetDamageTimer(0);
@@ -174,8 +171,10 @@ void GameOverScene::Update()
 
     if (g_Camera) {
         const float radius = 7.5f + 0.5f * cosf(m_Timer * 0.2f);
-        float eyeX = radius * sinf(m_OrbitAngle);
-        float eyeZ = -radius * cosf(m_OrbitAngle);
+        // 道の南側から左右にゆっくり振る(家並みに入らない範囲)
+        const float swing = 0.4f * sinf(m_OrbitAngle);
+        float eyeX = radius * sinf(swing);
+        float eyeZ = -radius * cosf(swing);
 
         DirectX::XMFLOAT3 eye(eyeX, m_CameraHeight, eyeZ);
         DirectX::XMFLOAT3 target(0.0f, 0.6f, 0.0f);

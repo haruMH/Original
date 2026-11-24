@@ -183,7 +183,7 @@ void PlayerVisual::Draw()
     }
 
     // Draw stun discharge effects
-    if (m_Owner->GetDamageTimer() > 0) {
+    if (m_Owner->GetDamageTimer() > 0 && !m_Owner->IsDisplayFrozen()) {
         XMFLOAT3 start = m_Owner->GetPosition();
         start.y += 0.3f;
 
@@ -342,7 +342,7 @@ void PlayerVisual::DrawEyes()
     pupilMat.TextureEnable = FALSE;
     pupilMat.RimPower      = 0.0f;
 
-    if (m_Owner->GetDamageTimer() > 0) {
+    if (m_Owner->GetDamageTimer() > 0 && !m_Owner->IsDisplayFrozen()) {
         // 被弾時：赤く点滅発光
         pupilMat.Emission = XMFLOAT4(2.5f, 0.3f, 0.3f, 1.0f);
     } else if (m_Owner->GetState() == PlayerState::SPINNING) {

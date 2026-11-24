@@ -227,6 +227,12 @@
     <ClCompile Include="Source\Stage\hill_terrain.cpp">
       <Filter>Source\Stage</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Stage\town_backdrop.cpp">
+      <Filter>Source\Stage</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Stage\beach.cpp">
+      <Filter>Source\Stage</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Effect\dust_system.cpp">
       <Filter>Source\Effect</Filter>
     </ClCompile>
@@ -438,6 +444,12 @@
       <Filter>Source\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Source\Stage\hill_terrain.h">
+      <Filter>Source\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Stage\town_backdrop.h">
+      <Filter>Source\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Stage\beach.h">
       <Filter>Source\Stage</Filter>
     </ClInclude>
     <ClInclude Include="Source\Effect\dust_system.h">

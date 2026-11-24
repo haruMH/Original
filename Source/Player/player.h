@@ -60,6 +60,7 @@ private:
     // ステータスとタイマー
     int         m_HP               = 5;
     int         m_MaxHP            = 5;
+    bool        m_DisplayFrozen    = false;     // タイトル等の表示専用(スタンの放電・赤目を出さない)
     int         m_DamageTimer      = 0;         // スタン（被弾硬直）タイマー
     int         m_InvincibleTimer  = 0;         // 無敵タイマー
     int         m_GuardTimer       = 0;         // ガード継続時間
@@ -152,6 +153,8 @@ public:
     const std::list<LightningEffect>& GetLightningEffects() const { return m_LightningEffects; }
     int         GetDamageTimer() const { return m_DamageTimer; }
     void        SetDamageTimer(int timer) { m_DamageTimer = timer; }
+    void        SetDisplayFrozen(bool f) { m_DisplayFrozen = f; }
+    bool        IsDisplayFrozen() const { return m_DisplayFrozen; }
     int         GetInvincibleTimer() const { return m_InvincibleTimer; }
     void        SetInvincibleTimer(int timer) { m_InvincibleTimer = timer; }
     int         GetGuardTimer() const { return m_GuardTimer; }

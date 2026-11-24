@@ -911,9 +911,7 @@ void ScoreHUD::Update()
     Scene currentScene = Manager::GetCurrentScene();
 
     if (currentScene == Scene::TITLE) {
-        if (!m_TitleTexture) {
-            m_TitleTexture = CreateTitleTexture(Renderer::GetDevice());
-        }
+        // 旧タイトルパネルは廃止したため、テクスチャも作らない
     } else if (currentScene == Scene::GAMEPLAY) {
         // プレイヤーHP変化の監視
         int curPlayerHP = m_LastHP;
@@ -1016,16 +1014,7 @@ void ScoreHUD::Draw()
 
     switch (currentScene) {
     case Scene::TITLE:
-        texToDraw = m_TitleTexture.Get();
-        {
-            // ウィンドウサイズに応じて縮小し、ロゴとメニューの間に収める
-            const float s = (std::max)(0.6f, (std::min)(1.0f, screenH / 900.0f));
-            w = 512.0f * s;
-            h = 256.0f * s;
-            static float titleFloatTime = 0.0f;
-            titleFloatTime += 0.035f;
-            posY = screenH * 0.42f + sinf(titleFloatTime) * 5.0f * s; // 上下にフワフワ浮遊
-        }
+        texToDraw = nullptr; // 旧タイトルパネルは廃止(ロゴとメニューは TitleLogo / TitleScene が描く)
         emissionColor = XMFLOAT4(0.0f, 1.2f, 1.8f, 0.0f); // タイトルは青白発光
         break;
     case Scene::GAMEPLAY:

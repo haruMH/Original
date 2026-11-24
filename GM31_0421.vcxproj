@@ -223,6 +223,8 @@
     <ClCompile Include="Source\Effect\ambient_effect.cpp" />
     <ClCompile Include="Source\Effect\grass_system.cpp" />
     <ClCompile Include="Source\Stage\hill_terrain.cpp" />
+    <ClCompile Include="Source\Stage\town_backdrop.cpp" />
+    <ClCompile Include="Source\Stage\beach.cpp" />
     <ClCompile Include="Source\UI\ui_theme.cpp" />
     <ClCompile Include="Source\UI\title_logo.cpp" />
     <!-- Audio -->
@@ -307,6 +309,8 @@
     <ClInclude Include="Source\Effect\ambient_effect.h" />
     <ClInclude Include="Source\Effect\grass_system.h" />
     <ClInclude Include="Source\Stage\hill_terrain.h" />
+    <ClInclude Include="Source\Stage\town_backdrop.h" />
+    <ClInclude Include="Source\Stage\beach.h" />
     <ClInclude Include="Source\UI\ui_theme.h" />
     <ClInclude Include="Source\UI\title_logo.h" />
     <!-- Audio -->
@@ -353,6 +357,11 @@
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
     </FXCompile>
     <FXCompile Include="Shaders\medieval_ps.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+    </FXCompile>
+    <FXCompile Include="Shaders\sea_ps.hlsl">
       <ShaderType>Pixel</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>

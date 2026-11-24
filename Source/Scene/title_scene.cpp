@@ -5,6 +5,7 @@
 #include "manager.h"
 #include "sound_manager.h"
 #include "field.h"
+#include "beach.h"
 #include "wall.h"
 #include "player.h"
 #include "camera.h"
@@ -200,22 +201,16 @@ void TitleScene::Init()
     DustSystem::Clear();
     ScorePopupSystem::Clear();
 
-    // 1. 3D床面の生成（波打つグリッドメッシュ＆フレネル光沢）
-    Manager::AddGameObject<Field>();
+    // 1. 砂浜と海の背景（海は +z 側。プレイヤーは海に向かって立つ）
+    Manager::AddGameObject<Beach>();
     Manager::AddGameObject<Skybox>();
-
-    // 2. 4属性コミック調石積みの多層複合モニュメント配置
-    const float baseDist = 22.0f;
-    BuildCyanRuneGate(baseDist);        // 北: シアン・ルーンゲート
-    BuildGoldShrine(baseDist);          // 東: ゴールド・古代神殿モノリス群
-    BuildCrimsonFortress(baseDist);     // 南: クリムゾン・多層要塞城壁
-    BuildAmethystStonehenge(baseDist);  // 西: アメジスト・崩落巨石ヘンジ
-    BuildCornerPillars(baseDist);       // 四隅: コーナータワーピラー
 
     // 3. 中央に佇むプレイヤーキャラクター
     Player* player = Manager::AddGameObject<Player>();
     if (player) {
-        player->SetPosition(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+        player->SetPosition(DirectX::XMFLOAT3(0.0f, Beach::GroundY(0.0f, 0.0f) + 0.5f, 0.0f));
+        player->SetRotation(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+        player->SetDisplayFrozen(true); // 放電・赤目の演出を出さない
         player->SetDamageTimer(99999); // タイトル中のキー入力による勝手な移動を抑止
     }
 
@@ -224,8 +219,8 @@ void TitleScene::Init()
 
     // 4. カメラの初期旋回位置を設定（巨大建造物を見上げるシネマティック構図）
     if (g_Camera) {
-        DirectX::XMFLOAT3 eye(0.0f, 4.0f, 12.5f);
-        DirectX::XMFLOAT3 target(0.0f, 2.2f, 0.0f);
+        DirectX::XMFLOAT3 eye(0.0f, Beach::GroundY(0.0f, -7.0f) + 2.2f, -7.0f);
+        DirectX::XMFLOAT3 target(0.0f, 1.4f, 10.0f);
         g_Camera->SetCutsceneMode(true, eye, target);
     }
 }
@@ -254,21 +249,21 @@ void TitleScene::Update()
     }
 
     if (g_Camera) {
-        const float radius = 12.5f;
-        const float height = 4.0f;
+        // プレイヤーの背後から海を望み、左右にゆっくり揺れる
+        const float sway = 3.5f * sinf(m_OrbitAngle);
         DirectX::XMFLOAT3 eye(
-            sinf(m_OrbitAngle) * radius,
-            height,
-            cosf(m_OrbitAngle) * radius
+            sway,
+            Beach::GroundY(sway, -7.0f) + 2.2f + 0.25f * sinf(m_OrbitAngle * 2.0f),
+            -7.0f
         );
-        DirectX::XMFLOAT3 target(0.0f, 2.2f, 0.0f);
+        DirectX::XMFLOAT3 target(-sway * 0.3f, 1.4f, 10.0f);
         g_Camera->SetCutsceneMode(true, eye, target);
     }
 
     // 2. プレイヤーを定位置に固定
     Player* player = Manager::GetGameObject<Player>();
     if (player) {
-        player->SetPosition(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+        player->SetPosition(DirectX::XMFLOAT3(0.0f, Beach::GroundY(0.0f, 0.0f) + 0.5f, 0.0f));
         player->SetDamageTimer(99999);
     }
 
@@ -333,10 +328,12 @@ void TitleScene::Draw()
 
     // 画面下部中央にメニューパネルを配置
     const float s = (std::max)(0.6f, (std::min)(1.0f, screenH / 900.0f));
-    ImGui::SetNextWindowPos(ImVec2(screenW * 0.5f, screenH * 0.60f), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+    ImGui::SetNextWindowPos(ImVec2(screenW * 0.5f, screenH * 0.34f), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
     ImGui::SetNextWindowSize(ImVec2((std::min)(480.0f * s, screenW * 0.9f), 0.0f));
 
+    // AlwaysAutoResize: 高さを毎フレームその場で確定させ、前フレームの寸法とのズレで上下に揺れないようにする
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
+                           | ImGuiWindowFlags_AlwaysAutoResize
                            | ImGuiWindowFlags_NoResize
                            | ImGuiWindowFlags_NoMove
                            | ImGuiWindowFlags_NoScrollbar
@@ -356,14 +353,14 @@ void TitleScene::Draw()
             ImGui::Text((const char*)u8"本当にはじめから開始しますか？");
             ImGui::Spacing();
 
-            if (ImGui::Button((const char*)u8"はい (開始)", ImVec2(200, 42))) {
+            if (ImGui::Button((const char*)u8"はい (開始)", ImVec2(200 * s, 42 * s))) {
                 SoundManager::PlaySE(SoundID::SE_DECIDE);
                 SaveSystem::ResetData();
                 SaveSystem::Save();
                 Manager::ChangeScene(Scene::TUTORIAL);
             }
             ImGui::SameLine();
-            if (ImGui::Button((const char*)u8"いいえ (戻る)", ImVec2(200, 42))) {
+            if (ImGui::Button((const char*)u8"いいえ (戻る)", ImVec2(200 * s, 42 * s))) {
                 m_ShowNewGameConfirm = false;
             }
         } else {
@@ -377,7 +374,7 @@ void TitleScene::Draw()
                 }
 
                 std::string continueLabel = std::string((const char*)u8"ストーリー: つづきから (拠点キャンプ)") + (isContinueSelected ? "  <" : "");
-                if (ImGui::Button(continueLabel.c_str(), ImVec2(-1, 46))) {
+                if (ImGui::Button(continueLabel.c_str(), ImVec2(-1, 46 * s))) {
                     SoundManager::PlaySE(SoundID::SE_DECIDE);
                     SaveSystem::Load();
                     Manager::ChangeScene(Scene::HUB);
@@ -403,7 +400,7 @@ void TitleScene::Draw()
                 }
 
                 std::string newGameLabel = std::string((const char*)u8"ストーリー: はじめから (チュートリアル)") + (isNewGameSelected ? "  <" : "");
-                if (ImGui::Button(newGameLabel.c_str(), ImVec2(-1, 40))) {
+                if (ImGui::Button(newGameLabel.c_str(), ImVec2(-1, 40 * s))) {
                     SoundManager::PlaySE(SoundID::SE_DECIDE);
                     m_ShowNewGameConfirm = true;
                 }
@@ -414,7 +411,7 @@ void TitleScene::Draw()
                 bool isStorySelected = (m_SelectedIndex == 0);
                 if (isStorySelected) UITheme::PushPrimaryButton(); else UITheme::PushNormalButton();
                 std::string storyLabel = std::string((const char*)u8"ストーリーモード (START)") + (isStorySelected ? "  <" : "");
-                if (ImGui::Button(storyLabel.c_str(), ImVec2(-1, 46))) {
+                if (ImGui::Button(storyLabel.c_str(), ImVec2(-1, 46 * s))) {
                     SoundManager::PlaySE(SoundID::SE_DECIDE);
                     Manager::ChangeScene(Scene::TUTORIAL);
                 }
@@ -428,7 +425,7 @@ void TitleScene::Draw()
                 bool isShortSelected = (m_SelectedIndex == (m_HasSaveData ? 2 : 1));
                 if (isShortSelected) UITheme::PushPrimaryButton(); else UITheme::PushNormalButton();
                 std::string shortLabel = std::string((const char*)u8"ショートモード (セーブなし)") + (isShortSelected ? "  <" : "");
-                if (ImGui::Button(shortLabel.c_str(), ImVec2(-1, 40))) {
+                if (ImGui::Button(shortLabel.c_str(), ImVec2(-1, 40 * s))) {
                     SoundManager::PlaySE(SoundID::SE_DECIDE);
                     StartShortMode();
                 }
