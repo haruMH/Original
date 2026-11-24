@@ -116,13 +116,13 @@ bool FadeSystem::Init(ID3D11Device* device)
     if (!device) return false;
 
     // 1. 頂点シェーダー読み込み (postEffect_vs)
-    if (!LoadVS(device, "postEffect_vs.cso", "postEffect_vs.hlsl", m_VS.ReleaseAndGetAddressOf())) {
+    if (!LoadVS(device, "postEffect_vs.cso", "Shaders/postEffect_vs.hlsl", m_VS.ReleaseAndGetAddressOf())) {
         LOG_INFO("[FadeSystem] Failed to load VS (postEffect_vs)\n");
         return false;
     }
 
     // 2. ピクセルシェーダー読み込み (fade_ps)
-    if (!LoadPS(device, "fade_ps.cso", "fade_ps.hlsl", m_PS.ReleaseAndGetAddressOf())) {
+    if (!LoadPS(device, "fade_ps.cso", "Shaders/fade_ps.hlsl", m_PS.ReleaseAndGetAddressOf())) {
         LOG_INFO("[FadeSystem] Failed to load PS (fade_ps)\n");
         return false;
     }

@@ -42,7 +42,9 @@ private:
         int start = 0;
         int count = 0;
         ID3D11ShaderResourceView* tex = nullptr;   // 所有しない（m_TextureSRV か m_ExtraTextures のどれか）
+        ID3D11ShaderResourceView* nrm = nullptr;   // 法線マップ(map_Bump)。所有は m_ExtraTextures。中世の家などのみ
     };
+    std::unordered_map<std::string, std::string> m_MatNormal;   // マテリアル名 → 法線マップのファイル名
     std::vector<SubMesh>                      m_SubMeshes;
     std::vector<ID3D11ShaderResourceView*>    m_ExtraTextures;   // マテリアル個別のテクスチャ（所有）
 
@@ -51,4 +53,5 @@ private:
     ID3D11ShaderResourceView*  m_TextureSRV = nullptr;
     int                        m_VertexCount = 0;
     bool                       m_UseFoliageShader = false;   // 自然物(木・茂み・花)は軽いシェーダーで描く
+    bool                       m_UseNormalMap = false;       // 中世の家などは法線マップ対応シェーダーで描く
 };

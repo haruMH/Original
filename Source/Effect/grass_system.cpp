@@ -28,11 +28,16 @@ namespace {
     const float NEAR_OUTER  = 17.0f;
     const int   NEAR_VERTS  = 9;
     // 遠景: 疎で太く高い刃（近景の外側 〜 約40m）。遠いほど刃を大きくして隙間を埋める
-    const int   FAR_SIDE    = 150;
-    const float FAR_CELL    = 0.55f;
-    const float FAR_INNER   = 15.0f;
+    const int   FAR_SIDE    = 230;
+    const float FAR_CELL    = 0.36f;
+    const float FAR_INNER   = 11.0f;
     const float FAR_OUTER   = 40.0f;
     const int   FAR_VERTS   = 5;
+    // 超遠景: さらに疎で太い刃（遠景の外側 〜 約66m）。キャンプ中央から見ても草原が続いて見えるように
+    const int   XFAR_SIDE   = 156;
+    const float XFAR_CELL   = 0.9f;
+    const float XFAR_INNER  = 26.0f;
+    const float XFAR_OUTER  = 66.0f;
 
     bool  g_Enabled = false;
     int   g_Time = 0;
@@ -131,6 +136,7 @@ void GrassSystem::Draw()
     };
     drawLayer(NEAR_SIDE, NEAR_CELL, NEAR_VERTS, 0.0f,       NEAR_OUTER, 1.0f, 1.0f);
     drawLayer(FAR_SIDE,  FAR_CELL,  FAR_VERTS,  FAR_INNER,  FAR_OUTER,  1.5f, 2.6f);
+    drawLayer(XFAR_SIDE, XFAR_CELL, FAR_VERTS,  XFAR_INNER, XFAR_OUTER, 1.7f, 5.0f);
 
     ctx->RSSetState(oldRs);
     if (oldRs) oldRs->Release();

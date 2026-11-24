@@ -480,52 +480,52 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FXCompile Include="fade_ps.hlsl">
+    <FXCompile Include="Shaders\fade_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="outline_ps.hlsl">
+    <FXCompile Include="Shaders\outline_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="outline_vs.hlsl">
+    <FXCompile Include="Shaders\outline_vs.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="instanced_vs.hlsl">
+    <FXCompile Include="Shaders\instanced_vs.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="outline_instanced_vs.hlsl">
+    <FXCompile Include="Shaders\outline_instanced_vs.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="instanced_ps.hlsl">
+    <FXCompile Include="Shaders\instanced_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="pixelShader.hlsl">
+    <FXCompile Include="Shaders\pixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="postEffect_ps.hlsl">
+    <FXCompile Include="Shaders\postEffect_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="postEffect_vs.hlsl">
+    <FXCompile Include="Shaders\postEffect_vs.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="vertexShader.hlsl">
+    <FXCompile Include="Shaders\vertexShader.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="hit_impact_ps.hlsl">
+    <FXCompile Include="Shaders\hit_impact_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="sky_ps.hlsl">
+    <FXCompile Include="Shaders\sky_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="aura_ring_ps.hlsl">
+    <FXCompile Include="Shaders\aura_ring_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="title_logo_ps.hlsl">
+    <FXCompile Include="Shaders\title_logo_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="ui_ps.hlsl">
+    <FXCompile Include="Shaders\ui_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
-    <FXCompile Include="shadow_ps.hlsl">
+    <FXCompile Include="Shaders\shadow_ps.hlsl">
       <Filter>Shaders</Filter>
     </FXCompile>
   </ItemGroup>

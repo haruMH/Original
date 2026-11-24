@@ -1158,12 +1158,12 @@ static bool LoadDdsTexture(ID3D11Device* dev, const char* pngPath, ID3D11ShaderR
     return SUCCEEDED(dev->CreateShaderResourceView(t2.Get(), NULL, out)) && *out;
 }
 
-void Renderer::CreateTexture(const char* name, ID3D11ShaderResourceView** tex) {
+void Renderer::CreateTexture(const char* name, ID3D11ShaderResourceView** tex, bool allowCompressed) {
     *tex = nullptr;
     if (!name || strlen(name) == 0) return;
 
     // 圧縮済み(.dds)があれば優先（読み出し帯域・メモリが減る）
-    if (LoadDdsTexture(m_Device.Get(), name, tex)) return;
+    if (allowCompressed && LoadDdsTexture(m_Device.Get(), name, tex)) return;
     *tex = nullptr;
 
     Microsoft::WRL::ComPtr<IWICImagingFactory> fc;

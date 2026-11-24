@@ -474,7 +474,9 @@ bool RenderSystem::CreateTextureArray(ID3D11Device* device)
     // 1. 各テクスチャリソースの取得と検証
     for (const auto& key : textureKeys)
     {
-        ID3D11ShaderResourceView* srv = ResourceManager::GetTexture(key);
+        // 配列は全スライスが同じ形式である必要があるので、圧縮(.dds)を使わず元画像(RGBA8)を読む
+        ComPtr<ID3D11ShaderResourceView> srv;
+        Renderer::CreateTexture(("Assets/texture/" + key).c_str(), srv.GetAddressOf(), false);
         if (!srv)
         {
             log << "[RenderSystem::CreateTextureArray] Failed to get texture SRV for: " << key << std::endl;

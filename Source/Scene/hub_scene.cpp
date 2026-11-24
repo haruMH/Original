@@ -28,8 +28,6 @@
 using namespace DirectX;
 
 namespace {
-    // 確認用（FPSの原因切り分け）: F5 草 / F6 丘と木 / F7 自然物モデル の表示切り替え。確認が済んだら削除
-    bool s_DbgGrass = true, s_DbgHill = true, s_DbgFoliage = true;
     const XMFLOAT3 FORGE_POS = XMFLOAT3(-10.0f, 0.0f, 8.0f);
     const XMFLOAT3 GATE_POS  = XMFLOAT3(10.0f, 0.0f, 8.0f);
     const float INTERACT_RADIUS = 4.0f;
@@ -61,7 +59,7 @@ void HubScene::Init()
     SaveSystem::Save();
 
     // 1. 地面と空
-    Manager::AddGameObject<Field>();
+    Manager::AddGameObject<Field>()->SetFloorTexture("cobble.png", "cobble_normal.png");   // 石畳
     Manager::AddGameObject<Skybox>();   // 空は時間経過で変化する
 
     // 2. プレイヤー（広場南側からキャンプ全体を見渡せる位置にスポーン）
@@ -92,65 +90,20 @@ void HubScene::Init()
     // =================================================================
 
     // --- (A) 広場中央：憩いの焚き火エリア ---
-    // 焚き火台（中央火床のみブロック、スタンドは通過可能）
-    AddProp("Assets/model/campfire/campfire-pit.obj", "Assets/model/campfire/campfire-pit.mtl",
-            XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT3(4.5f, 4.5f, 4.5f), 0.0f, XMFLOAT3(0.24f, 0.15f, 0.24f));
-    AddProp("Assets/model/campfire/campfire-stand.obj", "Assets/model/campfire/campfire-stand.mtl",
-            XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT3(4.5f, 4.5f, 4.5f), 0.0f, XMFLOAT3(0.0f, 0.0f, 0.0f));
     // 中央の焚き火に常時炎をともす
     FireEffect::SetEmitter(XMFLOAT3(0.0f, -0.55f, 0.0f));
     // 拠点の空気感: 昼は舞う埃、夜は蛍
     AmbientEffect::SetEnabled(true);
     // キャンプの外側に風で揺れる草原を広げる
     GrassSystem::SetEnabled(true);
-    s_DbgGrass = s_DbgHill = s_DbgFoliage = true;
     ObjModel::SetFoliageHidden(false);
     // 草原の向こうに丘と木の遠景を広げる
     HillTerrain::SetEnabled(true);
-    // 焚き火脇の休憩用木箱・丸太
-    AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
-            XMFLOAT3(2.2f, -1.0f, 0.5f), XMFLOAT3(3.2f, 3.2f, 3.2f), 0.3f, XMFLOAT3(0.24f, 0.25f, 0.24f));
-    AddProp("Assets/model/barrel/barrel.obj", "Assets/model/barrel/barrel.mtl",
-            XMFLOAT3(-2.0f, -1.0f, -0.6f), XMFLOAT3(3.5f, 3.5f, 3.5f), 0.0f, XMFLOAT3(0.22f, 0.35f, 0.22f));
 
-    // --- (B) 西〜南西エリア：マイテント / 休息所・身支度エリア ---
-    // 大型テント（広場を向く・テント本体のみブロック）
-    AddProp("Assets/model/tent/tent.obj", "Assets/model/tent/tent.mtl",
-            XMFLOAT3(-11.0f, -1.0f, -8.0f), XMFLOAT3(7.0f, 7.0f, 7.0f), XM_PIDIV4 + 0.3f, XMFLOAT3(0.48f, 0.5f, 0.48f));
-    // 寝袋（敷布団：プレイヤーが上に乗れるよう当たり判定なし）
-    AddProp("Assets/model/bedroll/bedroll.obj", "Assets/model/bedroll/bedroll.mtl",
-            XMFLOAT3(-8.5f, -0.95f, -5.8f), XMFLOAT3(5.0f, 5.0f, 5.0f), XM_PIDIV4, XMFLOAT3(0.0f, 0.0f, 0.0f));
-    // アイテムBOX（宝箱）
-    AddProp("Assets/model/box/chest.obj", "Assets/model/box/chest.mtl",
-            XMFLOAT3(-6.8f, -1.0f, -8.8f), XMFLOAT3(4.2f, 4.2f, 4.2f), -0.25f, XMFLOAT3(0.24f, 0.25f, 0.25f));
-    // テント脇の備蓄木箱
-    AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
-            XMFLOAT3(-12.5f, -1.0f, -5.5f), XMFLOAT3(3.8f, 3.8f, 3.8f), 0.5f, XMFLOAT3(0.24f, 0.25f, 0.24f));
 
     // --- (C) 北西エリア：工房・鍛冶屋エリア ---
-    // 金床作業台 (Forge)
-    PropModel* forgeAnvil = AddProp("Assets/model/workbench_anvil/workbenchAnvil.obj", "Assets/model/workbench_anvil/workbenchAnvil.mtl",
-                                    XMFLOAT3(FORGE_POS.x, -1.0f, FORGE_POS.z), XMFLOAT3(6.5f, 6.5f, 6.5f), XM_PI, XMFLOAT3(0.30f, 0.28f, 0.27f));
-    // 工房周りの道具箱と樽（水樽 / 冷却水）
-    AddProp("Assets/model/barrel/barrel-open.obj", "Assets/model/barrel/barrel-open.mtl",
-            XMFLOAT3(FORGE_POS.x - 2.5f, -1.0f, FORGE_POS.z + 1.2f), XMFLOAT3(4.5f, 4.5f, 4.5f), 0.0f, XMFLOAT3(0.22f, 0.35f, 0.22f));
-    AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
-            XMFLOAT3(FORGE_POS.x - 2.2f, -1.0f, FORGE_POS.z - 1.5f), XMFLOAT3(3.8f, 3.8f, 3.8f), 0.4f, XMFLOAT3(0.24f, 0.25f, 0.24f));
-    AddProp("Assets/model/box/box-open.obj", "Assets/model/box/box-open.mtl",
-            XMFLOAT3(FORGE_POS.x + 2.0f, -1.0f, FORGE_POS.z + 1.5f), XMFLOAT3(3.5f, 3.5f, 3.5f), -0.3f, XMFLOAT3(0.24f, 0.25f, 0.24f));
-    // 工房背後の木製フェンス（幅3m, 厚さ0.45m）
-    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
-            XMFLOAT3(FORGE_POS.x, -1.0f, FORGE_POS.z + 3.2f), XMFLOAT3(5.5f, 5.5f, 5.5f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
 
     // --- (D) 北東エリア：出撃ゲート・クエスト掲示板エリア ---
-    // クエスト掲示板 (Signpost: 幅1.0m, 厚さ0.3m)
-    AddProp("Assets/model/signpost/signpost.obj", "Assets/model/signpost/signpost.mtl",
-            XMFLOAT3(GATE_POS.x - 3.2f, -1.0f, GATE_POS.z - 1.2f), XMFLOAT3(5.0f, 5.0f, 5.0f), -0.5f, XMFLOAT3(0.20f, 0.45f, 0.06f));
-    // 門脇の物資（樽と木箱）
-    AddProp("Assets/model/barrel/barrel.obj", "Assets/model/barrel/barrel.mtl",
-            XMFLOAT3(GATE_POS.x + 2.5f, -1.0f, GATE_POS.z - 1.0f), XMFLOAT3(4.5f, 4.5f, 4.5f), 0.0f, XMFLOAT3(0.22f, 0.35f, 0.22f));
-    AddProp("Assets/model/box/chest.obj", "Assets/model/box/chest.mtl",
-            XMFLOAT3(GATE_POS.x + 2.2f, -1.0f, GATE_POS.z + 1.2f), XMFLOAT3(4.0f, 4.0f, 4.0f), 0.2f, XMFLOAT3(0.24f, 0.25f, 0.25f));
 
     // 出撃ゲート（Quest Gate）柱オブジェクト
     Wall* gateL = Manager::AddGameObject<Wall>();
@@ -168,8 +121,6 @@ void HubScene::Init()
     // --- 松明（夜は橙色の点光源になる。ゲート両脇と工房の入口） ---
     // 焚き火と同じモデル（石の火床）を小さくした「かがり火」にして、画風を揃える
     auto AddTorch = [&](float x, float z) {
-        AddProp("Assets/model/campfire/campfire-pit.obj", "Assets/model/campfire/campfire-pit.mtl",
-                XMFLOAT3(x, -1.0f, z), XMFLOAT3(2.4f, 2.4f, 2.4f), 0.0f, XMFLOAT3(0.12f, 0.15f, 0.12f));
         FireEffect::AddTorch(XMFLOAT3(x, -0.85f, z));
     };
     AddTorch(GATE_POS.x - 2.6f, GATE_POS.z - 1.0f);
@@ -180,32 +131,8 @@ void HubScene::Init()
     Enemy* dummy = Manager::AddGameObject<Enemy>();
     dummy->SetPosition(XMFLOAT3(0.0f, -0.5f, 13.0f));
     dummy->SetSandbag(true, 999999);
-    // サンドバッグ脇の案内立て札（細い看板なので衝突なし）
-    AddProp("Assets/model/signpost/signpost-single.obj", "Assets/model/signpost/signpost-single.mtl",
-            XMFLOAT3(-2.2f, -1.0f, 12.0f), XMFLOAT3(4.0f, 4.0f, 4.0f), 0.3f, XMFLOAT3(0.0f, 0.0f, 0.0f));
-    // 修練場の背景フェンス
-    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
-            XMFLOAT3(-3.0f, -1.0f, 15.5f), XMFLOAT3(5.5f, 5.5f, 5.5f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
-    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
-            XMFLOAT3(3.0f, -1.0f, 15.5f), XMFLOAT3(5.5f, 5.5f, 5.5f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
 
-    // --- (F) 南東エリア：将来の食事処・屋台スペース（生活感プロップ） ---
-    AddProp("Assets/model/barrel/barrel.obj", "Assets/model/barrel/barrel.mtl",
-            XMFLOAT3(9.5f, -1.0f, -6.5f), XMFLOAT3(4.2f, 4.2f, 4.2f), 0.0f, XMFLOAT3(0.22f, 0.35f, 0.22f));
-    AddProp("Assets/model/box/box.obj", "Assets/model/box/box.mtl",
-            XMFLOAT3(11.0f, -1.0f, -5.2f), XMFLOAT3(3.5f, 3.5f, 3.5f), 0.4f, XMFLOAT3(0.24f, 0.25f, 0.24f));
 
-    // --- 外周の低い柵（壁の代わりに視界を遮らず、遠景の山まで見通せるようにする） ---
-    for (float p = -20.0f; p <= 20.0f; p += 8.0f) {
-        AddProp("Assets/model/fence/fence.obj", "Assets/model/fence/fence.mtl",
-                XMFLOAT3(p, -1.0f, 21.2f), XMFLOAT3(6.0f, 6.0f, 6.0f), 0.0f);
-        AddProp("Assets/model/fence/fence.obj", "Assets/model/fence/fence.mtl",
-                XMFLOAT3(p, -1.0f, -21.2f), XMFLOAT3(6.0f, 6.0f, 6.0f), 0.0f);
-        AddProp("Assets/model/fence/fence.obj", "Assets/model/fence/fence.mtl",
-                XMFLOAT3(21.2f, -1.0f, p), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2);
-        AddProp("Assets/model/fence/fence.obj", "Assets/model/fence/fence.mtl",
-                XMFLOAT3(-21.2f, -1.0f, p), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2);
-    }
 
     // --- 草原の自然物（Stylized Nature MegaKit）。柵の外の草原に、木・岩・茂み・花を散らす ---
     // 位置は固定の乱数列で決める（毎回同じ景色になる）。当たり判定なし（外周は見えない壁が止める）
@@ -223,7 +150,83 @@ void HubScene::Init()
 
         // 柵の外側(キャンプの外)で、草原の端(±46m)までの範囲から、既存の配置と離れた位置を選ぶ
         std::vector<XMFLOAT2> placed;
-        auto place = [&](float minDist, XMFLOAT2* out) {
+
+        // --- 中世の村の家（Medieval Village MegaKit）。柵の外に数軒、広場の方を向けて建てる。当たり判定なし ---
+        // 壁は幅2mのモジュール。土台は 幅6m(x) × 奥行8m(z)、正面(+z)にドア。S倍に拡大して置く
+        {
+            const std::string M = "Assets/model/medieval/";
+            const float S = 1.0f, GY = -1.0f;
+            // 家のローカル座標(lx,lz,高さly)に置く。rot=家の向き、rotAdd=その部品だけの追加回転。collSize>0 で当たり判定あり
+            auto mp = [&](const std::string& n, float lx, float lz, float ly, float cx, float cz, float rot, float rotAdd,
+                          const XMFLOAT3& collSize = XMFLOAT3(0.0f, 0.0f, 0.0f), float sx = 1.0f) {
+                const float c = cosf(rot), s = sinf(rot);
+                AddProp(M + n + ".obj", M + n + ".mtl",
+                        XMFLOAT3(cx + (lx * c + lz * s) * S, GY + ly * S, cz + (-lx * s + lz * c) * S),
+                        XMFLOAT3(S * sx, S, S), rot + rotAdd, collSize);
+            };
+            // rot: 0=正面が+Z向き / π=-Z向き / π/2=+X向き / -π/2=-X向き（広場の中心に向ける）
+            auto house = [&](float cx, float cz, bool brick, float rot, int nx, int nz, int deco) {
+                // deco: 1=煙突 2=煙突(別形) 4=丸いドア 8=雨戸(開) 16=雨戸(閉)
+                const float HW = (float)nx, HD = (float)nz;   // 半幅・半奥行(m)。nx,nzは壁モジュール数(幅2m)
+                const std::string wall = brick ? "Wall_UnevenBrick_" : "Wall_Plaster_";
+                for (int i = 0; i < nx; ++i) {        // 正面(ドア+窓)と背面
+                    const float lx = -(float)(nx - 1) + 2.0f * i;
+                    const bool door = (i == nx / 2);
+                    const bool rnd = (deco & 4) != 0;
+                    mp(wall + (door ? (rnd ? "Door_Round" : "Door_Flat") : "Window_Wide_Flat"), lx, HD, 0.0f, cx, cz, rot, 0.0f);
+                    // ドア板は蝶番側が原点(x:-0.05〜1.07、幅1.12)で、壁の開口は x:-0.65〜0.65(幅1.3)。
+                    // 開口に合わせて横に1.17倍し、-0.59ずらして隙間をなくす
+                    if (door) mp(rnd ? "Door_1_Round" : "Door_1_Flat", lx - 0.59f, HD, 0.0f, cx, cz, rot, 0.0f, XMFLOAT3(0.0f, 0.0f, 0.0f), 1.17f);
+                    else {
+                        mp("Window_Wide_Flat1", lx, HD, 0.0f, cx, cz, rot, 0.0f);
+                        if (deco & 24) mp((deco & 8) ? "WindowShutters_Wide_Flat_Open" : "WindowShutters_Wide_Flat_Closed", lx, HD, 0.0f, cx, cz, rot, 0.0f);
+                    }
+                    mp(wall + "Straight", lx, -HD, 0.0f, cx, cz, rot, XM_PI);
+                }
+                for (int i = 0; i < nz; ++i) {        // 左右の側面（両端以外に窓）
+                    const float lz = -(float)(nz - 1) + 2.0f * i;
+                    const bool win = (i >= 1 && i <= nz - 2);
+                    const std::string nm = wall + (win ? "Window_Wide_Flat" : "Straight");
+                    mp(nm, HW, lz, 0.0f, cx, cz, rot, XM_PIDIV2);
+                    mp(nm, -HW, lz, 0.0f, cx, cz, rot, -XM_PIDIV2);
+                    if (win) {
+                        mp("Window_Wide_Flat1", HW, lz, 0.0f, cx, cz, rot, XM_PIDIV2);
+                        mp("Window_Wide_Flat1", -HW, lz, 0.0f, cx, cz, rot, -XM_PIDIV2);
+                        if (deco & 24) {
+                            const char* sh = (deco & 8) ? "WindowShutters_Wide_Flat_Open" : "WindowShutters_Wide_Flat_Closed";
+                            mp(sh, HW, lz, 0.0f, cx, cz, rot, XM_PIDIV2);
+                            mp(sh, -HW, lz, 0.0f, cx, cz, rot, -XM_PIDIV2);
+                        }
+                    }
+                }
+                mp("Corner_Exterior_Wood",  HW,  HD, 0.0f, cx, cz, rot, 0.0f);
+                mp("Corner_Exterior_Wood", -HW,  HD, 0.0f, cx, cz, rot, 0.0f);
+                mp("Corner_Exterior_Wood",  HW, -HD, 0.0f, cx, cz, rot, 0.0f);
+                mp("Corner_Exterior_Wood", -HW, -HD, 0.0f, cx, cz, rot, 0.0f);
+                const std::string gable = "Roof_Front_Brick" + std::to_string(nx * 2);
+                mp(gable, 0.0f,  HD, 3.12f, cx, cz, rot, 0.0f);     // 屋根の下の三角壁
+                mp(gable, 0.0f, -HD, 3.12f, cx, cz, rot, XM_PI);
+                // 屋根の原点が家の中心。ここに土台(6x8m)の当たり判定を付ける（家の中には入れない）
+                // 屋根の原点の高さは部品ごとに違う（軒先を同じ高さにそろえる）。小さい4m幅だけ低い
+                const float roofY = (nx == 2) ? 2.34f : 2.6f;
+                mp("Roof_RoundTiles_" + std::to_string(nx * 2) + "x" + std::to_string(nz * 2), 0.0f, 0.0f, roofY, cx, cz, rot, 0.0f, XMFLOAT3(2.0f * HW, 1.0f, 2.0f * HD));
+                if (deco & 3) {                       // 煙突：底のV字の切り欠きが棟(屋根の頂上)をまたぐ向きに置く
+                    const float peak = (nx == 2) ? 6.06f : (nx == 3 ? 7.49f : 8.6f);
+                    mp((deco & 1) ? "Prop_Chimney" : "Prop_Chimney2", 0.0f, HD * 0.3f, peak - 1.3f, cx, cz, rot, XM_PIDIV2);
+                }
+            };
+            // 拠点（44m四方）の四隅に1軒ずつ。既存のプロップと重ならない位置
+            house(-16.5f,  16.0f, false, XM_PI,      3, 4, 1 | 8);   // 6x8m 漆喰
+            house( 16.5f,  16.0f, true,  XM_PI,      4, 4, 2 | 16);   // 8x8m レンガ(大)
+            house(-16.0f, -15.0f, true,  XM_PIDIV2,  2, 3, 4 | 1);   // 4x6m レンガ(小)
+            house( 16.0f, -16.0f, false, -XM_PIDIV2, 3, 5, 4 | 2 | 8);   // 6x10m 漆喰(細長)
+            // 奥の家の間に荷車と木箱
+            mp("Prop_Wagon", 0.0f, 0.0f, 0.0f, 0.0f, 19.0f, 0.2f, 0.0f);
+            mp("Prop_Crate", 0.0f, 0.0f, 0.0f, 3.6f, 18.4f, 0.4f, 0.0f, XMFLOAT3(1.0f, 1.0f, 1.0f));
+            mp("Prop_Crate", 0.0f, 0.0f, 0.0f, -3.4f, 18.0f, 1.1f, 0.0f, XMFLOAT3(1.0f, 1.0f, 1.0f));
+        }
+
+        auto place =[&](float minDist, XMFLOAT2* out) {
             for (int tries = 0; tries < 40; ++tries) {
                 float x = range(-46.0f, 46.0f), z = range(-46.0f, 46.0f);
                 if ((std::max)(fabsf(x), fabsf(z)) < 24.5f) continue;          // キャンプの内側は除外
@@ -283,24 +286,6 @@ void HubScene::Init()
         }
     }
 
-    // --- (G) キャンプ外周の防護柵（実寸幅3.0m, 厚さ0.48mの薄板コライダー） ---
-    // 南側（東西に伸びる柵：回転なし）
-    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
-            XMFLOAT3(-8.0f, -1.0f, -15.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
-    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
-            XMFLOAT3(0.0f, -1.0f, -15.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
-    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
-            XMFLOAT3(8.0f, -1.0f, -15.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), 0.0f, XMFLOAT3(0.50f, 0.5f, 0.08f));
-    // 東側（南北に伸びる柵：90度回転）
-    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
-            XMFLOAT3(16.0f, -1.0f, -8.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2, XMFLOAT3(0.50f, 0.5f, 0.08f));
-    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
-            XMFLOAT3(16.0f, -1.0f, 2.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2, XMFLOAT3(0.50f, 0.5f, 0.08f));
-    // 西側（南北に伸びる柵：90度回転）
-    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
-            XMFLOAT3(-16.0f, -1.0f, -8.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2, XMFLOAT3(0.50f, 0.5f, 0.08f));
-    AddProp("Assets/model/fence/fence-fortified.obj", "Assets/model/fence/fence-fortified.mtl",
-            XMFLOAT3(-16.0f, -1.0f, 2.0f), XMFLOAT3(6.0f, 6.0f, 6.0f), XM_PIDIV2, XMFLOAT3(0.50f, 0.5f, 0.08f));
 }
 
 void HubScene::Uninit()
@@ -311,11 +296,6 @@ void HubScene::Uninit()
 void HubScene::Update()
 {
     UpdateFacilities();
-
-    // 確認用: F5 草 / F6 丘と木 / F7 自然物モデル
-    if (Input::GetKeyTrigger(VK_F5)) { s_DbgGrass   = !s_DbgGrass;   GrassSystem::SetEnabled(s_DbgGrass); }
-    if (Input::GetKeyTrigger(VK_F6)) { s_DbgHill    = !s_DbgHill;    HillTerrain::SetEnabled(s_DbgHill); }
-    if (Input::GetKeyTrigger(VK_F7)) { s_DbgFoliage = !s_DbgFoliage; ObjModel::SetFoliageHidden(!s_DbgFoliage); }
 
     // 修練サンドバッグが壊れたら少し待って同じ場所に復活させる（無限に練習できる）
     if (!Manager::GetGameObject<Enemy>()) {
@@ -413,27 +393,6 @@ void HubScene::UpdateFacilities()
 void HubScene::Draw()
 {
     DrawFacilityHUD();
-
-    // 確認用: FPSと切り替え状態（確認が済んだら削除）
-    {
-        ImGui::SetNextWindowPos(ImVec2(12.0f, 80.0f), ImGuiCond_Always);
-        ImGui::SetNextWindowBgAlpha(0.65f);
-        if (ImGui::Begin("##PerfDebug", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings)) {
-            ImGui::Text("FPS %.0f (frame %.1f ms) | CPU update %.1f ms, draw-submit %.1f ms",
-                        ImGui::GetIO().Framerate, 1000.0f / (std::max)(ImGui::GetIO().Framerate, 1.0f),
-                        Manager::s_DbgCpuUpdateMs, Manager::s_DbgCpuDrawMs);
-            ImGui::Text("GPU ms: prep %.1f | sky %.1f | ground %.1f | objects %.1f | outline %.1f | hill %.1f | grass %.1f",
-                        Renderer::GetGpuSegmentMs(0), Renderer::GetGpuSegmentMs(1), Renderer::GetGpuSegmentMs(2),
-                        Renderer::GetGpuSegmentMs(3), Renderer::GetGpuSegmentMs(4), Renderer::GetGpuSegmentMs(5),
-                        Renderer::GetGpuSegmentMs(6));
-            ImGui::Text("        fx+ui %.1f | bloom %.1f | ssao %.1f | post %.1f | imgui %.1f",
-                        Renderer::GetGpuSegmentMs(7), Renderer::GetGpuSegmentMs(8), Renderer::GetGpuSegmentMs(9),
-                        Renderer::GetGpuSegmentMs(10), Renderer::GetGpuSegmentMs(11));
-            ImGui::Text((const char*)u8"F5 草: %s   F6 丘と木: %s   F7 自然物: %s",
-                        s_DbgGrass ? "ON" : "off", s_DbgHill ? "ON" : "off", s_DbgFoliage ? "ON" : "off");
-        }
-        ImGui::End();
-    }
 
 
     if (m_IsWorkshopOpen) {

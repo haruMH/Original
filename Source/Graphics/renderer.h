@@ -258,7 +258,8 @@ public:
     // シェーダーファイルのパスを構成に合わせて解決する（2-1 対応）
     // 呼び出し元は常にベース名（例: "vertexShader.cso"）を渡すだけでよい
     static std::string ResolveShaderPath(const std::string& fileName);
-    static void CreateTexture(const char* name, ID3D11ShaderResourceView** tex);
+    // allowCompressed=false のときは .dds を使わず元画像(RGBA8)を読む（テクスチャ配列など形式を揃える必要がある用途向け）
+    static void CreateTexture(const char* name, ID3D11ShaderResourceView** tex, bool allowCompressed = true);
     static void SetTexture(ID3D11ShaderResourceView* tex);
     static void SetNormalMap(ID3D11ShaderResourceView* tex);
     // キューブ描画の共通 GPU リソースをパイプラインにセットする

@@ -10,6 +10,18 @@ namespace {
     ID3D11PixelShader* g_FoliagePS = nullptr;
     bool               g_FoliageTried = false;
     bool               g_FoliageHidden = false;
+    // 法線マップ対応のピクセルシェーダー（中世の家など。全モデルで共有）
+    ID3D11PixelShader* g_NormalMapPS = nullptr;
+    bool               g_NormalMapTried = false;
+
+    ID3D11PixelShader* GetNormalMapPS()
+    {
+        if (!g_NormalMapTried) {
+            g_NormalMapTried = true;
+            Renderer::CreatePixelShader(&g_NormalMapPS, Renderer::ResolveShaderPath("medieval_ps.cso").c_str());
+        }
+        return g_NormalMapPS;
+    }
 
     ID3D11PixelShader* GetFoliagePS()
     {
@@ -45,6 +57,8 @@ void ObjModel::ReleaseSharedResources()
 {
     if (g_FoliagePS) { g_FoliagePS->Release(); g_FoliagePS = nullptr; }
     g_FoliageTried = false;
+    if (g_NormalMapPS) { g_NormalMapPS->Release(); g_NormalMapPS = nullptr; }
+    g_NormalMapTried = false;
 }
 
 // =================================================================
@@ -116,6 +130,11 @@ void ObjModel::LoadMtl(const std::string& mtlPath, std::unordered_map<std::strin
         } else if (tag == "map_Kd") {
             iss >> outTexture;
             if (!currentMatName.empty()) matTex[currentMatName] = outTexture;
+        } else if ((tag == "map_Bump" || tag == "bump") && !currentMatName.empty()) {
+            // "map_Bump -bm 1.0 path" のようにオプションが付く場合があるので、最後の単語をファイル名とする
+            std::string w, last;
+            while (iss >> w) last = w;
+            if (!last.empty()) m_MatNormal[currentMatName] = last;
         }
     }
 }
@@ -130,6 +149,8 @@ bool ObjModel::Load(const std::string& objPathIn, const std::string& mtlPathIn)
     const std::string objPath = ResolveAssetPath(objPathIn);
     const std::string mtlPath = ResolveAssetPath(mtlPathIn);
     m_UseFoliageShader = (objPath.find("/nature/") != std::string::npos);
+    m_UseNormalMap = (objPath.find("/medieval/") != std::string::npos);
+    m_MatNormal.clear();
 
     std::ifstream file(objPath);
     if (!file.is_open()) {
@@ -333,6 +354,28 @@ bool ObjModel::Load(const std::string& objPathIn, const std::string& mtlPathIn)
                     }
                 }
             }
+            // 法線マップ（中世の家など）。同じファイルは1回だけ読む
+            if (m_UseNormalMap) {
+                auto nIt = m_MatNormal.find(r.name);
+                if (nIt != m_MatNormal.end()) {
+                    auto cachedN = loaded.find("N:" + nIt->second);
+                    if (cachedN != loaded.end()) {
+                        sm.nrm = cachedN->second;
+                    } else {
+                        std::string np = dir + nIt->second;
+                        std::ifstream nf(np);
+                        if (nf.is_open()) {
+                            ID3D11ShaderResourceView* nsrv = nullptr;
+                            Renderer::CreateTexture(np.c_str(), &nsrv);   // 同名の .dds(BC7)があればそれを読む
+                            if (nsrv) {
+                                m_ExtraTextures.push_back(nsrv);
+                                loaded["N:" + nIt->second] = nsrv;
+                                sm.nrm = nsrv;
+                            }
+                        }
+                    }
+                }
+            }
             m_SubMeshes.push_back(sm);
         }
         if (m_SubMeshes.empty()) {
@@ -378,6 +421,13 @@ void ObjModel::Draw(const XMMATRIX& worldMatrix)
         }
     }
 
+    // 中世の家などは法線マップ対応のシェーダーで描く（無ければ標準のまま）
+    if (m_UseNormalMap) {
+        if (ID3D11PixelShader* nps = GetNormalMapPS()) {
+            Renderer::GetDeviceContext()->PSSetShader(nps, nullptr, 0);
+        }
+    }
+
     // 頂点バッファを自前のOBJ頂点バッファに差し替えて描画
     UINT stride = sizeof(VERTEX_3D);
     UINT offset = 0;
@@ -392,7 +442,10 @@ void ObjModel::Draw(const XMMATRIX& worldMatrix)
         } else {
             Renderer::GetDeviceContext()->PSSetShaderResources(0, 1, &nullSRV);
         }
-        Renderer::GetDeviceContext()->PSSetShaderResources(1, 1, &nullSRV);
+        {
+            ID3D11ShaderResourceView* n = sm.nrm;   // 法線マップが無いときは null（medieval_ps 側で面の法線のまま）
+            Renderer::GetDeviceContext()->PSSetShaderResources(1, 1, n ? &n : &nullSRV);
+        }
 
         MATERIAL material;
         ZeroMemory(&material, sizeof(material));

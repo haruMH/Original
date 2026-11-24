@@ -80,8 +80,21 @@ void Field::Init()
     Renderer::CreatePixelShader(&m_PixelShader, Renderer::ResolveShaderPath("pixelShader.cso").c_str());
 }
 
+void Field::SetFloorTexture(const char* albedoName, const char* normalName)
+{
+    ID3D11ShaderResourceView* a = ResourceManager::GetTexture(albedoName);
+    if (a) m_Texture = a;
+    if (normalName && !m_NormalPS)
+    {
+        m_NormalTexture = ResourceManager::GetTexture(normalName);
+        if (m_NormalTexture)
+            Renderer::CreatePixelShader(&m_NormalPS, Renderer::ResolveShaderPath("medieval_ps.cso").c_str());
+    }
+}
+
 void Field::Uninit()
 {
+    if (m_NormalPS)     m_NormalPS->Release();
     if (m_VertexLayout) m_VertexLayout->Release();
     if (m_PixelShader)  m_PixelShader->Release();
     if (m_VertexShader) m_VertexShader->Release();
@@ -107,16 +120,18 @@ void Field::Draw()
     deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     deviceContext->IASetInputLayout(m_VertexLayout);
     deviceContext->VSSetShader(m_VertexShader, NULL, 0);
-    deviceContext->PSSetShader(m_PixelShader, NULL, 0);
+    const bool useNormal = (m_NormalPS && m_NormalTexture);
+    deviceContext->PSSetShader(useNormal ? m_NormalPS : m_PixelShader, NULL, 0);
 
     Renderer::SetTexture(m_Texture);
+    if (useNormal) deviceContext->PSSetShaderResources(1, 1, &m_NormalTexture);
 
     MATERIAL material;
     ZeroMemory(&material, sizeof(material));
     material.Diffuse       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     material.Ambient       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    material.Specular      = XMFLOAT4(0.35f, 0.35f, 0.45f, 1.0f); // 上品な青白いスペキュラ反射
-    material.Shininess     = 36.0f;                                // 磨かれたアリーナ風の光沢
+    material.Specular      = useNormal ? XMFLOAT4(0.08f, 0.08f, 0.1f, 1.0f) : XMFLOAT4(0.35f, 0.35f, 0.45f, 1.0f); // 石畳は光沢を抑える
+    material.Shininess     = useNormal ? 12.0f : 36.0f;                                                          // 磨かれたアリーナ風の光沢
     material.TextureEnable = TRUE;
     Renderer::SetMaterial(material);
 

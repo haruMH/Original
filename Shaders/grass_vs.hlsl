@@ -35,7 +35,7 @@ VS_OUT main(uint vid : SV_VertexID, uint iid : SV_InstanceID)
     uint  level     = min(vid / 2, maxLevel);
     float side      = (vid & 1) ? 1.0 : -1.0;
     float h         = (float)level / (float)maxLevel;           // 0(根元)〜1(先端)
-    float width     = P2.x * P4.z * (1.0 - h * h) * ((vid == vertCount - 1) ? 0.0 : 1.0);
+    float width     = P2.x * (1.0 - h * h) * ((vid == vertCount - 1) ? 0.0 : 1.0);
 
     // 配置: カメラ中心の格子（マス目はワールド固定）+ ジッター
     uint   n    = (uint)P1.w;
@@ -51,6 +51,10 @@ VS_OUT main(uint vid : SV_VertexID, uint iid : SV_InstanceID)
     float  distC = length(dc);
     float  outerFade = 1.0 - smoothstep(P2.w * 0.70, P2.w, distC);
     float  innerFade = smoothstep(P4.x, P4.x + 4.0, distC);
+    // 遠景層は内縁から離れるほど徐々に高く・太く（境目で急に伸びて見えないように）
+    float  rampS = min(P4.x, 11.0);   // 外側の層(内縁が遠い)は最初から遠景の大きさ
+    float  ramp = (P4.x > 0.0) ? smoothstep(rampS, rampS + 14.0, distC) : 1.0;
+    width *= lerp(lerp(1.0, P4.z, 0.6), P4.z, ramp);   // 遠景は最初から少し太くして、近景との隙間感をなくす
     bool inCamp  = (abs(root.x) < P2.y && abs(root.z) < P2.z);
     bool outside = (abs(root.x) > P4.w || abs(root.z) > P4.w);
     if (inCamp || outside
@@ -61,7 +65,7 @@ VS_OUT main(uint vid : SV_VertexID, uint iid : SV_InstanceID)
     }
 
     float rnd    = hash21(cellIdx + 3.7);
-    float bladeH = P0.w * P4.y * (0.45 + 1.05 * rnd * rnd + 0.25 * hash21(cellIdx + 21.1)) * lerp(0.6, 1.0, outerFade);
+    float bladeH = P0.w * lerp(1.0, P4.y, ramp) * (0.45 + 1.05 * rnd * rnd + 0.25 * hash21(cellIdx + 21.1)) * lerp(0.85, 1.0, outerFade);
     float ang    = rnd * 6.2831853;
     float2 face  = float2(cos(ang), sin(ang));       // 刃の幅方向
 

@@ -11,6 +11,9 @@ private:
     ID3D11ShaderResourceView* m_Texture = nullptr;
     ID3D11ShaderResourceView* m_SkyTexture = nullptr; // 反射フォールバック用スカイテクスチャ
 
+    ID3D11ShaderResourceView* m_NormalTexture = nullptr;  // 床の法線マップ（指定時のみ。法線マップ対応シェーダーで描く）
+    ID3D11PixelShader*        m_NormalPS       = nullptr;
+
     int m_VertexCount = 0;
 
 public:
@@ -18,6 +21,10 @@ public:
     void Uninit() override;
     void Update() override;
     void Draw() override;
+
+    // 床の絵柄と法線マップを差し替える（Assets/texture 内のファイル名）。未指定なら従来の grid.png
+    void SetFloorTexture(const char* albedoName, const char* normalName);
+
     static ObjectType GetStaticType() { return ObjectType::Field; }
     ObjectType GetObjectType() const override { return GetStaticType(); }
 };
